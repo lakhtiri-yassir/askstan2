@@ -104,7 +104,7 @@ export const DashboardPage: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                  Welcome back, <span className="bg-gradient-to-r from-blue-500 to-yellow-500 bg-clip-text text-transparent">{user?.email?.split('@')[0]}</span>!
+                  Welcome back, <span className="bg-gradient-to-r from-blue-500 to-yellow-500 bg-clip-text text-transparent">{user?.email?.split('@')[0] || 'User'}</span>!
                 </h1>
                 <p className="text-gray-600">
                   Your AI social media coach is ready to help you grow your online presence.
@@ -112,7 +112,7 @@ export const DashboardPage: React.FC = () => {
               </div>
               <div className="flex items-center space-x-2 text-sm text-gray-500">
                 <Sparkles className="w-4 h-4" />
-                <span>Pro Plan Active</span>
+                <span className="capitalize">{user?.subscriptionPlan || 'Pro'} Plan Active</span>
               </div>
             </div>
           </div>

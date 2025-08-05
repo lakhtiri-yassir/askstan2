@@ -82,8 +82,16 @@ export const LandingPage: React.FC = () => {
                     <ArrowRight className="ml-2 w-5 h-5" />
                   </Button>
                 </Link>
-                <Button variant="outline" size="lg" className="w-full sm:w-auto">
-                  Watch Demo
+                <Button 
+                  variant="outline" 
+                  size="lg" 
+                  className="w-full sm:w-auto"
+                  onClick={() => {
+                    const demoSection = document.getElementById('features');
+                    demoSection?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                >
+                  Learn More
                 </Button>
               </div>
               
@@ -121,7 +129,7 @@ export const LandingPage: React.FC = () => {
       </section>
 
       {/* Features Section */}
-      <section className="py-20 bg-white">
+      <section id="features" className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}

@@ -32,14 +32,25 @@ export const Header: React.FC = () => {
           <nav className="flex items-center space-x-4">
             {user ? (
               <div className="flex items-center space-x-4">
-                <span className="text-sm text-gray-600">
+                <span className="text-sm text-gray-600 hidden sm:inline">
                   Welcome, {user.email}
                 </span>
+                
+                {user.subscriptionStatus === 'active' && (
+                  <Link to="/dashboard">
+                    <motion.div
+                      whileHover={{ scale: 1.05 }}
+                      className="px-3 py-1 bg-gradient-to-r from-blue-500 to-yellow-500 text-white text-xs font-semibold rounded-full"
+                    >
+                      Dashboard
+                    </motion.div>
+                  </Link>
+                )}
                 
                 <Link to="/settings">
                   <motion.div
                     whileHover={{ scale: 1.05 }}
-                    className="p-2 text-gray-600 hover:text-blue-500 transition-colors"
+                    className="p-2 text-gray-600 hover:text-blue-500 transition-colors hidden sm:block"
                   >
                     <Settings size={20} />
                   </motion.div>
@@ -49,10 +60,10 @@ export const Header: React.FC = () => {
                   variant="ghost"
                   size="sm"
                   onClick={handleSignOut}
-                  className="flex items-center space-x-2"
+                  className="flex items-center space-x-2 text-xs sm:text-sm"
                 >
                   <LogOut size={16} />
-                  <span>Sign Out</span>
+                  <span className="hidden sm:inline">Sign Out</span>
                 </Button>
               </div>
             ) : (

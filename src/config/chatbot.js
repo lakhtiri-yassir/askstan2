@@ -43,8 +43,8 @@ export const chatbotConfig = {
 
 // Email service configuration (replace with your SendGrid details)
 export const emailConfig = {
-  apiKey: process.env.REACT_APP_SENDGRID_API_KEY,
-  fromEmail: 'noreply@askstan.com',
+  apiKey: import.meta.env.VITE_SENDGRID_API_KEY,
+  fromEmail: import.meta.env.VITE_FROM_EMAIL || 'noreply@askstan.com',
   templates: {
     emailConfirmation: 'd-your-template-id',
     passwordReset: 'd-your-template-id',
@@ -54,9 +54,9 @@ export const emailConfig = {
 
 // Stripe configuration (replace with your actual keys and price IDs)
 export const stripeConfig = {
-  publishableKey: process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY,
+  publishableKey: import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 'pk_test_placeholder',
   prices: {
-    monthly: 'price_your_monthly_price_id', // $4.99/month
-    yearly: 'price_your_yearly_price_id'    // $49.99/year
+    monthly: import.meta.env.VITE_STRIPE_PRICE_MONTHLY || 'price_monthly_placeholder',
+    yearly: import.meta.env.VITE_STRIPE_PRICE_YEARLY || 'price_yearly_placeholder'
   }
 };

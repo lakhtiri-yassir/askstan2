@@ -7,10 +7,11 @@ import { loadStripe } from '@stripe/stripe-js';
 import { stripeConfig } from '../../config/chatbot';
 
 // Initialize Stripe
-const stripePromise = loadStripe(stripeConfig.publishableKey || 'pk_test_placeholder');
+const stripePromise = loadStripe(stripeConfig.publishableKey);
 
 export const PlansPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const { updateSubscription } = useAuth();
 
   const plans = [
@@ -56,6 +57,13 @@ export const PlansPage: React.FC = () => {
     setIsLoading(plan.id);
     
     try {
+      if (!stripeConfig.publishableKey || stripeConfig.publishableKey === 'pk_test_placeholder') {
+        // Simulate successful subscription for demo purposes
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        updateSubscription(plan.id as 'monthly' | 'yearly');
+        return;
+      }
+      
       const stripe = await stripePromise;
       
       if (!stripe) {
@@ -78,7 +86,7 @@ export const PlansPage: React.FC = () => {
       
     } catch (error) {
       console.error('Subscription error:', error);
-      alert('Failed to process subscription. Please try again.');
+      setErrors({ submit: 'Failed to process subscription. Please try again.' });
     } finally {
       setIsLoading(null);
     }
@@ -148,6 +156,12 @@ export const PlansPage: React.FC = () => {
                   </li>
                 ))}
               </ul>
+
+              {errors.submit && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                  <p className="text-sm text-red-600">{errors.submit}</p>
+                </div>
+              )}
 
               <Button
                 onClick={() => handleSubscribe(plan)}

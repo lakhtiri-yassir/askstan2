@@ -85,12 +85,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // TODO: Replace with actual API call
       await new Promise(resolve => setTimeout(resolve, 1000));
       
+      // Simulate different user states for demo
+      const isExistingUser = email.includes('demo') || email.includes('test');
+      
       const user: User = {
         id: Date.now().toString(),
         email,
         isEmailConfirmed: true,
-        subscriptionStatus: 'none',
-        subscriptionPlan: null
+        subscriptionStatus: isExistingUser ? 'active' : 'none',
+        subscriptionPlan: isExistingUser ? 'monthly' : null
       };
       
       setUser(user);
