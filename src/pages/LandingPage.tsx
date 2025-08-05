@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight, Bot, TrendingUp, Users, Zap, Star, Check } from 'lucide-react';
 import { Button } from '../components/ui/Button';
-import { OptimizedImage } from '../components/ui/OptimizedImage';
 
 export const LandingPage: React.FC = () => {
   const features = [
@@ -112,20 +111,18 @@ export const LandingPage: React.FC = () => {
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.8, delay: 0.2 }}
-              className="relative"
+              className="relative flex justify-center"
             >
               <div className="relative bg-white rounded-2xl shadow-2xl p-8 backdrop-blur-sm">
-                    {/* Stan Character - Client will replace with actual cartoon */}
-                  {/* Stan Character Placeholder */}
-                  <div className="hero-character-container">
-                    <div className="stan-character-placeholder w-64 h-64 bg-powder-blue rounded-full flex items-center justify-center">
-                      <span className="text-6xl">👍</span>
-                      <span className="ml-4 text-navy-blue font-bold text-2xl">Stan</span>
-                    </div>
+                {/* Stan Character - Client will replace with actual cartoon */}
+                <div className="hero-character-container">
+                  <div className="stan-character-placeholder w-64 h-64 bg-powder-blue rounded-full flex items-center justify-center">
+                    <span className="text-6xl">👍</span>
+                    <span className="ml-4 text-navy-blue font-bold text-2xl">Stan</span>
                   </div>
-                  <div className="absolute -top-4 -right-4 bg-navy-blue p-4 rounded-xl text-white">
-                    <Bot className="w-8 h-8" />
-                  </div>
+                </div>
+                <div className="absolute -top-4 -right-4 bg-navy-blue p-4 rounded-xl text-white">
+                  <Bot className="w-8 h-8" />
                 </div>
               </div>
             </motion.div>
@@ -160,9 +157,9 @@ export const LandingPage: React.FC = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: index * 0.1 }}
                 viewport={{ once: true }}
-                className="text-center p-6 rounded-2xl bg-gradient-to-br from-blue-50 to-yellow-50 hover:shadow-lg transition-shadow"
+                className="text-center p-6 rounded-2xl bg-gray-50 hover:shadow-lg transition-shadow"
               >
-                <div className="bg-royal-blue p-3 rounded-xl inline-block text-white mb-4">
+                <div className="bg-powder-blue p-3 rounded-xl inline-block text-white mb-4">
                   {feature.icon}
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">

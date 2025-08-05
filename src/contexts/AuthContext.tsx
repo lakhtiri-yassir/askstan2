@@ -17,11 +17,8 @@ interface AuthContextType {
   forgotPassword: (email: string) => Promise<void>;
   updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
   refreshSubscription: () => Promise<void>;
-  confirmEmail: (token: string) => Promise<void>;
   hasActiveSubscription: boolean;
   isEmailVerified: boolean;
-}
-
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuth = () => {
@@ -234,20 +231,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const resetPassword = async (token: string, newPassword: string): Promise<void> => {
-    try {
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword
-      });
-      
-      if (error) throw error;
-      
-    } catch (error: any) {
-      console.error('Password update error:', error);
-      throw new Error(error.message || 'Failed to update password. Please try again.');
-    }
-  };
-
   const updateProfile = async (updates: Partial<UserProfile>): Promise<void> => {
     if (!user) throw new Error('User not authenticated');
     
@@ -293,10 +276,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     signIn,
     signOut,
     forgotPassword,
-    resetPassword,
     updateProfile,
     refreshSubscription,
-    confirmEmail,
     hasActiveSubscription,
     isEmailVerified
   };
