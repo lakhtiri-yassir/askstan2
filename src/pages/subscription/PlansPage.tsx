@@ -11,6 +11,31 @@ export const PlansPage: React.FC = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [couponCode, setCouponCode] = useState('');
+const [couponValidation, setCouponValidation] = useState<{
+  valid: boolean;
+  discount?: string;
+  error?: string;
+} | null>(null);
+const [showCouponInput, setShowCouponInput] = useState(false);
+
+// Add coupon validation function
+const validateCoupon = async (code: string) => {
+  if (!code.trim()) {
+    setCouponValidation(null);
+    return;
+  }
+
+  try {
+    const result = await subscriptionService.validateCoupon(code.trim().toUpperCase());
+    setCouponValidation(result);
+  } catch (error) {
+    setCouponValidation({
+      valid: false,
+      error: 'Unable to validate coupon'
+    });
+  }
+};
 
   const plansConfig = subscriptionService.getPlansConfig();
   const plans = [
@@ -30,36 +55,43 @@ export const PlansPage: React.FC = () => {
   ];
 
   const handleSubscribe = async (plan: any) => {
-    if (!user) {
-      navigate('/signin');
-      return;
-    }
+  if (!user) {
+    navigate('/signin');
+    return;
+  }
 
-    setIsLoading(plan.id);
-    setErrors({});
+  setIsLoading(plan.id);
+  setErrors({});
+  
+  try {
+    console.log('Creating checkout session for plan:', plan.id, 'with coupon:', couponCode);
     
-    try {
-      console.log('Creating checkout session for plan:', plan.id);
-      
-      const sessionId = await subscriptionService.createStripeCheckout(
-        user.id, 
-        plan.id as 'monthly' | 'yearly'
-      );
-      
-      console.log('Checkout session created:', sessionId);
-      
-      // Redirect to Stripe checkout
-      await subscriptionService.redirectToCheckout(sessionId);
-      
-    } catch (error) {
-      console.error('Subscription error:', error);
-      setErrors({ 
-        [plan.id]: error instanceof Error ? error.message : 'Failed to start checkout. Please try again.' 
-      });
-    } finally {
-      setIsLoading(null);
+    const result = await subscriptionService.createStripeCheckout(
+      user.id, 
+      plan.id as 'monthly' | 'yearly',
+      couponCode.trim() || undefined
+    );
+    
+    console.log('Checkout result:', result);
+    
+    // If payment is not required (100% off coupon), we might handle it differently
+    if (!result.paymentRequired) {
+      console.log('No payment required - free subscription activated');
+      // You might want to show a success message or redirect differently
     }
-  };
+    
+    // Redirect to Stripe checkout
+    await subscriptionService.redirectToCheckout(result.sessionId);
+    
+  } catch (error) {
+    console.error('Subscription error:', error);
+    setErrors({ 
+      [plan.id]: error instanceof Error ? error.message : 'Failed to start checkout. Please try again.' 
+    });
+  } finally {
+    setIsLoading(null);
+  }
+};
 
   // Show current subscription status if user has one
   const currentSubscription = subscriptionStatus?.subscription;
@@ -95,6 +127,51 @@ export const PlansPage: React.FC = () => {
             </p>
           </motion.div>
         )}
+        <div className="mb-8 text-center">
+  <Button 
+    variant="ghost" 
+    onClick={() => setShowCouponInput(!showCouponInput)}
+    className="text-sm text-gray-600 hover:text-gray-900"
+  >
+    {showCouponInput ? 'Hide' : 'Have a'} coupon code?
+  </Button>
+  
+  {showCouponInput && (
+    <motion.div
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: 'auto' }}
+      className="mt-4 max-w-md mx-auto"
+    >
+      <div className="flex gap-2">
+        <Input
+          type="text"
+          placeholder="Enter coupon code"
+          value={couponCode}
+          onChange={(e) => {
+            const code = e.target.value.toUpperCase();
+            setCouponCode(code);
+            // Validate on change with debounce
+            if (code.length >= 3) {
+              setTimeout(() => validateCoupon(code), 500);
+            } else {
+              setCouponValidation(null);
+            }
+          }}
+          className="flex-1"
+        />
+      </div>
+      
+      {couponValidation && (
+        <div className={`mt-2 text-sm ${couponValidation.valid ? 'text-green-600' : 'text-red-600'}`}>
+          {couponValidation.valid 
+            ? `✅ Coupon valid! ${couponValidation.discount} discount applied`
+            : `❌ ${couponValidation.error}`
+          }
+        </div>
+      )}
+    </motion.div>
+  )}
+</div>
 
         <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
           {plans.map((plan, index) => (

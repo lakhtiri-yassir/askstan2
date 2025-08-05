@@ -52,32 +52,70 @@ export const subscriptionService = {
   /**
    * Create Stripe checkout session
    */
-  async createStripeCheckout(userId: string, planType: 'monthly' | 'yearly'): Promise<string> {
-    try {
-      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
-        body: { 
-          planType,
-          userId,
-          successUrl: `${window.location.origin}/checkout-success?session_id={CHECKOUT_SESSION_ID}&plan=${planType}`,
-          cancelUrl: `${window.location.origin}/plans`
-        }
-      });
-
-      if (error) {
-        console.error('Checkout session error:', error);
-        throw new Error(error.message || 'Failed to create checkout session');
+  async createStripeCheckout(
+  userId: string, 
+  planType: 'monthly' | 'yearly',
+  couponCode?: string
+): Promise<{ sessionId: string; paymentRequired: boolean; couponApplied: boolean }> {
+  try {
+    console.log('Creating checkout with coupon:', { userId, planType, couponCode });
+    
+    const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+      body: { 
+        planType,
+        userId,
+        couponCode: couponCode || null,
+        successUrl: `${window.location.origin}/checkout-success?session_id={CHECKOUT_SESSION_ID}&plan=${planType}&coupon=${couponCode || ''}`,
+        cancelUrl: `${window.location.origin}/plans`
       }
+    });
 
-      if (!data?.sessionId) {
-        throw new Error('No session ID returned from checkout creation');
-      }
-
-      return data.sessionId;
-    } catch (error) {
-      console.error('Stripe checkout error:', error);
-      throw error;
+    if (error) {
+      console.error('Checkout session error:', error);
+      throw new Error(error.message || 'Failed to create checkout session');
     }
-  },
+
+    if (!data?.sessionId) {
+      throw new Error('No session ID returned from checkout creation');
+    }
+
+    return {
+      sessionId: data.sessionId,
+      paymentRequired: data.paymentRequired !== false, // Default to true if not specified
+      couponApplied: data.couponApplied || false
+    };
+  } catch (error) {
+    console.error('Stripe checkout error:', error);
+    throw error;
+  }
+},
+
+/**
+ * Validate coupon code before checkout
+ */
+async validateCoupon(couponCode: string): Promise<{ valid: boolean; discount?: string; error?: string }> {
+  try {
+    // This will validate the coupon through the checkout creation
+    // We'll create a test checkout to validate, then use the real one
+    const { data, error } = await supabase.functions.invoke('validate-coupon', {
+      body: { couponCode }
+    });
+
+    if (error) {
+      return { valid: false, error: error.message };
+    }
+
+    return { 
+      valid: true, 
+      discount: data.discount 
+    };
+  } catch (error) {
+    return { 
+      valid: false, 
+      error: error instanceof Error ? error.message : 'Invalid coupon code' 
+    };
+  }
+},
 
   /**
    * Redirect to Stripe checkout
