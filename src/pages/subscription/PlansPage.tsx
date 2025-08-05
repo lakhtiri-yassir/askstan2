@@ -178,7 +178,7 @@ const validateCoupon = async (code: string) => {
             : `❌ ${couponValidation.error}`
           }
         </div>
-      )}
+      )
     </motion.div>
   )}
 </div>
