@@ -183,6 +183,70 @@ export const subscriptionService = {
   },
 
   /**
+   * Create customer portal session for subscription management
+   */
+  async createCustomerPortalSession(): Promise<string> {
+    try {
+      const { data, error } = await supabase.functions.invoke('create-portal-session', {
+        body: { 
+          returnUrl: `${window.location.origin}/settings`
+        }
+      });
+
+      if (error) {
+        console.error('Portal session error:', error);
+        throw new Error(error.message || 'Failed to create portal session');
+      }
+
+      if (!data?.url) {
+        throw new Error('No portal URL returned');
+      }
+
+      return data.url;
+    } catch (error) {
+      console.error('Customer portal error:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get subscription plans configuration
+   */
+  getPlansConfig() {
+    return {
+      monthly: {
+        id: 'monthly',
+        name: 'Monthly Plan',
+        price: '$4.99',
+        interval: 'month',
+        priceId: import.meta.env.VITE_STRIPE_PRICE_MONTHLY,
+        popular: false,
+        features: [
+          'AI-powered social media coaching',
+          'Multi-platform support',
+          'Growth analytics dashboard',
+          '24/7 AI chat support'
+        ]
+      },
+      yearly: {
+        id: 'yearly',
+        name: 'Yearly Plan',
+        price: '$49.99',
+        interval: 'year',
+        priceId: import.meta.env.VITE_STRIPE_PRICE_YEARLY,
+        popular: true,
+        savings: '17% savings',
+        features: [
+          'All monthly features',
+          'Priority AI responses',
+          'Advanced analytics',
+          'Custom growth strategies'
+        ]
+      }
+    };
+  },
+
+  /**
    * Cancel subscription
    */
   async cancelSubscription(subscriptionId: string): Promise<void> {

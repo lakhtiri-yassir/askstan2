@@ -203,11 +203,11 @@ export const SettingsPage: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
-          className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl border border-white/20 overflow-hidden"
+          className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden"
         >
           <div className="flex">
             {/* Sidebar */}
-            <div className="w-64 bg-gray-50/50 p-6">
+            <div className="w-64 bg-gray-50 p-6">
               <nav className="space-y-2">
                 {tabs.map((tab) => {
                   const Icon = tab.icon;
@@ -217,8 +217,8 @@ export const SettingsPage: React.FC = () => {
                       onClick={() => setActiveTab(tab.id)}
                       className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-left transition-colors ${
                         activeTab === tab.id
-                          ? 'bg-gradient-to-r from-blue-500 to-yellow-500 text-white'
-                          : 'text-gray-600 hover:bg-white/50'
+                          ? 'bg-royal-blue text-white'
+                          : 'text-gray-600 hover:bg-white'
                       }`}
                     >
                       <Icon className="w-5 h-5" />

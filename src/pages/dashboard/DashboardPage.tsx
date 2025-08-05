@@ -99,7 +99,7 @@ export const DashboardPage: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
-          className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl border border-white/20 overflow-hidden"
+          className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden"
         >
           {/* Chat Header */}
           <div className="bg-navy-blue p-6">

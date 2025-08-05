@@ -19,7 +19,7 @@ const SettingsPage = lazy(() => import('./pages/SettingsPage').then(module => ({
 
 // Loading fallback component
 const PageLoader = () => (
-  <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-yellow-50">
+  <div className="min-h-screen flex items-center justify-center bg-gray-50">
     <div className="text-center">
       <LoadingSpinner size="lg" />
       <p className="mt-4 text-gray-600 font-medium">Loading...</p>

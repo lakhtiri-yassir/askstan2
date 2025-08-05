@@ -103,7 +103,7 @@ export const PlansPage: React.FC = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: index * 0.1 }}
-              className={`relative bg-white/80 backdrop-blur-md rounded-2xl shadow-xl p-8 border border-white/20 ${
+              className={`relative bg-white rounded-2xl shadow-xl p-8 border border-gray-200 ${
                 plan.popular ? 'ring-2 ring-navy-blue' : ''
               }`}
             >

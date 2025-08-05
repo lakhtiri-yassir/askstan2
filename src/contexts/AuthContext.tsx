@@ -15,7 +15,6 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
-  resetPassword: (token: string, newPassword: string) => Promise<void>;
   updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
   refreshSubscription: () => Promise<void>;
   confirmEmail: (token: string) => Promise<void>;
