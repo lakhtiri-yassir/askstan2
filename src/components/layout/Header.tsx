@@ -6,12 +6,21 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../ui/Button';
 
 export const Header: React.FC = () => {
-  const { user, signOut } = useAuth();
+  const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
 
-  const handleSignOut = React.useCallback(() => {
-    signOut();
-    navigate('/');
+  const handleSignOut = React.useCallback(async () => {
+    try {
+      await signOut();
+      navigate('/', { replace: true });
+      // Force page reload to clear any cached state
+      window.location.reload();
+    } catch (error) {
+      console.error('Sign out error:', error);
+      // Force navigation even if signOut fails
+      navigate('/', { replace: true });
+      window.location.reload();
+    }
   }, [signOut, navigate]);
 
   return (
@@ -33,7 +42,7 @@ export const Header: React.FC = () => {
             {user ? (
               <div className="flex items-center space-x-4">
                 <span className="text-sm text-gray-600 hidden sm:inline">
-                  Welcome, {user.email}
+                  Welcome, {profile?.display_name || user.email?.split('@')[0] || 'User'}
                 </span>
                 
                 <Link to="/dashboard">

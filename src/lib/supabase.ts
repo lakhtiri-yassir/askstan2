@@ -9,17 +9,11 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
 // User Profile Service
 export const userService = {
   async createProfile(userId: string, email: string): Promise<UserProfile> {
-    const { data, error } = await supabase
-      .from('user_profiles')
-      .upsert({
-        id: userId,
-        email: email,
-        email_verified: false
-      }, {
-        onConflict: 'id'
-      })
-      .select()
-      .single();
+    // Use the database function for safe profile creation
+    const { data, error } = await supabase.rpc('create_user_profile', {
+      user_id: userId,
+      user_email: email
+    });
     
     if (error) throw error;
     return data;

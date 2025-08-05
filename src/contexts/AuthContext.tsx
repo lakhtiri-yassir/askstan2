@@ -102,31 +102,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const signUp = async (email: string, password: string): Promise<void> => {
     setLoading(true);
     try {
+      // First, create the auth user
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/confirm-email`,
-          data: {
-            email: email
-          }
+          emailRedirectTo: `${window.location.origin}/confirm-email`
         }
       });
 
       if (error) throw error;
 
       if (data.user) {
-        // Try to create user profile manually if trigger failed
+        // Always create user profile manually (no relying on triggers)
         try {
-          await userService.createProfile(data.user.id, email);
+          const profile = await userService.createProfile(data.user.id, email);
+          setProfile(profile);
         } catch (profileError) {
-          // Profile might already exist from trigger, that's okay
-          console.log('Profile creation handled by trigger or already exists');
+          console.error('Profile creation failed:', profileError);
+          // Don't throw error - signup should still succeed
         }
         
         if (!data.session) {
           // Email confirmation required
-          const verificationUrl = `${window.location.origin}/confirm-email?token=${data.user.id}`;
+          const verificationUrl = `${window.location.origin}/confirm-email`;
           try {
             await emailService.sendVerificationEmail(email, verificationUrl);
           } catch (emailError) {
@@ -136,7 +135,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     } catch (error: any) {
       console.error('Signup error:', error);
-      throw new Error(error.message || 'Failed to create account. Please try again.');
+      throw new Error(error.message || 'Failed to create account. Please check your email and try again.');
     } finally {
       setLoading(false);
     }
