@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, MessageSquare, Settings } from 'lucide-react';
+import { Sparkles, MessageSquare, Settings, Gift } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { ChatbotEmbed } from '../../components/ChatbotEmbed';
+import { useSearchParams } from 'react-router-dom';
 
 export const DashboardPage: React.FC = () => {
   const { user, profile, subscription } = useAuth();
   const [chatbotLoaded, setChatbotLoaded] = useState(false);
+  const [searchParams] = useSearchParams();
+  const showCouponSuccess = searchParams.get('coupon_success') === 'true';
 
   const handleChatbotLoad = () => {
     setChatbotLoaded(true);
@@ -59,6 +62,13 @@ export const DashboardPage: React.FC = () => {
                 <div className="flex items-center space-x-2 text-sm text-gray-500">
                   <Sparkles className="w-4 h-4" />
                   <span className="capitalize">{subscription?.plan_type || 'Free'} Plan</span>
+                  {subscription?.status && (
+                    <span className={`ml-2 px-2 py-1 rounded-full text-xs ${
+                      subscription.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                    }`}>
+                      {subscription.status}
+                    </span>
+                  )}
                 </div>
                 {chatbotLoaded && (
                   <div className="flex items-center space-x-2 text-sm text-green-600">

@@ -152,18 +152,72 @@ async validateCoupon(couponCode: string): Promise<{ valid: boolean; discount?: s
    */
   async handleCheckoutSuccess(sessionId: string): Promise<Subscription | null> {
     try {
-      // Wait a moment for webhook to process
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      console.log('🎉 Handling checkout success for session:', sessionId);
+      
+      // Wait longer for webhook to process
+      await new Promise(resolve => setTimeout(resolve, 3000));
 
       // Refresh subscription data from database
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      const result = await this.checkUserSubscription(user.id);
-      return result.subscription;
+      // Try multiple times to get subscription data
+      let attempts = 0;
+      let subscription = null;
+      
+      while (attempts < 5 && !subscription) {
+        console.log(`🔄 Attempt ${attempts + 1} to fetch subscription...`);
+        
+        const result = await this.checkUserSubscription(user.id);
+        subscription = result.subscription;
+        
+        if (!subscription) {
+          console.log('⏳ Subscription not found, waiting 2 seconds...');
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+        
+        attempts++;
+      }
+      
+      if (!subscription) {
+        console.error('❌ Subscription not found after 5 attempts');
+        // Try to manually create subscription record if webhook failed
+        await this.manuallyCreateSubscription(sessionId, user.id);
+        
+        // Try one more time
+        const finalResult = await this.checkUserSubscription(user.id);
+        subscription = finalResult.subscription;
+      }
+      
+      console.log('✅ Final subscription result:', subscription);
+      return subscription;
     } catch (error) {
       console.error('Checkout success handling error:', error);
-      return null;
+      throw error;
+    }
+  },
+
+  /**
+   * Manually create subscription if webhook failed
+   */
+  async manuallyCreateSubscription(sessionId: string, userId: string): Promise<void> {
+    try {
+      console.log('🔧 Manually creating subscription for session:', sessionId);
+      
+      // Call a function to retrieve session details and create subscription
+      const { data, error } = await supabase.functions.invoke('manual-subscription-creation', {
+        body: { sessionId, userId }
+      });
+      
+      if (error) {
+        console.error('Manual subscription creation error:', error);
+        throw error;
+      }
+      
+      console.log('✅ Manual subscription created:', data);
+    } catch (error) {
+      console.error('Manual subscription creation failed:', error);
+      throw error;
     }
   },
 

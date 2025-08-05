@@ -15,6 +15,7 @@ export const CheckoutSuccessPage: React.FC = () => {
   
   const sessionId = searchParams.get('session_id');
   const planType = searchParams.get('plan') as 'monthly' | 'yearly';
+  const couponCode = searchParams.get('coupon');
 
   useEffect(() => {
     const handleCheckoutSuccess = async () => {
@@ -28,12 +29,12 @@ export const CheckoutSuccessPage: React.FC = () => {
         console.log('Processing checkout success for session:', sessionId);
         
         // Handle the successful checkout
-        await subscriptionService.handleCheckoutSuccess(sessionId);
+        const subscription = await subscriptionService.handleCheckoutSuccess(sessionId);
         
         // Refresh subscription data
         await refreshSubscription();
         
-        console.log('Checkout success processed');
+        console.log('Checkout success processed, subscription:', subscription);
         setIsProcessing(false);
         
         // Auto-redirect to dashboard after 3 seconds
@@ -142,10 +143,13 @@ export const CheckoutSuccessPage: React.FC = () => {
           <div className="bg-gradient-to-r from-blue-50 to-yellow-50 rounded-xl p-6 mb-6">
             <div className="flex items-center justify-center mb-3">
               <Sparkles className="w-5 h-5 text-blue-500 mr-2" />
-              <h3 className="font-semibold text-gray-900">{currentPlan.name}</h3>
+              <h3 className="font-semibold text-gray-900">
+                {currentPlan.name}
+                {couponCode && <span className="ml-2 text-green-600">(Free with coupon!)</span>}
+              </h3>
             </div>
             <p className="text-2xl font-bold bg-gradient-to-r from-blue-500 to-yellow-500 bg-clip-text text-transparent mb-3">
-              {currentPlan.price}
+              {couponCode ? 'FREE' : currentPlan.price}
             </p>
             <ul className="text-sm text-gray-600 space-y-1">
               {currentPlan.features.map((feature, index) => (
@@ -161,6 +165,7 @@ export const CheckoutSuccessPage: React.FC = () => {
             <div className="bg-gray-50 rounded-lg p-3 mb-6">
               <p className="text-xs text-gray-500">
                 Session ID: {sessionId.substring(0, 20)}...
+                {couponCode && <span className="block text-green-600">Coupon: {couponCode}</span>}
               </p>
             </div>
           )}
