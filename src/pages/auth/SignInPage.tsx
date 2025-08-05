@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Lock, LogIn } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { subscriptionService } from '../../lib/subscriptionService';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 
@@ -18,8 +19,6 @@ export const SignInPage: React.FC = () => {
   const { signIn } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  
-  const from = (location.state as any)?.from?.pathname || '/dashboard';
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -46,7 +45,19 @@ export const SignInPage: React.FC = () => {
     setIsLoading(true);
     try {
       await signIn(formData.email, formData.password);
-      navigate(from, { replace: true });
+      
+      // Check subscription status and redirect accordingly
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const subStatus = await subscriptionService.checkUserSubscription(user.id);
+        if (subStatus.hasActiveSubscription) {
+          navigate('/dashboard', { replace: true });
+        } else {
+          navigate('/plans', { replace: true });
+        }
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
     } catch (error) {
       setErrors({ submit: 'Invalid email or password' });
     } finally {

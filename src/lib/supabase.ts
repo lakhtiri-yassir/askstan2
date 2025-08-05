@@ -12,55 +12,47 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
 
 // User Profile Service
 export const userService = {
-  async createProfileMinimal(userId: string, email: string): Promise<UserProfile> {
-    console.log('Creating profile for user:', userId, email);
+  async createProfileManual(userId: string, email: string): Promise<UserProfile> {
+    console.log('Creating profile manually for user:', userId, email);
     
     try {
-      // Use the minimal profile creation function we created in the database
-      const { data, error } = await supabase.rpc('create_user_profile_minimal', {
+      // Use the manual profile creation function
+      const { data, error } = await supabase.rpc('create_user_profile_manual', {
         user_id: userId,
         user_email: email
       });
       
       if (error) {
-        console.error('RPC function error:', error);
-        throw error;
-      }
-      
-      if (!data) {
-        throw new Error('No profile data returned from database function');
-      }
-      
-      console.log('Profile created successfully:', data);
-      return data;
-      
-    } catch (error) {
-      console.error('Profile creation failed, trying direct insert:', error);
-      
-      // Fallback: try direct insert
-      try {
+        console.error('RPC function error, trying direct insert:', error);
+        
+        // Fallback to direct insert
         const { data: insertData, error: insertError } = await supabase
           .from('user_profiles')
           .insert({
             id: userId,
             email: email,
-            email_verified: false
+            email_verified: true  // Skip email verification
           })
           .select()
           .single();
           
         if (insertError) {
-          console.error('Direct insert error:', insertError);
+          console.error('Direct insert also failed:', insertError);
           throw insertError;
         }
         
-        console.log('Profile created via direct insert:', insertData);
         return insertData;
-        
-      } catch (insertError) {
-        console.error('Both RPC and direct insert failed:', insertError);
-        throw new Error(`Failed to create user profile: ${insertError}`);
       }
+      
+      if (!data) {
+        throw new Error('No profile data returned');
+      }
+      
+      return data;
+      
+    } catch (error) {
+      console.error('Profile creation failed completely:', error);
+      throw new Error(`Failed to create user profile: ${error}`);
     }
   },
   
@@ -87,7 +79,10 @@ export const userService = {
   async updateProfile(userId: string, updates: Partial<UserProfile>): Promise<UserProfile> {
     const { data, error } = await supabase
       .from('user_profiles')
-      .update(updates)
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString()
+      })
       .eq('id', userId)
       .select()
       .single();
@@ -96,54 +91,14 @@ export const userService = {
     return data;
   },
 
-  async verifyEmail(userId: string): Promise<void> {
-    const { error } = await supabase
+  async verifyEmail(userId: string): Promise<UserProfile> {
+    const { data, error } = await supabase
       .from('user_profiles')
-      .update({ email_verified: true })
-      .eq('id', userId);
-    
-    if (error) throw error;
-  }
-};
-
-// Subscription Service
-export const subscriptionService = {
-  async getSubscription(userId: string): Promise<Subscription | null> {
-    try {
-      const { data, error } = await supabase
-        .from('subscriptions')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
-      
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching subscription:', error);
-        throw error;
-      }
-      
-      return data;
-    } catch (error) {
-      console.error('Subscription fetch error:', error);
-      return null;
-    }
-  },
-  
-  async createSubscription(subscriptionData: Database['public']['Tables']['subscriptions']['Insert']): Promise<Subscription> {
-    const { data, error } = await supabase
-      .from('subscriptions')
-      .insert(subscriptionData)
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
-  },
-  
-  async updateSubscription(subscriptionId: string, updates: Partial<Subscription>): Promise<Subscription> {
-    const { data, error } = await supabase
-      .from('subscriptions')
-      .update(updates)
-      .eq('id', subscriptionId)
+      .update({ 
+        email_verified: true,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', userId)
       .select()
       .single();
     

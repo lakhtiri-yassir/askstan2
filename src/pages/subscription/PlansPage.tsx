@@ -1,68 +1,57 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Check, Star, Zap } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../../components/ui/Button';
-import { stripeService } from '../../services/stripe.service';
+import { subscriptionService } from '../../lib/subscriptionService';
 
 export const PlansPage: React.FC = () => {
+  const { user, subscriptionStatus, refreshSubscription } = useAuth();
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const { refreshSubscription } = useAuth();
 
+  const plansConfig = subscriptionService.getPlansConfig();
   const plans = [
-    {
-      id: 'monthly',
-      name: 'Monthly Plan',
-      price: '$4.99',
-      period: '/month',
-      description: 'Perfect for getting started',
-      features: [
-        'AI-powered social media coaching',
-        'Multi-platform support',
-        'Growth analytics dashboard',
-        'Content optimization tips',
-        '24/7 AI chat support',
-        'Weekly growth reports'
-      ],
-      priceId: stripeConfig.prices.monthly,
-      popular: false
-    },
-    {
-      id: 'yearly',
-      name: 'Yearly Plan',
-      price: '$49.99',
-      period: '/year',
-      description: 'Best value - Save 17%!',
-      originalPrice: '$59.88',
-      features: [
-        'Everything in Monthly Plan',
-        'Priority AI responses',
-        'Advanced analytics',
-        'Custom growth strategies',
-        'Monthly strategy calls',
-        'Exclusive templates',
-        'Advanced integrations'
-      ],
-      priceId: import.meta.env.VITE_STRIPE_PRICE_YEARLY,
-      popular: true
-    }
+    { ...plansConfig.monthly, popular: false },
+    { ...plansConfig.yearly, popular: true }
   ];
 
-  const handleSubscribe = async (plan: typeof plans[0]) => {
+  const handleSubscribe = async (plan: any) => {
+    if (!user) {
+      navigate('/signin');
+      return;
+    }
+
     setIsLoading(plan.id);
     setErrors({});
     
     try {
-      await stripeService.createCheckoutSession(plan.id as 'monthly' | 'yearly');
+      console.log('Creating checkout session for plan:', plan.id);
+      
+      const sessionId = await subscriptionService.createStripeCheckout(
+        user.id, 
+        plan.id as 'monthly' | 'yearly'
+      );
+      
+      console.log('Checkout session created:', sessionId);
+      
+      // Redirect to Stripe checkout
+      await subscriptionService.redirectToCheckout(sessionId);
       
     } catch (error) {
       console.error('Subscription error:', error);
-      setErrors({ submit: error instanceof Error ? error.message : 'Failed to process subscription. Please try again.' });
+      setErrors({ 
+        [plan.id]: error instanceof Error ? error.message : 'Failed to start checkout. Please try again.' 
+      });
     } finally {
       setIsLoading(null);
     }
   };
+
+  // Show current subscription status if user has one
+  const currentSubscription = subscriptionStatus?.subscription;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -80,6 +69,21 @@ export const PlansPage: React.FC = () => {
             Unlock the full potential of AI-powered social media growth. Choose the plan that fits your needs.
           </p>
         </motion.div>
+
+        {/* Current Subscription Status */}
+        {currentSubscription && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.1 }}
+            className="mb-8 bg-blue-50 border border-blue-200 rounded-xl p-6"
+          >
+            <h3 className="font-semibold text-blue-900 mb-2">Current Subscription</h3>
+            <p className="text-blue-800">
+              You have an {currentSubscription.status} {currentSubscription.plan_type} subscription.
+            </p>
+          </motion.div>
+        )}
 
         <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
           {plans.map((plan, index) => (
@@ -129,9 +133,9 @@ export const PlansPage: React.FC = () => {
                 ))}
               </ul>
 
-              {errors.submit && (
+              {errors[plan.id] && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
-                  <p className="text-sm text-red-600">{errors.submit}</p>
+                  <p className="text-sm text-red-600">{errors[plan.id]}</p>
                 </div>
               )}
 

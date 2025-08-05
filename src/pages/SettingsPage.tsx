@@ -4,7 +4,7 @@ import { User, CreditCard, Bell, Shield, LogOut } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
-import { stripeService } from '../services/stripe.service';
+import { subscriptionService } from '../lib/subscriptionService';
 
 export const SettingsPage: React.FC = () => {
   const { user, profile, subscription, signOut, updateProfile } = useAuth();
@@ -39,9 +39,12 @@ export const SettingsPage: React.FC = () => {
 
   const handleManageSubscription = async () => {
     try {
-      await stripeService.createCustomerPortalSession();
+      const portalUrl = await subscriptionService.createCustomerPortalSession();
+      window.location.href = portalUrl;
     } catch (error) {
       console.error('Portal session error:', error);
+      // Fallback to plans page if portal fails
+      window.location.href = '/plans';
     }
   };
 

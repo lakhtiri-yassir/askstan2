@@ -1,17 +1,24 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
-import { supabase, userService, subscriptionService } from '../lib/supabase';
+import { supabase, userService } from '../lib/supabase';
+import { subscriptionService, SubscriptionCheckResult } from '../lib/subscriptionService';
 import { UserProfile, Subscription } from '../types/supabase';
 
 interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
   subscription: Subscription | null;
+  subscriptionStatus: SubscriptionCheckResult | null;
   session: Session | null;
   loading: boolean;
   signUp: (email: string, password: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  forgotPassword: (email: string) => Promise<void>;
+  resetPassword: (token: string, newPassword: string) => Promise<void>;
+  updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
+  refreshSubscription: () => Promise<void>;
+  confirmEmail: (token: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   hasActiveSubscription: boolean;
   isEmailVerified: boolean;
@@ -35,12 +42,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionCheckResult | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const hasActiveSubscription = subscription?.status === 'active';
-  // For now, consider all users as verified since we're disabling email confirmation
-  const isEmailVerified = true; // Changed from: profile?.email_verified ?? false;
+  const hasActiveSubscription = subscriptionStatus?.hasActiveSubscription ?? false;
+  const isEmailVerified = true; // Skip email verification completely
 
   useEffect(() => {
     const getInitialSession = async () => {
@@ -57,7 +64,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(initialSession?.user ?? null);
         
         if (initialSession?.user) {
-          await loadUserData(initialSession.user.id);
+          await loadUserData(initialSession.user);
         }
         
         setLoading(false);
@@ -78,10 +85,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          await loadUserData(session.user.id);
+          await loadUserData(session.user);
         } else {
           setProfile(null);
           setSubscription(null);
+          setSubscriptionStatus(null);
         }
         
         setLoading(false);
@@ -95,56 +103,50 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
   }, []);
 
-  const loadUserData = async (userId: string) => {
+  const loadUserData = async (user: User) => {
     try {
-      // Load user profile
-      const userProfile = await userService.getProfile(userId);
+      console.log('Loading user data for:', user.id);
       
-      // If no profile exists, create one
-      if (!userProfile && user?.email) {
-        console.log('No profile found, creating one...');
-        const newProfile = await userService.createProfileMinimal(userId, user.email);
-        setProfile(newProfile);
-      } else {
-        setProfile(userProfile);
+      // Load or create user profile
+      let userProfile = await userService.getProfile(user.id);
+      
+      if (!userProfile && user.email) {
+        console.log('No profile found, creating one manually...');
+        userProfile = await userService.createProfileManual(user.id, user.email);
       }
-
-      // Load subscription if profile exists
+      
       if (userProfile) {
-        const userSubscription = await subscriptionService.getSubscription(userId);
-        setSubscription(userSubscription);
+        setProfile(newProfile);
+        
+        // Load subscription status
+        const subStatus = await subscriptionService.checkUserSubscription(user.id);
+        setSubscriptionStatus(subStatus);
+        setSubscription(subStatus.subscription);
+        
+        console.log('User data loaded:', { profile: userProfile, subscription: subStatus });
       }
     } catch (error) {
       console.error('Error loading user data:', error);
+      // Don't throw - allow user to continue with limited functionality
     }
   };
 
   const signUp = async (email: string, password: string): Promise<void> => {
     setLoading(true);
     try {
-      console.log('Starting signup process (no email confirmation)...');
+      console.log('Starting signup process - no email confirmation required');
       
-      // Create auth user WITHOUT email confirmation
+      // Create auth user without email confirmation
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),
         password,
         options: {
-          // Disable email confirmation for now
-          emailRedirectTo: undefined,
-          data: {
-            email_confirm: false
-          }
+          emailRedirectTo: undefined  // No email confirmation
         }
       });
 
       if (authError) {
         console.error('Auth signup error:', authError);
-        
-        // Handle specific email-related errors
-        if (authError.message?.includes('email') && authError.message?.includes('confirmation')) {
-          throw new Error('Email confirmation is temporarily disabled. Please contact support if you need help.');
-        }
-        
         throw authError;
       }
 
@@ -154,36 +156,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       console.log('Auth user created:', authData.user.id);
 
-      // Create user profile
+      // Create user profile manually
       try {
-        console.log('Creating user profile...');
-        const profile = await userService.createProfileMinimal(authData.user.id, email.trim().toLowerCase());
-        console.log('Profile created:', profile);
+        const profile = await userService.createProfileManual(authData.user.id, email.trim().toLowerCase());
         setProfile(profile);
+        console.log('Profile created successfully');
       } catch (profileError) {
         console.error('Profile creation error:', profileError);
-        // Don't throw here - the auth signup succeeded
+        // Don't fail signup if profile creation fails
       }
 
-      console.log('Signup completed successfully (no email confirmation required)');
+      console.log('Signup completed successfully');
       
     } catch (error: any) {
       console.error('Signup error:', error);
-      
-      // Provide user-friendly error messages
-      if (error.message?.includes('already registered') || error.message?.includes('already exists')) {
-        throw new Error('An account with this email already exists. Please sign in instead.');
-      } else if (error.message?.includes('Invalid email') || error.message?.includes('invalid email')) {
-        throw new Error('Please enter a valid email address.');  
-      } else if (error.message?.includes('Password') || error.message?.includes('password')) {
-        throw new Error('Password must be at least 6 characters long.');
-      } else if (error.message?.includes('rate limit') || error.message?.includes('too many')) {
-        throw new Error('Too many signup attempts. Please wait a moment and try again.');
-      } else if (error.message?.includes('email') || error.message?.includes('confirmation')) {
-        throw new Error('Account created successfully! Email confirmation is temporarily disabled, so you can sign in immediately.');
-      } else {
-        throw new Error(error.message || 'Failed to create account. Please try again.');
-      }
+      throw new Error(error.message || 'Failed to create account. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -198,17 +185,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       });
 
       if (error) throw error;
-
-      // Profile will be loaded automatically via the auth state change listener
       
     } catch (error: any) {
       console.error('Sign in error:', error);
       
       if (error.message?.includes('Invalid login credentials')) {
         throw new Error('Invalid email or password. Please check your credentials and try again.');
-      } else if (error.message?.includes('Email not confirmed')) {
-        // Since we disabled email confirmation, this shouldn't happen
-        throw new Error('Account found but not accessible. Please try signing up again.');
       } else {
         throw new Error(error.message || 'Failed to sign in. Please try again.');
       }
@@ -223,34 +205,79 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       
-      // Clear state
-      setUser(null);
-      setProfile(null);
-      setSubscription(null);
-      setSession(null);
+      // Force page reload to clear all state
+      window.location.href = '/';
       
     } catch (error: any) {
       console.error('Sign out error:', error);
-      throw new Error('Failed to sign out. Please try again.');
+      // Force reload even if signOut fails
+      window.location.href = '/';
     } finally {
       setLoading(false);
     }
   };
 
-  const resetPassword = async (email: string): Promise<void> => {
+  const forgotPassword = async (email: string): Promise<void> => {
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/reset-password`
       });
       
       if (error) {
-        // If password reset email fails, provide alternative
-        throw new Error('Password reset email is temporarily unavailable. Please contact support for assistance.');
+        throw error;
       }
       
     } catch (error: any) {
       console.error('Password reset error:', error);
-      throw new Error(error.message || 'Password reset is temporarily unavailable. Please contact support.');
+      throw new Error(error.message || 'Failed to send reset email. Please try again.');
+    }
+  };
+
+  const resetPassword = async (token: string, newPassword: string): Promise<void> => {
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+      
+      if (error) throw error;
+      
+    } catch (error: any) {
+      console.error('Password update error:', error);
+      throw new Error(error.message || 'Failed to update password. Please try again.');
+    }
+  };
+
+  const updateProfile = async (updates: Partial<UserProfile>): Promise<void> => {
+    if (!user) throw new Error('User not authenticated');
+    
+    try {
+      const updatedProfile = await userService.updateProfile(user.id, updates);
+      setProfile(updatedProfile);
+    } catch (error: any) {
+      console.error('Profile update error:', error);
+      throw new Error(error.message || 'Failed to update profile. Please try again.');
+    }
+  };
+
+  const refreshSubscription = async (): Promise<void> => {
+    if (!user) return;
+    
+    try {
+      const subStatus = await subscriptionService.checkUserSubscription(user.id);
+      setSubscriptionStatus(subStatus);
+      setSubscription(subStatus.subscription);
+    } catch (error) {
+      console.error('Refresh subscription error:', error);
+    }
+  };
+
+  const confirmEmail = async (token: string): Promise<void> => {
+    try {
+      // Since we're skipping email confirmation, this is a no-op
+      console.log('Email confirmation skipped');
+    } catch (error: any) {
+      console.error('Email confirmation error:', error);
+      throw new Error(error.message || 'Failed to confirm email. Please try again.');
     }
   };
 
@@ -258,12 +285,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     user,
     profile,
     subscription,
+    subscriptionStatus,
     session,
     loading,
     signUp,
     signIn,
     signOut,
+    forgotPassword,
     resetPassword,
+    updateProfile,
+    refreshSubscription,
+    confirmEmail,
     hasActiveSubscription,
     isEmailVerified
   };

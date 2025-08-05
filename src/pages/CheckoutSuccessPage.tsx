@@ -1,35 +1,114 @@
 import React, { useEffect } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CheckCircle, ArrowRight, Sparkles } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { subscriptionService } from '../lib/subscriptionService';
 import { Button } from '../components/ui/Button';
 
 export const CheckoutSuccessPage: React.FC = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { refreshSubscription } = useAuth();
+  const [isProcessing, setIsProcessing] = useState(true);
+  const [error, setError] = useState('');
   
   const sessionId = searchParams.get('session_id');
   const planType = searchParams.get('plan') as 'monthly' | 'yearly';
 
   useEffect(() => {
-    // Refresh subscription data from database
-    if (sessionId) {
-      refreshSubscription();
-    }
-  }, [sessionId, refreshSubscription]);
+    const handleCheckoutSuccess = async () => {
+      if (!sessionId) {
+        setError('No session ID found');
+        setIsProcessing(false);
+        return;
+      }
 
-  const planDetails = {
-    monthly: {
-      name: 'Monthly Plan',
-      price: '$4.99/month',
-      features: ['AI-powered coaching', 'Multi-platform support', '24/7 chat support']
-    },
-    yearly: {
-      name: 'Yearly Plan', 
-      price: '$49.99/year',
-      features: ['Everything in Monthly', 'Priority responses', 'Advanced analytics', 'Custom strategies']
+      try {
+        console.log('Processing checkout success for session:', sessionId);
+        
+        // Handle the successful checkout
+        await subscriptionService.handleCheckoutSuccess(sessionId);
+        
+        // Refresh subscription data
+        await refreshSubscription();
+        
+        console.log('Checkout success processed');
+        setIsProcessing(false);
+        
+        // Auto-redirect to dashboard after 3 seconds
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 3000);
+        
+      } catch (error) {
+        console.error('Checkout success handling error:', error);
+        setError('Failed to process payment. Please contact support.');
+        setIsProcessing(false);
+      }
+    };
+
+    handleCheckoutSuccess();
+  }, [sessionId, refreshSubscription, navigate]);
+
+  if (isProcessing) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+          className="max-w-md w-full"
+        >
+          <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl p-8 border border-white/20 text-center">
+            <div className="w-16 h-16 mx-auto mb-4 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+              Processing Your Payment
+            </h2>
+            <p className="text-gray-600">
+              Please wait while we confirm your subscription...
+            </p>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+          className="max-w-md w-full"
+        >
+          <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl p-8 border border-white/20 text-center">
+            <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
+              <span className="text-red-600 text-2xl">⚠️</span>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+              Payment Processing Error
+            </h2>
+            <p className="text-gray-600 mb-6">{error}</p>
+            <div className="space-y-4">
+              <Link to="/plans">
+                <Button className="w-full">Try Again</Button>
+              </Link>
+              <Link to="/dashboard">
+                <Button variant="outline" className="w-full">Go to Dashboard</Button>
+              </Link>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    );
     }
+
+  const plansConfig = subscriptionService.getPlansConfig();
+  const planDetails = {
+    monthly: plansConfig.monthly,
+    yearly: plansConfig.yearly
   };
 
   const currentPlan = planType ? planDetails[planType] : planDetails.monthly;

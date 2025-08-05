@@ -1,37 +1,44 @@
 import React, { ReactNode } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
 
 interface ProtectedRouteProps {
   children: ReactNode;
   requireSubscription?: boolean;
+  requireEmailVerification?: boolean;
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
   requireSubscription = false,
+  requireEmailVerification = false,
 }) => {
-  const { user, profile, subscription, loading } = useAuth();
+  const { user, profile, subscriptionStatus, loading, hasActiveSubscription } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-yellow-50">
         <LoadingSpinner size="lg" />
       </div>
     );
   }
 
+  // Redirect to signin if not authenticated
   if (!user) {
     return <Navigate to="/signin" state={{ from: location }} replace />;
   }
 
-  if (!profile?.email_verified) {
+  // Skip email verification check since we disabled it
+  if (requireEmailVerification && !profile?.email_verified) {
     return <Navigate to="/confirm-email" replace />;
   }
 
-  if (requireSubscription && subscription?.status !== 'active') {
+  // Check subscription requirement
+  if (requireSubscription && !hasActiveSubscription) {
+    console.log('Subscription required but not active, redirecting to plans');
     return <Navigate to="/plans" replace />;
   }
 

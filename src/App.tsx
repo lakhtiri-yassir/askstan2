@@ -47,14 +47,6 @@ function App() {
                 
                 {/* Semi-Protected Routes (require auth but not subscription) */}
                 <Route 
-                  path="/confirm-email" 
-                  element={
-                    <ProtectedRoute>
-                      <ConfirmEmailPage />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route 
                   path="/plans" 
                   element={
                     <ProtectedRoute>
@@ -67,6 +59,16 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <CheckoutSuccessPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                
+                {/* Optional email confirmation route (not used in main flow) */}
+                <Route 
+                  path="/confirm-email" 
+                  element={
+                    <ProtectedRoute>
+                      <ConfirmEmailPage />
                     </ProtectedRoute>
                   } 
                 />

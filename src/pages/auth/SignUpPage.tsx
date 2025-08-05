@@ -54,21 +54,14 @@ export const SignUpPage: React.FC = () => {
     setIsLoading(true);
     try {
       await signUp(formData.email, formData.password);
-      // Show success message instead of navigating immediately
-      setErrors({ 
-        success: 'Account created successfully! Please check your email for verification instructions.' 
-      });
-      
-      // Navigate after a short delay to show success message
-      setTimeout(() => {
-        navigate('/confirm-email');
-      }, 2000);
+      // Navigate directly to plans page (skip email confirmation)
+      navigate('/plans');
     } catch (error) {
       console.error('Signup error:', error);
       setErrors({ 
         submit: error instanceof Error 
           ? error.message 
-          : 'Failed to create account. Please try again.' 
+          : 'Failed to create account. Please try again.'
       });
     } finally {
       setIsLoading(false);
@@ -177,12 +170,6 @@ export const SignUpPage: React.FC = () => {
             {errors.submit && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-3">
                 <p className="text-sm text-red-600">{errors.submit}</p>
-              </div>
-            )}
-
-            {errors.success && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                <p className="text-sm text-green-600">{errors.success}</p>
               </div>
             )}
 
