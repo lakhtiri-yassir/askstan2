@@ -58,3 +58,5 @@ export const Button: React.FC<ButtonProps> = memo(({
 });
 
 Button.displayName = 'Button';
+
+Button.displayName = 'Button';

@@ -7,6 +7,8 @@
     "skipLibCheck": true,
     "incremental": true,
     "tsBuildInfoFile": ".tsbuildinfo",
+    "incremental": true,
+    "tsBuildInfoFile": ".tsbuildinfo",
 
     /* Bundler mode */
     "moduleResolution": "bundler",
@@ -23,5 +25,6 @@
     "noFallthroughCasesInSwitch": true
   },
   "include": ["src"],
+  "exclude": ["node_modules", "dist", "**/*.test.*"]
   "exclude": ["node_modules", "dist", "**/*.test.*"]
 }

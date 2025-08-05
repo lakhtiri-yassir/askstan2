@@ -130,7 +130,7 @@ embedCode: `
 npm install
 
 # Run type checking
-npm run typecheck
+npm run type-check
 
 # Build for production
 npm run build

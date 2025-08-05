@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight, Bot, TrendingUp, Users, Zap, Star, Check } from 'lucide-react';
 import { Button } from '../components/ui/Button';
+import { OptimizedImage } from '../components/ui/OptimizedImage';
 
 export const LandingPage: React.FC = () => {
   const features = [
@@ -115,12 +116,11 @@ export const LandingPage: React.FC = () => {
             >
               <div className="relative bg-white rounded-2xl shadow-2xl p-8 backdrop-blur-sm">
                 <div className="w-full h-80 overflow-hidden rounded-xl">
-                  <img
+                  <OptimizedImage
                     src="https://images.pexels.com/photos/3184292/pexels-photo-3184292.jpeg?auto=compress&cs=tinysrgb&w=800&h=600"
                     alt="AI Social Media Growth"
-                    loading="lazy"
-                    decoding="async"
                     className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                    priority={true}
                   />
                 </div>
                 <div className="absolute -top-4 -right-4 bg-gradient-to-r from-blue-500 to-yellow-500 p-4 rounded-xl text-white">

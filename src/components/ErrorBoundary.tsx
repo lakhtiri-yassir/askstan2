@@ -2,6 +2,7 @@ import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { Button } from './ui/Button';
 import { monitorMemoryUsage } from '../utils/performance';
+import { monitorMemoryUsage } from '../utils/performance';
 
 interface Props {
   children: ReactNode;
@@ -9,6 +10,7 @@ interface Props {
 
 interface State {
   hasError: boolean;
+  error?: Error;
   error?: Error;
 }
 
@@ -23,6 +25,15 @@ export class ErrorBoundary extends Component<Props, State> {
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Uncaught error:', error, errorInfo);
+    
+    // Monitor memory usage when errors occur
+    monitorMemoryUsage();
+    
+    // Report to monitoring service in production
+    if (process.env.NODE_ENV === 'production') {
+      // TODO: Send to error monitoring service (Sentry, LogRocket, etc.)
+      console.error('Production Error:', { error, errorInfo });
+    }
     
     // Monitor memory usage when errors occur
     monitorMemoryUsage();
@@ -69,6 +80,17 @@ export class ErrorBoundary extends Component<Props, State> {
                 Go to Homepage
               </Button>
             </div>
+            
+            {process.env.NODE_ENV === 'development' && this.state.error && (
+              <details className="mt-6 text-left">
+                <summary className="text-sm text-gray-500 cursor-pointer">
+                  Error Details (Development)
+                </summary>
+                <pre className="mt-2 text-xs text-red-600 bg-red-50 p-2 rounded overflow-auto">
+                  {this.state.error.stack}
+                </pre>
+              </details>
+            )}
             
             {process.env.NODE_ENV === 'development' && this.state.error && (
               <details className="mt-6 text-left">

@@ -57,7 +57,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     getInitialSession();
 
     // Listen for auth changes
-    const { data: authSubscription } = supabase.auth.onAuthStateChange(
+    const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
@@ -74,7 +74,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     );
 
     return () => {
-      authSubscription.unsubscribe();
+      if (authSubscription && typeof authSubscription.unsubscribe === 'function') {
+        authSubscription.unsubscribe();
+      }
+      // Cleanup state to prevent memory leaks
+      setUser(null);
+      setProfile(null);
+      setSubscription(null);
+      setSession(null);
     };
   }, []);
 
