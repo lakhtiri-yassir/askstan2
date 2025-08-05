@@ -9,6 +9,11 @@ export default {
   },
   theme: {
     extend: {
+      colors: {
+        'navy-blue': '#1e3a8a',
+        'powder-blue': '#7dd3fc',
+        'royal-blue': '#2563eb',
+      },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
       },

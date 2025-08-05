@@ -19,7 +19,6 @@ interface AuthContextType {
   updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
   refreshSubscription: () => Promise<void>;
   confirmEmail: (token: string) => Promise<void>;
-  resetPassword: (email: string) => Promise<void>;
   hasActiveSubscription: boolean;
   isEmailVerified: boolean;
 }
@@ -134,14 +133,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const signUp = async (email: string, password: string): Promise<void> => {
     setLoading(true);
     try {
-      console.log('Starting signup process - no email confirmation required');
+      console.log('Starting signup process - skipping email confirmation');
       
-      // Create auth user without email confirmation
+      // Create auth user without email confirmation requirement
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),
         password,
         options: {
-          emailRedirectTo: undefined  // No email confirmation
+          emailRedirectTo: undefined,  // Skip email confirmation completely
+          data: {
+            email_verified: true  // Mark as verified immediately
+          }
         }
       });
 
@@ -158,12 +160,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // Create user profile manually
       try {
-        const profile = await userService.createProfileManual(authData.user.id, email.trim().toLowerCase());
+        const profile = await userService.createProfileSafe(authData.user.id, email.trim().toLowerCase());
         setProfile(profile);
         console.log('Profile created successfully');
       } catch (profileError) {
         console.error('Profile creation error:', profileError);
-        // Don't fail signup if profile creation fails
+        // Don't fail signup if profile creation fails - will be created on next login
       }
 
       console.log('Signup completed successfully');

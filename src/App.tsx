@@ -63,16 +63,6 @@ function App() {
                   } 
                 />
                 
-                {/* Optional email confirmation route (not used in main flow) */}
-                <Route 
-                  path="/confirm-email" 
-                  element={
-                    <ProtectedRoute>
-                      <ConfirmEmailPage />
-                    </ProtectedRoute>
-                  } 
-                />
-                
                 {/* Fully Protected Routes (require auth and subscription) */}
                 <Route 
                   path="/dashboard" 

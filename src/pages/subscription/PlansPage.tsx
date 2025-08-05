@@ -14,8 +14,19 @@ export const PlansPage: React.FC = () => {
 
   const plansConfig = subscriptionService.getPlansConfig();
   const plans = [
-    { ...plansConfig.monthly, popular: false },
-    { ...plansConfig.yearly, popular: true }
+    { 
+      ...plansConfig.monthly, 
+      popular: false,
+      displayPrice: '$4.99',
+      displayPeriod: '/month'
+    },
+    { 
+      ...plansConfig.yearly, 
+      popular: true,
+      displayPrice: '$49.99',
+      displayPeriod: '/year',
+      originalPrice: '$59.88'
+    }
   ];
 
   const handleSubscribe = async (plan: any) => {
@@ -63,7 +74,7 @@ export const PlansPage: React.FC = () => {
           className="text-center mb-12"
         >
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Choose Your <span className="bg-gradient-to-r from-blue-500 to-yellow-500 bg-clip-text text-transparent">Growth Plan</span>
+            Choose Your <span className="text-powder-blue">Growth Plan</span>
           </h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
             Unlock the full potential of AI-powered social media growth. Choose the plan that fits your needs.
@@ -93,12 +104,12 @@ export const PlansPage: React.FC = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: index * 0.1 }}
               className={`relative bg-white/80 backdrop-blur-md rounded-2xl shadow-xl p-8 border border-white/20 ${
-                plan.popular ? 'ring-2 ring-blue-500' : ''
+                plan.popular ? 'ring-2 ring-royal-blue' : ''
               }`}
             >
               {plan.popular && (
                 <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                  <div className="bg-gradient-to-r from-blue-500 to-yellow-500 text-white px-4 py-2 rounded-full text-sm font-semibold flex items-center space-x-1">
+                  <div className="bg-royal-blue text-white px-4 py-2 rounded-full text-sm font-semibold flex items-center space-x-1">
                     <Star className="w-4 h-4" />
                     <span>Most Popular</span>
                   </div>
@@ -110,14 +121,14 @@ export const PlansPage: React.FC = () => {
                 <p className="text-gray-600 mb-4">{plan.description}</p>
                 
                 <div className="flex items-baseline justify-center space-x-2">
-                  <span className="text-4xl font-bold text-gray-900">{plan.price}</span>
-                  <span className="text-gray-600">{plan.period}</span>
+                  <span className="text-4xl font-bold text-gray-900">{plan.displayPrice}</span>
+                  <span className="text-gray-600">{plan.displayPeriod}</span>
                 </div>
                 
-                {plan.originalPrice && (
+                {plan.originalPrice && plan.savings && (
                   <div className="mt-2">
                     <span className="text-gray-500 line-through text-lg">{plan.originalPrice}</span>
-                    <span className="ml-2 text-green-600 font-semibold">Save 17%</span>
+                    <span className="ml-2 text-green-600 font-semibold">{plan.savings}</span>
                   </div>
                 )}
               </div>

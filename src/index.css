@@ -27,15 +27,15 @@
   }
   
   .gradient-text {
-    @apply bg-gradient-to-r from-blue-500 to-yellow-500 bg-clip-text text-transparent;
+    @apply text-powder-blue;
   }
   
   .gradient-bg {
-    @apply bg-gradient-to-r from-blue-500 to-yellow-500;
+    @apply bg-royal-blue;
   }
   
   .gradient-border {
-    @apply border-2 border-transparent bg-gradient-to-r from-blue-500 to-yellow-500 bg-clip-border;
+    @apply border-2 border-royal-blue;
   }
   
   /* Performance optimizations */

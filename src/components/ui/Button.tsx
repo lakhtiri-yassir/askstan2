@@ -20,9 +20,9 @@ export const Button: React.FC<ButtonProps> = memo(({
   const baseClasses = 'inline-flex items-center justify-center rounded-xl font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2';
   
   const variants = {
-    primary: 'bg-gradient-to-r from-blue-500 to-yellow-500 text-white hover:from-blue-600 hover:to-yellow-600 focus:ring-blue-500 shadow-lg hover:shadow-xl',
+    primary: 'bg-royal-blue text-white hover:bg-navy-blue focus:ring-royal-blue shadow-lg hover:shadow-xl',
     secondary: 'bg-white text-gray-900 hover:bg-gray-50 border-2 border-gray-200 focus:ring-blue-500',
-    outline: 'border-2 border-gradient-to-r from-blue-500 to-yellow-500 text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-yellow-500 hover:bg-gradient-to-r hover:from-blue-500 hover:to-yellow-500 hover:text-white focus:ring-blue-500',
+    outline: 'border-2 border-royal-blue text-royal-blue hover:bg-royal-blue hover:text-white focus:ring-royal-blue',
     ghost: 'text-gray-600 hover:text-gray-900 hover:bg-gray-100 focus:ring-gray-500'
   };
   

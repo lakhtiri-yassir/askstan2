@@ -124,10 +124,19 @@ export const subscriptionService = {
    */
   async createCustomerPortalSession(): Promise<string> {
     try {
-      const { data, error } = await supabase.functions.invoke('create-portal-session');
+      const { data, error } = await supabase.functions.invoke('create-portal-session', {
+        body: { 
+          returnUrl: `${window.location.origin}/settings`
+        }
+      });
 
       if (error) {
+        console.error('Portal session error:', error);
         throw new Error(error.message || 'Failed to create portal session');
+      }
+
+      if (!data?.url) {
+        throw new Error('No portal URL returned');
       }
 
       return data.url;
@@ -135,6 +144,42 @@ export const subscriptionService = {
       console.error('Customer portal error:', error);
       throw error;
     }
+  },
+
+  /**
+   * Get subscription plans configuration
+   */
+  getPlansConfig() {
+    return {
+      monthly: {
+        id: 'monthly',
+        name: 'Monthly Plan',
+        price: 4.99,
+        interval: 'month',
+        priceId: import.meta.env.VITE_STRIPE_PRICE_MONTHLY,
+        features: [
+          'AI-powered social media coaching',
+          'Multi-platform support',
+          'Growth analytics dashboard',
+          '24/7 AI chat support'
+        ]
+      },
+      yearly: {
+        id: 'yearly',
+        name: 'Yearly Plan',
+        price: 49.99,
+        interval: 'year',
+        priceId: import.meta.env.VITE_STRIPE_PRICE_YEARLY,
+        savings: '17% savings',
+        popular: true,
+        features: [
+          'All monthly features',
+          'Priority AI responses',
+          'Advanced analytics',
+          'Custom growth strategies'
+        ]
+      }
+    };
   },
 
   /**
@@ -155,46 +200,5 @@ export const subscriptionService = {
       console.error('Cancel subscription error:', error);
       throw error;
     }
-  },
-
-  /**
-   * Get subscription plans configuration
-   */
-  getPlansConfig() {
-    return {
-      monthly: {
-        id: 'monthly',
-        name: 'Monthly Plan',
-        price: '$4.99',
-        period: '/month',
-        priceId: import.meta.env.VITE_STRIPE_PRICE_MONTHLY,
-        features: [
-          'AI-powered social media coaching',
-          'Multi-platform support',
-          'Growth analytics dashboard',
-          'Content optimization tips',
-          '24/7 AI chat support',
-          'Weekly growth reports'
-        ]
-      },
-      yearly: {
-        id: 'yearly',
-        name: 'Yearly Plan',
-        price: '$49.99',
-        period: '/year',
-        originalPrice: '$59.88',
-        savings: 'Save 17%',
-        priceId: import.meta.env.VITE_STRIPE_PRICE_YEARLY,
-        features: [
-          'Everything in Monthly Plan',
-          'Priority AI responses',
-          'Advanced analytics',
-          'Custom growth strategies',
-          'Monthly strategy calls',
-          'Exclusive templates',
-          'Advanced integrations'
-        ]
-      }
-    };
   }
 };

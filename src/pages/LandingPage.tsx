@@ -53,8 +53,8 @@ export const LandingPage: React.FC = () => {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-blue-50 via-white to-yellow-50 pt-16 pb-20">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-yellow-500/5"></div>
+      <section className="relative overflow-hidden bg-gray-50 pt-16 pb-20">
+        <div className="absolute inset-0 bg-powder-blue/5"></div>
         
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
@@ -66,7 +66,7 @@ export const LandingPage: React.FC = () => {
             >
               <h1 className="text-5xl lg:text-6xl font-bold text-gray-900 mb-6 leading-tight">
                 Grow Your
-                <span className="bg-gradient-to-r from-blue-500 to-yellow-500 bg-clip-text text-transparent block">
+                <span className="text-powder-blue block">
                   Social Media
                 </span>
                 with AI Power
@@ -115,15 +115,16 @@ export const LandingPage: React.FC = () => {
               className="relative"
             >
               <div className="relative bg-white rounded-2xl shadow-2xl p-8 backdrop-blur-sm">
-                <div className="w-full h-80 overflow-hidden rounded-xl">
-                  <OptimizedImage
-                    src="https://images.pexels.com/photos/3184292/pexels-photo-3184292.jpeg?auto=compress&cs=tinysrgb&w=800&h=600"
-                    alt="AI Social Media Growth"
-                    className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
-                    priority={true}
-                  />
+                <div className="w-full h-80 overflow-hidden rounded-xl flex items-center justify-center">
+                  {/* Stan Character Placeholder */}
+                  <div className="hero-character-container">
+                    <div className="stan-character-placeholder w-64 h-64 bg-powder-blue rounded-full flex items-center justify-center">
+                      <span className="text-6xl">👍</span>
+                      <span className="ml-4 text-navy-blue font-bold text-2xl">Stan</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="absolute -top-4 -right-4 bg-gradient-to-r from-blue-500 to-yellow-500 p-4 rounded-xl text-white">
+                <div className="absolute -top-4 -right-4 bg-royal-blue p-4 rounded-xl text-white">
                   <Bot className="w-8 h-8" />
                 </div>
               </div>
@@ -144,7 +145,7 @@ export const LandingPage: React.FC = () => {
           >
             <h2 className="text-4xl font-bold text-gray-900 mb-4">
               Everything You Need to
-              <span className="bg-gradient-to-r from-blue-500 to-yellow-500 bg-clip-text text-transparent"> Succeed</span>
+              <span className="text-powder-blue"> Succeed</span>
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
               Our AI-powered platform provides all the tools and insights you need to grow your social media presence effectively.
@@ -161,7 +162,7 @@ export const LandingPage: React.FC = () => {
                 viewport={{ once: true }}
                 className="text-center p-6 rounded-2xl bg-gradient-to-br from-blue-50 to-yellow-50 hover:shadow-lg transition-shadow"
               >
-                <div className="bg-gradient-to-r from-blue-500 to-yellow-500 p-3 rounded-xl inline-block text-white mb-4">
+                <div className="bg-royal-blue p-3 rounded-xl inline-block text-white mb-4">
                   {feature.icon}
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">
@@ -177,7 +178,7 @@ export const LandingPage: React.FC = () => {
       </section>
 
       {/* Testimonials Section */}
-      <section className="py-20 bg-gradient-to-br from-blue-50 to-yellow-50">
+      <section className="py-20 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -187,7 +188,7 @@ export const LandingPage: React.FC = () => {
             className="text-center mb-16"
           >
             <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              Loved by <span className="bg-gradient-to-r from-blue-500 to-yellow-500 bg-clip-text text-transparent">Creators</span>
+              Loved by <span className="text-powder-blue">Creators</span>
             </h2>
             <p className="text-xl text-gray-600">
               See what our users are saying about their growth journey
@@ -223,7 +224,7 @@ export const LandingPage: React.FC = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 bg-gradient-to-r from-blue-500 to-yellow-500">
+      <section className="py-20 bg-navy-blue">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -240,7 +241,7 @@ export const LandingPage: React.FC = () => {
             <Link to="/signup">
               <Button
                 size="lg"
-                className="bg-white text-blue-500 hover:bg-gray-100 shadow-lg"
+                className="bg-white text-navy-blue hover:bg-gray-100 shadow-lg"
               >
                 Get Started Free
                 <ArrowRight className="ml-2 w-5 h-5" />

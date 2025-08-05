@@ -28,9 +28,21 @@ export const Header: React.FC = () => {
           <Link to="/" className="flex items-center space-x-2">
             <motion.div
               whileHover={{ scale: 1.05 }}
-              className="text-2xl font-bold bg-gradient-to-r from-blue-500 to-yellow-500 bg-clip-text text-transparent"
+              className="logo-container flex items-center"
             >
-              AskStan!
+              <img 
+                src="/src/assets/images/askstan-logo.svg" 
+                alt="AskStan!" 
+                className="h-8 w-auto"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                  const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                  if (fallback) fallback.style.display = 'block';
+                }}
+              />
+              <span className="askstan-text-fallback hidden text-2xl font-bold text-navy-blue">
+                AskStan!
+              </span>
             </motion.div>
           </Link>
 

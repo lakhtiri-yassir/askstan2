@@ -93,7 +93,7 @@ export const SignUpPage: React.FC = () => {
               initial={{ scale: 0.8 }}
               animate={{ scale: 1 }}
               transition={{ duration: 0.5 }}
-              className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-500 to-yellow-500 rounded-xl mb-4"
+              className="inline-flex items-center justify-center w-16 h-16 bg-royal-blue rounded-xl mb-4"
             >
               <User className="w-8 h-8 text-white" />
             </motion.div>
