@@ -3,12 +3,17 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:analyze": "npm run build && npx vite-bundle-analyzer dist/stats.html",
     "preview": "vite preview",
-    "lint": "eslint .",
-    "type-check": "tsc --noEmit"
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@stripe/stripe-js": "^7.8.0",

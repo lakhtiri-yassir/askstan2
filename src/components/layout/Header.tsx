@@ -4,15 +4,17 @@ import { motion } from 'framer-motion';
 import { LogOut, Settings, User } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../ui/Button';
+import { usePerformanceMonitor } from '../../hooks/usePerformanceMonitor';
 
 export const Header: React.FC = () => {
+  usePerformanceMonitor('Header');
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
 
-  const handleSignOut = () => {
+  const handleSignOut = React.useCallback(() => {
     signOut();
     navigate('/');
-  };
+  }, [signOut, navigate]);
 
   return (
     <header className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50">

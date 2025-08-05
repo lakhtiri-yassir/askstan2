@@ -1,6 +1,7 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { Button } from './ui/Button';
+import { monitorMemoryUsage } from '../utils/performance';
 
 interface Props {
   children: ReactNode;
@@ -22,6 +23,15 @@ export class ErrorBoundary extends Component<Props, State> {
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Uncaught error:', error, errorInfo);
+    
+    // Monitor memory usage when errors occur
+    monitorMemoryUsage();
+    
+    // Report to monitoring service in production
+    if (process.env.NODE_ENV === 'production') {
+      // TODO: Send to error monitoring service (Sentry, LogRocket, etc.)
+      console.error('Production Error:', { error, errorInfo });
+    }
   }
 
   private handleRetry = () => {

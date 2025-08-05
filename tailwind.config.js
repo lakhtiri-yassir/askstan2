@@ -1,10 +1,19 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  content: [
+    './index.html', 
+    './src/**/*.{js,ts,jsx,tsx}'
+  ],
+  future: {
+    hoverOnlyWhenSupported: true,
+  },
   theme: {
     extend: {
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
+      },
+      screens: {
+        'xs': '475px',
       },
       animation: {
         'gradient-x': 'gradient-x 15s ease infinite',
@@ -57,4 +66,7 @@ export default {
     },
   },
   plugins: [],
+  corePlugins: {
+    preflight: true,
+  }
 };

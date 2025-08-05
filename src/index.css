@@ -8,6 +8,16 @@
     font-family: 'Inter', system-ui, sans-serif;
     font-feature-settings: 'cv11', 'ss01';
     font-variation-settings: 'opsz' 32;
+    font-display: swap;
+  }
+  
+  /* Optimize font loading */
+  @font-face {
+    font-family: 'Inter';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfAZ9hiA.woff2') format('woff2');
   }
 }
 
@@ -26,6 +36,17 @@
   
   .gradient-border {
     @apply border-2 border-transparent bg-gradient-to-r from-blue-500 to-yellow-500 bg-clip-border;
+  }
+  
+  /* Performance optimizations */
+  .will-change-transform {
+    will-change: transform;
+  }
+  
+  .gpu-accelerated {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    perspective: 1000px;
   }
 }
 
@@ -69,6 +90,20 @@
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
 }
 
+/* Performance optimizations */
+.motion-safe {
+  @media (prefers-reduced-motion: no-preference) {
+    animation-duration: 0.3s;
+  }
+}
+
+.motion-reduce {
+  @media (prefers-reduced-motion: reduce) {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
 /* Responsive utilities */
 @media (max-width: 640px) {
   .text-responsive {
@@ -87,6 +122,7 @@
   min-height: 400px;
   border-radius: 12px;
   overflow: hidden;
+  contain: layout style paint;
 }
 
 /* Loading animation */
@@ -101,4 +137,19 @@
 
 .animate-pulse {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Critical CSS for above-the-fold content */
+.hero-section {
+  contain: layout style paint;
+  transform: translateZ(0);
+}
+
+/* Optimize heavy animations */
+.heavy-animation {
+  will-change: transform, opacity;
+}
+
+.heavy-animation:hover {
+  will-change: auto;
 }
