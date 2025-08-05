@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CheckCircle, ArrowRight, Sparkles } from 'lucide-react';
+import { CheckCircle, ArrowRight, Sparkles, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { subscriptionService } from '../lib/subscriptionService';
 import { Button } from '../components/ui/Button';
@@ -12,6 +12,7 @@ export const CheckoutSuccessPage: React.FC = () => {
   const { refreshSubscription } = useAuth();
   const [isProcessing, setIsProcessing] = useState(true);
   const [error, setError] = useState('');
+  const [debugInfo, setDebugInfo] = useState<any>(null);
   
   const sessionId = searchParams.get('session_id');
   const planType = searchParams.get('plan') as 'monthly' | 'yearly';
@@ -19,6 +20,11 @@ export const CheckoutSuccessPage: React.FC = () => {
 
   useEffect(() => {
     const handleCheckoutSuccess = async () => {
+      console.log('🎉 Starting checkout success processing...');
+      console.log('Session ID:', sessionId);
+      console.log('Plan Type:', planType);
+      console.log('Coupon Code:', couponCode);
+      
       if (!sessionId) {
         setError('No session ID found');
         setIsProcessing(false);
@@ -26,31 +32,68 @@ export const CheckoutSuccessPage: React.FC = () => {
       }
 
       try {
-        console.log('Processing checkout success for session:', sessionId);
+        // Wait for webhook to process (give it more time)
+        console.log('⏳ Waiting for webhook to process...');
+        await new Promise(resolve => setTimeout(resolve, 5000)); // Increased wait time
         
-        // Handle the successful checkout
-        const subscription = await subscriptionService.handleCheckoutSuccess(sessionId);
-        
-        // Refresh subscription data
+        // Try to refresh subscription data first
+        console.log('🔄 Refreshing subscription data...');
         await refreshSubscription();
         
-        console.log('Checkout success processed, subscription:', subscription);
-        setIsProcessing(false);
+        // Check if subscription was created by webhook
+        const { user } = await supabase.auth.getUser();
+        if (!user) {
+          throw new Error('User not authenticated');
+        }
         
-        // Auto-redirect to dashboard after 3 seconds
-        setTimeout(() => {
-          navigate('/dashboard');
-        }, 3000);
+        const subscriptionCheck = await subscriptionService.checkUserSubscription(user.id);
+        console.log('📊 Subscription check result:', subscriptionCheck);
+        
+        if (subscriptionCheck.hasActiveSubscription) {
+          console.log('✅ Subscription found via webhook');
+          setIsProcessing(false);
+          
+          // Auto-redirect to dashboard after 2 seconds
+          setTimeout(() => {
+            navigate('/dashboard?checkout_success=true');
+          }, 2000);
+          return;
+        }
+        
+        // If no subscription found, try manual creation
+        console.log('⚠️ No subscription found, attempting manual creation...');
+        const subscription = await subscriptionService.handleCheckoutSuccess(sessionId);
+        
+        if (subscription) {
+          console.log('✅ Manual subscription creation successful');
+          await refreshSubscription();
+          setIsProcessing(false);
+          
+          setTimeout(() => {
+            navigate('/dashboard?checkout_success=true');
+          }, 2000);
+        } else {
+          throw new Error('Failed to create subscription record');
+        }
         
       } catch (error) {
         console.error('Checkout success handling error:', error);
-        setError('Failed to process payment. Please contact support.');
+        setError('Failed to process payment. Please contact support if this persists.');
+        setDebugInfo({
+          sessionId,
+          planType,
+          couponCode,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
         setIsProcessing(false);
       }
     };
 
     handleCheckoutSuccess();
   }, [sessionId, refreshSubscription, navigate]);
+
+  // Import supabase for user check
+  const { supabase } = require('../lib/supabase');
 
   if (isProcessing) {
     return (
@@ -67,8 +110,13 @@ export const CheckoutSuccessPage: React.FC = () => {
               Processing Your Payment
             </h2>
             <p className="text-gray-600">
-              Please wait while we confirm your subscription...
+              Please wait while we confirm your subscription... This may take up to 30 seconds.
             </p>
+            {sessionId && (
+              <p className="text-xs text-gray-400 mt-4">
+                Session: {sessionId.substring(0, 20)}...
+              </p>
+            )}
           </div>
         </motion.div>
       </div>
@@ -86,12 +134,22 @@ export const CheckoutSuccessPage: React.FC = () => {
         >
           <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl p-8 border border-white/20 text-center">
             <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
-              <span className="text-red-600 text-2xl">⚠️</span>
+              <AlertTriangle className="w-8 h-8 text-red-600" />
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-4">
               Payment Processing Error
             </h2>
             <p className="text-gray-600 mb-6">{error}</p>
+            
+            {debugInfo && (
+              <div className="bg-gray-50 rounded-lg p-4 mb-6 text-left">
+                <h4 className="font-semibold text-gray-900 mb-2">Debug Information:</h4>
+                <pre className="text-xs text-gray-600 overflow-auto">
+                  {JSON.stringify(debugInfo, null, 2)}
+                </pre>
+              </div>
+            )}
+            
             <div className="space-y-4">
               <Link to="/plans">
                 <Button className="w-full">Try Again</Button>
@@ -104,7 +162,7 @@ export const CheckoutSuccessPage: React.FC = () => {
         </motion.div>
       </div>
     );
-    }
+  }
 
   const plansConfig = subscriptionService.getPlansConfig();
   const planDetails = {
