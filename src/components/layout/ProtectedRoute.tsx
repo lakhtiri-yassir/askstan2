@@ -31,10 +31,6 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to="/signin" state={{ from: location }} replace />;
   }
 
-  // Skip email verification check since we disabled it
-  if (requireEmailVerification && !profile?.email_verified) {
-    return <Navigate to="/confirm-email" replace />;
-  }
 
   // Check subscription requirement
   if (requireSubscription && !hasActiveSubscription) {

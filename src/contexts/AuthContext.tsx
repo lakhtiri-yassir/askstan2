@@ -111,11 +111,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       if (!userProfile && user.email) {
         console.log('No profile found, creating one manually...');
-        userProfile = await userService.createProfileManual(user.id, user.email);
+        userProfile = await userService.createProfileSafe(user.id, user.email);
       }
       
       if (userProfile) {
-        setProfile(newProfile);
+        setProfile(userProfile);
         
         // Load subscription status
         const subStatus = await subscriptionService.checkUserSubscription(user.id);
@@ -133,16 +133,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const signUp = async (email: string, password: string): Promise<void> => {
     setLoading(true);
     try {
-      console.log('Starting signup process - skipping email confirmation');
+      console.log('Starting signup process without email confirmation');
       
-      // Create auth user without email confirmation requirement
+      // Create auth user without email confirmation
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),
         password,
         options: {
-          emailRedirectTo: undefined,  // Skip email confirmation completely
+          emailRedirectTo: undefined,
           data: {
-            email_verified: true  // Mark as verified immediately
+            email_verified: true
           }
         }
       });
@@ -158,14 +158,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       console.log('Auth user created:', authData.user.id);
 
-      // Create user profile manually
+      // Create user profile using safe function
       try {
         const profile = await userService.createProfileSafe(authData.user.id, email.trim().toLowerCase());
         setProfile(profile);
         console.log('Profile created successfully');
       } catch (profileError) {
         console.error('Profile creation error:', profileError);
-        // Don't fail signup if profile creation fails - will be created on next login
+        // Don't fail signup if profile creation fails
       }
 
       console.log('Signup completed successfully');

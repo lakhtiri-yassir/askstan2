@@ -12,7 +12,6 @@ const SignUpPage = lazy(() => import('./pages/auth/SignUpPage').then(module => (
 const SignInPage = lazy(() => import('./pages/auth/SignInPage').then(module => ({ default: module.SignInPage })));
 const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPasswordPage').then(module => ({ default: module.ForgotPasswordPage })));
 const ResetPasswordPage = lazy(() => import('./pages/auth/ResetPasswordPage').then(module => ({ default: module.ResetPasswordPage })));
-const ConfirmEmailPage = lazy(() => import('./pages/auth/ConfirmEmailPage').then(module => ({ default: module.ConfirmEmailPage })));
 const PlansPage = lazy(() => import('./pages/subscription/PlansPage').then(module => ({ default: module.PlansPage })));
 const CheckoutSuccessPage = lazy(() => import('./pages/CheckoutSuccessPage').then(module => ({ default: module.CheckoutSuccessPage })));
 const DashboardPage = lazy(() => import('./pages/dashboard/DashboardPage').then(module => ({ default: module.DashboardPage })));

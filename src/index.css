@@ -27,7 +27,7 @@
   }
   
   .gradient-text {
-    @apply text-powder-blue;
+    @apply text-navy-blue;
   }
   
   .gradient-bg {

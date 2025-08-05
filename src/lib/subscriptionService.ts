@@ -154,7 +154,7 @@ export const subscriptionService = {
       monthly: {
         id: 'monthly',
         name: 'Monthly Plan',
-        price: 4.99,
+        price: '$4.99',
         interval: 'month',
         priceId: import.meta.env.VITE_STRIPE_PRICE_MONTHLY,
         features: [
@@ -167,7 +167,7 @@ export const subscriptionService = {
       yearly: {
         id: 'yearly',
         name: 'Yearly Plan',
-        price: 49.99,
+        price: '$49.99',
         interval: 'year',
         priceId: import.meta.env.VITE_STRIPE_PRICE_YEARLY,
         savings: '17% savings',

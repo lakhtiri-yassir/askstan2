@@ -46,18 +46,9 @@ export const SignInPage: React.FC = () => {
     try {
       await signIn(formData.email, formData.password);
       
-      // Check subscription status and redirect accordingly
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const subStatus = await subscriptionService.checkUserSubscription(user.id);
-        if (subStatus.hasActiveSubscription) {
-          navigate('/dashboard', { replace: true });
-        } else {
-          navigate('/plans', { replace: true });
-        }
-      } else {
-        navigate('/dashboard', { replace: true });
-      }
+      // AuthContext will handle redirect based on subscription status
+      const from = location.state?.from?.pathname || '/dashboard';
+      navigate(from, { replace: true });
     } catch (error) {
       setErrors({ submit: 'Invalid email or password' });
     } finally {

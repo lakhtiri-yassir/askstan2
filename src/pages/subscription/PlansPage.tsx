@@ -17,13 +17,13 @@ export const PlansPage: React.FC = () => {
     { 
       ...plansConfig.monthly, 
       popular: false,
-      displayPrice: '$4.99',
+      displayPrice: plansConfig.monthly.price,
       displayPeriod: '/month'
     },
     { 
       ...plansConfig.yearly, 
       popular: true,
-      displayPrice: '$49.99',
+      displayPrice: plansConfig.yearly.price,
       displayPeriod: '/year',
       originalPrice: '$59.88'
     }
@@ -104,12 +104,12 @@ export const PlansPage: React.FC = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: index * 0.1 }}
               className={`relative bg-white/80 backdrop-blur-md rounded-2xl shadow-xl p-8 border border-white/20 ${
-                plan.popular ? 'ring-2 ring-royal-blue' : ''
+                plan.popular ? 'ring-2 ring-navy-blue' : ''
               }`}
             >
               {plan.popular && (
                 <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                  <div className="bg-royal-blue text-white px-4 py-2 rounded-full text-sm font-semibold flex items-center space-x-1">
+                  <div className="bg-navy-blue text-white px-4 py-2 rounded-full text-sm font-semibold flex items-center space-x-1">
                     <Star className="w-4 h-4" />
                     <span>Most Popular</span>
                   </div>

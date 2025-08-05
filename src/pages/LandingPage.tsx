@@ -115,7 +115,7 @@ export const LandingPage: React.FC = () => {
               className="relative"
             >
               <div className="relative bg-white rounded-2xl shadow-2xl p-8 backdrop-blur-sm">
-                <div className="w-full h-80 overflow-hidden rounded-xl flex items-center justify-center">
+                    {/* Stan Character - Client will replace with actual cartoon */}
                   {/* Stan Character Placeholder */}
                   <div className="hero-character-container">
                     <div className="stan-character-placeholder w-64 h-64 bg-powder-blue rounded-full flex items-center justify-center">
@@ -123,7 +123,7 @@ export const LandingPage: React.FC = () => {
                       <span className="ml-4 text-navy-blue font-bold text-2xl">Stan</span>
                     </div>
                   </div>
-                </div>
+                  <div className="absolute -top-4 -right-4 bg-navy-blue p-4 rounded-xl text-white">
                 <div className="absolute -top-4 -right-4 bg-royal-blue p-4 rounded-xl text-white">
                   <Bot className="w-8 h-8" />
                 </div>

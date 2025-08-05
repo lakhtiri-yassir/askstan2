@@ -54,7 +54,7 @@ export const SignUpPage: React.FC = () => {
     setIsLoading(true);
     try {
       await signUp(formData.email, formData.password);
-      // Navigate directly to plans page (skip email confirmation)
+      // Navigate directly to plans page
       navigate('/plans');
     } catch (error) {
       console.error('Signup error:', error);

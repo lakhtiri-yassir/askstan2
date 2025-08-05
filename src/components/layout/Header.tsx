@@ -57,7 +57,7 @@ export const Header: React.FC = () => {
                 <Link to="/dashboard">
                   <motion.div
                     whileHover={{ scale: 1.05 }}
-                    className="px-3 py-1 bg-gradient-to-r from-blue-500 to-yellow-500 text-white text-xs font-semibold rounded-full"
+                    className="px-3 py-1 bg-royal-blue text-white text-xs font-semibold rounded-full"
                   >
                     Dashboard
                   </motion.div>
@@ -66,7 +66,7 @@ export const Header: React.FC = () => {
                 <Link to="/settings">
                   <motion.div
                     whileHover={{ scale: 1.05 }}
-                    className="p-2 text-gray-600 hover:text-blue-500 transition-colors hidden sm:block"
+                    className="p-2 text-gray-600 hover:text-powder-blue transition-colors hidden sm:block"
                   >
                     <Settings size={20} />
                   </motion.div>

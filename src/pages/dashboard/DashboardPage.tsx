@@ -102,13 +102,13 @@ export const DashboardPage: React.FC = () => {
           className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl border border-white/20 overflow-hidden"
         >
           {/* Chat Header */}
-          <div className="bg-gradient-to-r from-blue-500 to-yellow-500 p-6">
+          <div className="bg-navy-blue p-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
-                  <MessageSquare className="w-6 h-6 text-blue-500" />
+                  <MessageSquare className="w-6 h-6 text-navy-blue" />
                 </div>
-                <div className="text-white">
+                    Welcome back, <span className="text-powder-blue">{profile?.display_name || user?.email?.split('@')[0] || 'User'}</span>!
                   <h3 className="font-semibold text-lg">Stan - AI Growth Coach</h3>
                   <p className="text-sm opacity-90">
                     {chatbotLoaded ? 'Ready to help you grow' : 'Loading your personal coach...'}
