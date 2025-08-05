@@ -12,7 +12,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
   requireSubscription = false,
 }) => {
-  const { user, loading } = useAuth();
+  const { user, profile, subscription, loading } = useAuth();
   const location = useLocation();
 
   if (loading) {
