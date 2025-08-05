@@ -54,7 +54,15 @@ export const SignUpPage: React.FC = () => {
     setIsLoading(true);
     try {
       await signUp(formData.email, formData.password);
-      navigate('/confirm-email');
+      // Show success message instead of navigating immediately
+      setErrors({ 
+        success: 'Account created successfully! Please check your email for verification instructions.' 
+      });
+      
+      // Navigate after a short delay to show success message
+      setTimeout(() => {
+        navigate('/confirm-email');
+      }, 2000);
     } catch (error) {
       console.error('Signup error:', error);
       setErrors({ 
@@ -169,6 +177,12 @@ export const SignUpPage: React.FC = () => {
             {errors.submit && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-3">
                 <p className="text-sm text-red-600">{errors.submit}</p>
+              </div>
+            )}
+
+            {errors.success && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                <p className="text-sm text-green-600">{errors.success}</p>
               </div>
             )}
 

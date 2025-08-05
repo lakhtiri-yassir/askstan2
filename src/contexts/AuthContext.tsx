@@ -102,40 +102,41 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const signUp = async (email: string, password: string): Promise<void> => {
     setLoading(true);
     try {
-      // First, create the auth user
+      // Create auth user without any triggers
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/confirm-email`
-        }
+        // Remove emailRedirectTo to avoid trigger issues
       });
 
       if (error) throw error;
 
       if (data.user) {
-        // Always create user profile manually (no relying on triggers)
+        // Create user profile manually after successful auth signup
         try {
-          const profile = await userService.createProfile(data.user.id, email);
+          // Wait a moment for auth user to be fully created
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          const profile = await userService.createProfileSafe(data.user.id, email);
           setProfile(profile);
         } catch (profileError) {
           console.error('Profile creation failed:', profileError);
-          // Don't throw error - signup should still succeed
-        }
-        
-        if (!data.session) {
-          // Email confirmation required
-          const verificationUrl = `${window.location.origin}/confirm-email`;
-          try {
-            await emailService.sendVerificationEmail(email, verificationUrl);
-          } catch (emailError) {
-            console.warn('Email service not configured, but signup successful');
-          }
+          // Don't throw - signup should succeed even if profile creation fails
         }
       }
     } catch (error: any) {
       console.error('Signup error:', error);
-      throw new Error(error.message || 'Failed to create account. Please check your email and try again.');
+      
+      // Provide more specific error messages
+      if (error.message?.includes('already registered')) {
+        throw new Error('An account with this email already exists. Please sign in instead.');
+      } else if (error.message?.includes('Invalid email')) {
+        throw new Error('Please enter a valid email address.');
+      } else if (error.message?.includes('Password')) {
+        throw new Error('Password must be at least 6 characters long.');
+      } else {
+        throw new Error('Failed to create account. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -162,19 +163,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const signOut = async (): Promise<void> => {
-    setLoading(true);
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      
+      // Clear state immediately for better UX
       setUser(null);
       setProfile(null);
       setSubscription(null);
       setSession(null);
+      
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
     } catch (error: any) {
       console.error('Error signing out:', error);
+      // Even if signOut fails, clear local state
+      setUser(null);
+      setProfile(null);
+      setSubscription(null);
+      setSession(null);
     } finally {
-      setLoading(false);
+      // Force page reload to ensure clean state
+      window.location.href = '/';
     }
   };
 

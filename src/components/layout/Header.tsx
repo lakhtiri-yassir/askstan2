@@ -12,14 +12,11 @@ export const Header: React.FC = () => {
   const handleSignOut = React.useCallback(async () => {
     try {
       await signOut();
-      navigate('/', { replace: true });
-      // Force page reload to clear any cached state
-      window.location.reload();
+      // signOut now handles navigation automatically
     } catch (error) {
       console.error('Sign out error:', error);
-      // Force navigation even if signOut fails
-      navigate('/', { replace: true });
-      window.location.reload();
+      // Fallback navigation if signOut fails
+      window.location.href = '/';
     }
   }, [signOut, navigate]);
 
