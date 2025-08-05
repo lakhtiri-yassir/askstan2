@@ -19,6 +19,7 @@ interface AuthContextType {
   refreshSubscription: () => Promise<void>;
   hasActiveSubscription: boolean;
   isEmailVerified: boolean;
+}
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuth = () => {
