@@ -1,0 +1,73 @@
+import React from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { LogOut, Settings, User } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
+import { Button } from '../ui/Button';
+
+export const Header: React.FC = () => {
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = () => {
+    signOut();
+    navigate('/');
+  };
+
+  return (
+    <header className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-16">
+          {/* Logo */}
+          <Link to="/" className="flex items-center space-x-2">
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              className="text-2xl font-bold bg-gradient-to-r from-blue-500 to-yellow-500 bg-clip-text text-transparent"
+            >
+              AskStan!
+            </motion.div>
+          </Link>
+
+          {/* Navigation */}
+          <nav className="flex items-center space-x-4">
+            {user ? (
+              <div className="flex items-center space-x-4">
+                <span className="text-sm text-gray-600">
+                  Welcome, {user.email}
+                </span>
+                
+                <Link to="/settings">
+                  <motion.div
+                    whileHover={{ scale: 1.05 }}
+                    className="p-2 text-gray-600 hover:text-blue-500 transition-colors"
+                  >
+                    <Settings size={20} />
+                  </motion.div>
+                </Link>
+                
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleSignOut}
+                  className="flex items-center space-x-2"
+                >
+                  <LogOut size={16} />
+                  <span>Sign Out</span>
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-4">
+                <Link to="/signin">
+                  <Button variant="ghost" size="sm">Sign In</Button>
+                </Link>
+                <Link to="/signup">
+                  <Button variant="primary" size="sm">Get Started</Button>
+                </Link>
+              </div>
+            )}
+          </nav>
+        </div>
+      </div>
+    </header>
+  );
+};
