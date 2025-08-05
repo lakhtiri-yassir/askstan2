@@ -7,17 +7,17 @@ import { Button } from '../components/ui/Button';
 
 export const CheckoutSuccessPage: React.FC = () => {
   const [searchParams] = useSearchParams();
-  const { updateSubscription } = useAuth();
+  const { refreshSubscription } = useAuth();
   
   const sessionId = searchParams.get('session_id');
   const planType = searchParams.get('plan') as 'monthly' | 'yearly';
 
   useEffect(() => {
-    // Update subscription status when payment is successful
-    if (planType && (planType === 'monthly' || planType === 'yearly')) {
-      updateSubscription(planType);
+    // Refresh subscription data from database
+    if (sessionId) {
+      refreshSubscription();
     }
-  }, [planType, updateSubscription]);
+  }, [sessionId, refreshSubscription]);
 
   const planDetails = {
     monthly: {

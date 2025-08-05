@@ -3,16 +3,12 @@ import { motion } from 'framer-motion';
 import { Check, Star, Zap } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../../components/ui/Button';
-import { loadStripe } from '@stripe/stripe-js';
-import { stripeConfig } from '../../config/chatbot';
-
-// Initialize Stripe
-const stripePromise = loadStripe(stripeConfig.publishableKey);
+import { stripeService } from '../../services/stripe.service';
 
 export const PlansPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const { updateSubscription } = useAuth();
+  const { refreshSubscription } = useAuth();
 
   const plans = [
     {
@@ -48,45 +44,21 @@ export const PlansPage: React.FC = () => {
         'Exclusive templates',
         'Advanced integrations'
       ],
-      priceId: stripeConfig.prices.yearly,
+      priceId: import.meta.env.VITE_STRIPE_PRICE_YEARLY,
       popular: true
     }
   ];
 
   const handleSubscribe = async (plan: typeof plans[0]) => {
     setIsLoading(plan.id);
+    setErrors({});
     
     try {
-      if (!stripeConfig.publishableKey || stripeConfig.publishableKey === 'pk_test_placeholder') {
-        // Simulate successful subscription for demo purposes
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        updateSubscription(plan.id as 'monthly' | 'yearly');
-        return;
-      }
-      
-      const stripe = await stripePromise;
-      
-      if (!stripe) {
-        throw new Error('Stripe failed to load');
-      }
-
-      // TODO: Replace with actual API call to create checkout session
-      // For now, simulate the checkout process
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Simulate successful payment
-      updateSubscription(plan.id as 'monthly' | 'yearly');
-      
-      // In a real implementation, you would redirect to Stripe Checkout:
-      // const { error } = await stripe.redirectToCheckout({
-      //   sessionId: checkoutSession.id
-      // });
-      
-      console.log(`Subscribed to ${plan.name}`);
+      await stripeService.createCheckoutSession(plan.id as 'monthly' | 'yearly');
       
     } catch (error) {
       console.error('Subscription error:', error);
-      setErrors({ submit: 'Failed to process subscription. Please try again.' });
+      setErrors({ submit: error instanceof Error ? error.message : 'Failed to process subscription. Please try again.' });
     } finally {
       setIsLoading(null);
     }

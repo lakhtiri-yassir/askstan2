@@ -4,10 +4,16 @@ import { User, CreditCard, Bell, Shield, LogOut } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
+import { stripeService } from '../services/stripe.service';
 
 export const SettingsPage: React.FC = () => {
-  const { user, signOut } = useAuth();
+  const { user, profile, subscription, signOut, updateProfile } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
+  const [isLoading, setIsLoading] = useState(false);
+  const [profileData, setProfileData] = useState({
+    display_name: profile?.display_name || '',
+    email: profile?.email || user?.email || ''
+  });
 
   const tabs = [
     { id: 'profile', name: 'Profile', icon: User },
@@ -15,6 +21,29 @@ export const SettingsPage: React.FC = () => {
     { id: 'notifications', name: 'Notifications', icon: Bell },
     { id: 'security', name: 'Security', icon: Shield }
   ];
+
+  const handleProfileUpdate = async () => {
+    if (!user) return;
+    
+    setIsLoading(true);
+    try {
+      await updateProfile({
+        display_name: profileData.display_name
+      });
+    } catch (error) {
+      console.error('Profile update error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleManageSubscription = async () => {
+    try {
+      await stripeService.createCustomerPortalSession();
+    } catch (error) {
+      console.error('Portal session error:', error);
+    }
+  };
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -26,7 +55,7 @@ export const SettingsPage: React.FC = () => {
               <Input
                 label="Email Address"
                 type="email"
-                value={user?.email || ''}
+                value={profileData.email}
                 readOnly
                 className="bg-gray-50"
               />
@@ -34,9 +63,13 @@ export const SettingsPage: React.FC = () => {
                 label="Display Name"
                 type="text"
                 placeholder="Enter your display name"
+                value={profileData.display_name}
+                onChange={(e) => setProfileData(prev => ({ ...prev, display_name: e.target.value }))}
               />
             </div>
-            <Button>Save Changes</Button>
+            <Button onClick={handleProfileUpdate} isLoading={isLoading}>
+              Save Changes
+            </Button>
           </div>
         );
       
@@ -44,26 +77,50 @@ export const SettingsPage: React.FC = () => {
         return (
           <div className="space-y-6">
             <h3 className="text-xl font-semibold text-gray-900">Billing & Subscription</h3>
-            <div className="bg-gradient-to-r from-blue-50 to-yellow-50 p-6 rounded-xl border border-blue-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-semibold text-gray-900">
-                    {user?.subscriptionPlan === 'yearly' ? 'Yearly Plan' : 'Monthly Plan'}
-                  </h4>
-                  <p className="text-gray-600">
-                    {user?.subscriptionPlan === 'yearly' ? '$49.99/year' : '$4.99/month'}
-                  </p>
-                  <p className="text-sm text-green-600 mt-1">Active</p>
+            {subscription ? (
+              <div className="bg-gradient-to-r from-blue-50 to-yellow-50 p-6 rounded-xl border border-blue-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-semibold text-gray-900">
+                      {subscription.plan_type === 'yearly' ? 'Yearly Plan' : 'Monthly Plan'}
+                    </h4>
+                    <p className="text-gray-600">
+                      {subscription.plan_type === 'yearly' ? '$49.99/year' : '$4.99/month'}
+                    </p>
+                    <p className={`text-sm mt-1 capitalize ${
+                      subscription.status === 'active' ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      {subscription.status}
+                    </p>
+                  </div>
+                  <Button variant="outline" onClick={handleManageSubscription}>
+                    Manage Subscription
+                  </Button>
                 </div>
-                <Button variant="outline">Manage Subscription</Button>
               </div>
-            </div>
+            ) : (
+              <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
+                <div className="text-center">
+                  <h4 className="font-semibold text-gray-900 mb-2">No Active Subscription</h4>
+                  <p className="text-gray-600 mb-4">Upgrade to unlock premium features</p>
+                  <Button onClick={() => window.location.href = '/plans'}>
+                    View Plans
+                  </Button>
+                </div>
+              </div>
+            )}
             <div className="border-t pt-6">
               <h4 className="font-semibold text-gray-900 mb-4">Payment Methods</h4>
-              <div className="bg-gray-50 p-4 rounded-xl">
-                <p className="text-gray-600">•••• •••• •••• 4242</p>
-                <p className="text-sm text-gray-500">Expires 12/25</p>
-              </div>
+              {subscription ? (
+                <div className="bg-gray-50 p-4 rounded-xl">
+                  <p className="text-gray-600">Managed via Stripe Customer Portal</p>
+                  <p className="text-sm text-gray-500">Click "Manage Subscription" to update payment methods</p>
+                </div>
+              ) : (
+                <div className="bg-gray-50 p-4 rounded-xl">
+                  <p className="text-gray-600">No payment methods on file</p>
+                </div>
+              )}
             </div>
           </div>
         );
