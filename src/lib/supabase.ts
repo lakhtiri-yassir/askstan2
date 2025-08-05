@@ -4,30 +4,84 @@ import { Database, UserProfile, Subscription, ChatSession } from '../types/supab
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL!;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY!;
 
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing Supabase environment variables. Please check your .env file.');
+}
+
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
 
 // User Profile Service
 export const userService = {
-  async createProfileSafe(userId: string, email: string): Promise<UserProfile> {
-    // Use the safe database function that doesn't rely on triggers
-    const { data, error } = await supabase.rpc('create_user_profile_safe', {
-      user_id: userId,
-      user_email: email
-    });
+  async createProfileMinimal(userId: string, email: string): Promise<UserProfile> {
+    console.log('Creating profile for user:', userId, email);
     
-    if (error) throw error;
-    return data;
+    try {
+      // Use the minimal profile creation function we created in the database
+      const { data, error } = await supabase.rpc('create_user_profile_minimal', {
+        user_id: userId,
+        user_email: email
+      });
+      
+      if (error) {
+        console.error('RPC function error:', error);
+        throw error;
+      }
+      
+      if (!data) {
+        throw new Error('No profile data returned from database function');
+      }
+      
+      console.log('Profile created successfully:', data);
+      return data;
+      
+    } catch (error) {
+      console.error('Profile creation failed, trying direct insert:', error);
+      
+      // Fallback: try direct insert
+      try {
+        const { data: insertData, error: insertError } = await supabase
+          .from('user_profiles')
+          .insert({
+            id: userId,
+            email: email,
+            email_verified: false
+          })
+          .select()
+          .single();
+          
+        if (insertError) {
+          console.error('Direct insert error:', insertError);
+          throw insertError;
+        }
+        
+        console.log('Profile created via direct insert:', insertData);
+        return insertData;
+        
+      } catch (insertError) {
+        console.error('Both RPC and direct insert failed:', insertError);
+        throw new Error(`Failed to create user profile: ${insertError}`);
+      }
+    }
   },
   
   async getProfile(userId: string): Promise<UserProfile | null> {
-    const { data, error } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
-    
-    if (error && error.code !== 'PGRST116') throw error;
-    return data;
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching profile:', error);
+        throw error;
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Profile fetch error:', error);
+      return null;
+    }
   },
   
   async updateProfile(userId: string, updates: Partial<UserProfile>): Promise<UserProfile> {
@@ -55,14 +109,23 @@ export const userService = {
 // Subscription Service
 export const subscriptionService = {
   async getSubscription(userId: string): Promise<Subscription | null> {
-    const { data, error } = await supabase
-      .from('subscriptions')
-      .select('*')
-      .eq('user_id', userId)
-      .single();
-    
-    if (error && error.code !== 'PGRST116') throw error;
-    return data;
+    try {
+      const { data, error } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+      
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching subscription:', error);
+        throw error;
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Subscription fetch error:', error);
+      return null;
+    }
   },
   
   async createSubscription(subscriptionData: Database['public']['Tables']['subscriptions']['Insert']): Promise<Subscription> {
@@ -86,24 +149,12 @@ export const subscriptionService = {
     
     if (error) throw error;
     return data;
-  },
-
-  async updateSubscriptionByStripeId(stripeSubscriptionId: string, updates: Partial<Subscription>): Promise<Subscription> {
-    const { data, error } = await supabase
-      .from('subscriptions')
-      .update(updates)
-      .eq('stripe_subscription_id', stripeSubscriptionId)
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
   }
 };
 
-// Chat Service
+// Chat Session Service
 export const chatService = {
-  async getSessions(userId: string): Promise<ChatSession[]> {
+  async getChatSessions(userId: string): Promise<ChatSession[]> {
     const { data, error } = await supabase
       .from('chat_sessions')
       .select('*')
@@ -114,80 +165,28 @@ export const chatService = {
     return data || [];
   },
   
-  async createSession(userId: string, title?: string): Promise<ChatSession> {
+  async createChatSession(sessionData: Database['public']['Tables']['chat_sessions']['Insert']): Promise<ChatSession> {
     const { data, error } = await supabase
       .from('chat_sessions')
-      .insert({
-        user_id: userId,
-        title: title || 'New Conversation'
-      })
+      .insert(sessionData)
       .select()
       .single();
     
     if (error) throw error;
     return data;
-  },
-  
-  async updateSession(sessionId: string, updates: Partial<ChatSession>): Promise<ChatSession> {
-    const { data, error } = await supabase
-      .from('chat_sessions')
-      .update(updates)
-      .eq('id', sessionId)
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
-  },
-  
-  async deleteSession(sessionId: string): Promise<void> {
-    const { error } = await supabase
-      .from('chat_sessions')
-      .delete()
-      .eq('id', sessionId);
-    
-    if (error) throw error;
   }
 };
 
-// Email Service
-export const emailService = {
-  async sendVerificationEmail(email: string, verificationUrl: string): Promise<void> {
-    try {
-      const { error } = await supabase.functions.invoke('send-email', {
-        body: {
-          type: 'email_verification',
-          email,
-          data: { verificationUrl }
-        }
-      });
-      
-      if (error) {
-        console.warn('Email service error:', error);
-        // Don't throw error - signup should still succeed even if email fails
-      }
-    } catch (error) {
-      console.warn('Email service not available:', error);
-      // Don't throw error - signup should still succeed
-    }
-  },
-
-  async sendPasswordResetEmail(email: string, resetUrl: string): Promise<void> {
-    try {
-      const { error } = await supabase.functions.invoke('send-email', {
-        body: {
-          type: 'password_reset',
-          email,
-          data: { resetUrl }
-        }
-      });
-      
-      if (error) {
-        console.warn('Email service error:', error);
-      }
-    } catch (error) {
-      console.warn('Email service not available:', error);
-      throw new Error('Failed to send password reset email. Please try again later.');
-    }
+// Health check function
+export const checkSupabaseConnection = async (): Promise<boolean> => {
+  try {
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .select('count', { count: 'exact', head: true });
+    
+    return !error;
+  } catch (error) {
+    console.error('Supabase connection check failed:', error);
+    return false;
   }
 };

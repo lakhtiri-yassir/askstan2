@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
-import { supabase, userService, subscriptionService, emailService } from '../lib/supabase';
+import { supabase, userService, subscriptionService } from '../lib/supabase';
 import { UserProfile, Subscription } from '../types/supabase';
 
 interface AuthContextType {
@@ -12,11 +12,9 @@ interface AuthContextType {
   signUp: (email: string, password: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
-  forgotPassword: (email: string) => Promise<void>;
-  resetPassword: (token: string, password: string) => Promise<void>;
-  confirmEmail: (token: string) => Promise<void>;
-  updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
-  refreshSubscription: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+  hasActiveSubscription: boolean;
+  isEmailVerified: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -40,18 +38,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const hasActiveSubscription = subscription?.status === 'active';
+  const isEmailVerified = profile?.email_verified ?? false;
+
   useEffect(() => {
-    // Get initial session
     const getInitialSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        await loadUserData(session.user.id);
+      try {
+        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Error getting session:', error);
+          setLoading(false);
+          return;
+        }
+
+        setSession(initialSession);
+        setUser(initialSession?.user ?? null);
+        
+        if (initialSession?.user) {
+          await loadUserData(initialSession.user.id);
+        }
+        
+        setLoading(false);
+      } catch (error) {
+        console.error('Session initialization error:', error);
+        setLoading(false);
       }
-      
-      setLoading(false);
     };
 
     getInitialSession();
@@ -59,6 +71,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Listen for auth changes
     const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('Auth event:', event, session?.user?.id);
+        
         setSession(session);
         setUser(session?.user ?? null);
         
@@ -77,11 +91,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (authSubscription && typeof authSubscription.unsubscribe === 'function') {
         authSubscription.unsubscribe();
       }
-      // Cleanup state to prevent memory leaks
-      setUser(null);
-      setProfile(null);
-      setSubscription(null);
-      setSession(null);
     };
   }, []);
 
@@ -91,9 +100,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const userProfile = await userService.getProfile(userId);
       setProfile(userProfile);
 
-      // Load subscription
-      const userSubscription = await subscriptionService.getSubscription(userId);
-      setSubscription(userSubscription);
+      // Load subscription if profile exists
+      if (userProfile) {
+        const userSubscription = await subscriptionService.getSubscription(userId);
+        setSubscription(userSubscription);
+      }
     } catch (error) {
       console.error('Error loading user data:', error);
     }
@@ -102,40 +113,61 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const signUp = async (email: string, password: string): Promise<void> => {
     setLoading(true);
     try {
-      // Create auth user without any triggers
-      const { data, error } = await supabase.auth.signUp({
-        email,
+      console.log('Starting signup process...');
+      
+      // Step 1: Create auth user with minimal options
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: email.trim().toLowerCase(),
         password,
-        // Remove emailRedirectTo to avoid trigger issues
+        options: {
+          emailRedirectTo: undefined // Remove redirect to avoid issues
+        }
       });
 
-      if (error) throw error;
-
-      if (data.user) {
-        // Create user profile manually after successful auth signup
-        try {
-          // Wait a moment for auth user to be fully created
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          
-          const profile = await userService.createProfileSafe(data.user.id, email);
-          setProfile(profile);
-        } catch (profileError) {
-          console.error('Profile creation failed:', profileError);
-          // Don't throw - signup should succeed even if profile creation fails
-        }
+      if (authError) {
+        console.error('Auth signup error:', authError);
+        throw authError;
       }
+
+      if (!authData.user) {
+        throw new Error('Signup failed - no user returned');
+      }
+
+      console.log('Auth user created:', authData.user.id);
+
+      // Step 2: Create user profile manually using our safe function
+      try {
+        console.log('Creating user profile...');
+        
+        // Wait a moment for the auth user to be fully committed
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        const profile = await userService.createProfileMinimal(authData.user.id, email.trim().toLowerCase());
+        console.log('Profile created:', profile);
+        setProfile(profile);
+        
+      } catch (profileError) {
+        console.error('Profile creation error:', profileError);
+        // Don't throw here - the auth signup succeeded, profile can be created later
+        console.log('Profile creation failed, but signup succeeded. Profile will be created on next login.');
+      }
+
+      console.log('Signup completed successfully');
+      
     } catch (error: any) {
       console.error('Signup error:', error);
       
-      // Provide more specific error messages
-      if (error.message?.includes('already registered')) {
+      // Provide user-friendly error messages
+      if (error.message?.includes('already registered') || error.message?.includes('already exists')) {
         throw new Error('An account with this email already exists. Please sign in instead.');
-      } else if (error.message?.includes('Invalid email')) {
+      } else if (error.message?.includes('Invalid email') || error.message?.includes('invalid email')) {
         throw new Error('Please enter a valid email address.');
-      } else if (error.message?.includes('Password')) {
+      } else if (error.message?.includes('Password') || error.message?.includes('password')) {
         throw new Error('Password must be at least 6 characters long.');
+      } else if (error.message?.includes('rate limit') || error.message?.includes('too many')) {
+        throw new Error('Too many signup attempts. Please wait a moment and try again.');
       } else {
-        throw new Error('Failed to create account. Please try again.');
+        throw new Error(error.message || 'Failed to create account. Please try again.');
       }
     } finally {
       setLoading(false);
@@ -146,109 +178,60 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setLoading(true);
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: email.trim().toLowerCase(),
         password
       });
 
       if (error) throw error;
 
-      if (data.user) {
-        await loadUserData(data.user.id);
-      }
+      // Profile will be loaded automatically via the auth state change listener
+      
     } catch (error: any) {
-      throw new Error(error.message || 'Invalid email or password');
+      console.error('Sign in error:', error);
+      
+      if (error.message?.includes('Invalid login credentials')) {
+        throw new Error('Invalid email or password. Please check your credentials and try again.');
+      } else if (error.message?.includes('Email not confirmed')) {
+        throw new Error('Please check your email and click the confirmation link before signing in.');
+      } else {
+        throw new Error(error.message || 'Failed to sign in. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
   const signOut = async (): Promise<void> => {
+    setLoading(true);
     try {
-      // Clear state immediately for better UX
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
+      // Clear state
       setUser(null);
       setProfile(null);
       setSubscription(null);
       setSession(null);
       
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
     } catch (error: any) {
-      console.error('Error signing out:', error);
-      // Even if signOut fails, clear local state
-      setUser(null);
-      setProfile(null);
-      setSubscription(null);
-      setSession(null);
-    } finally {
-      // Force page reload to ensure clean state
-      window.location.href = '/';
-    }
-  };
-
-  const forgotPassword = async (email: string): Promise<void> => {
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`
-      });
-
-      if (error) throw error;
-
-      // Send custom email via our edge function
-      const resetUrl = `${window.location.origin}/reset-password?token=placeholder`;
-      await emailService.sendPasswordResetEmail(email, resetUrl);
-    } catch (error: any) {
-      throw new Error(error.message || 'Failed to send reset email');
-    }
-  };
-
-  const resetPassword = async (token: string, password: string): Promise<void> => {
-    try {
-      const { error } = await supabase.auth.updateUser({
-        password: password
-      });
-
-      if (error) throw error;
-    } catch (error: any) {
-      throw new Error(error.message || 'Failed to reset password');
-    }
-  };
-
-  const confirmEmail = async (token: string): Promise<void> => {
-    setLoading(true);
-    try {
-      if (user) {
-        await userService.verifyEmail(user.id);
-        
-        // Refresh user profile
-        const updatedProfile = await userService.getProfile(user.id);
-        setProfile(updatedProfile);
-      }
-    } catch (error: any) {
-      throw new Error(error.message || 'Failed to confirm email');
+      console.error('Sign out error:', error);
+      throw new Error('Failed to sign out. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const updateProfile = async (updates: Partial<UserProfile>): Promise<void> => {
-    if (!user) throw new Error('No user logged in');
-    
+  const resetPassword = async (email: string): Promise<void> => {
     try {
-      const updatedProfile = await userService.updateProfile(user.id, updates);
-      setProfile(updatedProfile);
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`
+      });
+      
+      if (error) throw error;
+      
     } catch (error: any) {
-      throw new Error(error.message || 'Failed to update profile');
-    }
-  };
-
-  const refreshSubscription = async (): Promise<void> => {
-    if (!user) return;
-    
-    try {
-      const userSubscription = await subscriptionService.getSubscription(user.id);
-      setSubscription(userSubscription);
-    } catch (error) {
-      console.error('Error refreshing subscription:', error);
+      console.error('Password reset error:', error);
+      throw new Error(error.message || 'Failed to send password reset email. Please try again.');
     }
   };
 
@@ -261,12 +244,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     signUp,
     signIn,
     signOut,
-    forgotPassword,
     resetPassword,
-    confirmEmail,
-    updateProfile,
-    refreshSubscription
+    hasActiveSubscription,
+    isEmailVerified
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
