@@ -19,6 +19,7 @@ serve(async (req) => {
   
   console.log('📝 Webhook body length:', body.length);
   console.log('🔐 Signature present:', !!signature);
+  console.log('🌐 Request headers:', Object.fromEntries(req.headers.entries()));
   
   let event;
   
@@ -27,16 +28,30 @@ serve(async (req) => {
       apiVersion: '2023-10-16',
     });
 
+    const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET');
+    console.log('🔑 Webhook secret configured:', !!webhookSecret);
+    
     event = stripe.webhooks.constructEvent(
       body,
       signature!,
-      Deno.env.get('STRIPE_WEBHOOK_SECRET')!
+      webhookSecret!
     );
     
     console.log('✅ Webhook event verified:', event.type);
+    console.log('📋 Event data preview:', {
+      id: event.id,
+      type: event.type,
+      created: event.created
+    });
   } catch (err) {
     console.error('❌ Webhook signature verification failed:', err);
-    return new Response(`Webhook signature verification failed.`, { status: 400 });
+    return new Response(JSON.stringify({ 
+      error: 'Webhook signature verification failed',
+      details: err.message 
+    }), { 
+      status: 400,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
   
   const supabase = createClient(
@@ -53,6 +68,8 @@ serve(async (req) => {
         console.log('💳 Checkout session completed:', session.id);
         console.log('👤 Customer:', session.customer);
         console.log('📋 Metadata:', session.metadata);
+        console.log('💰 Payment status:', session.payment_status);
+        console.log('🔗 Subscription ID:', session.subscription);
         
         if (session.mode === 'subscription') {
           const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
@@ -61,6 +78,10 @@ serve(async (req) => {
           
           const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
           console.log('📊 Subscription retrieved:', subscription.id, subscription.status);
+          console.log('📅 Period:', {
+            start: new Date(subscription.current_period_start * 1000).toISOString(),
+            end: new Date(subscription.current_period_end * 1000).toISOString()
+          });
           
           const userId = session.metadata?.user_id;
           if (!userId) {
@@ -82,14 +103,41 @@ serve(async (req) => {
           
           console.log('💾 Upserting subscription data:', subscriptionData);
           
-          const { data: upsertData, error: upsertError } = await supabase
+          // First try to update existing subscription
+          const { data: existingData, error: selectError } = await supabase
             .from('subscriptions')
-            .upsert(subscriptionData, { 
-              onConflict: 'stripe_subscription_id',
-              ignoreDuplicates: false 
-            })
-            .select()
-            .single();
+            .select('id')
+            .eq('user_id', userId)
+            .maybeSingle();
+            
+          if (selectError && selectError.code !== 'PGRST116') {
+            console.error('❌ Error checking existing subscription:', selectError);
+          }
+          
+          let upsertData, upsertError;
+          
+          if (existingData) {
+            // Update existing subscription
+            console.log('🔄 Updating existing subscription for user:', userId);
+            const { data, error } = await supabase
+              .from('subscriptions')
+              .update(subscriptionData)
+              .eq('user_id', userId)
+              .select()
+              .single();
+            upsertData = data;
+            upsertError = error;
+          } else {
+            // Insert new subscription
+            console.log('➕ Creating new subscription for user:', userId);
+            const { data, error } = await supabase
+              .from('subscriptions')
+              .insert(subscriptionData)
+              .select()
+              .single();
+            upsertData = data;
+            upsertError = error;
+          }
           
           if (upsertError) {
             console.error('❌ Subscription upsert error:', upsertError);
@@ -100,10 +148,13 @@ serve(async (req) => {
           
           // Send welcome email
           try {
+            const customerEmail = session.customer_details?.email || 
+                                (typeof session.customer === 'object' ? session.customer.email : null);
+                                
             await supabase.functions.invoke('send-email', {
               body: {
                 type: 'subscription_success',
-                email: session.customer_details?.email,
+                email: customerEmail,
                 data: {
                   planType: session.metadata?.plan_type || 'monthly'
                 }

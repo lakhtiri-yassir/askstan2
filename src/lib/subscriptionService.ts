@@ -150,56 +150,52 @@ async validateCoupon(couponCode: string): Promise<{ valid: boolean; discount?: s
   /**
    * Handle successful checkout completion
    */
-  async handleCheckoutSuccess(sessionId: string): Promise<Subscription | null> {
+  async handleCheckoutSuccess(sessionId: string, userId: string): Promise<Subscription | null> {
     try {
       console.log('🎉 Handling checkout success for session:', sessionId);
       
-      // First, try to get session details from Stripe
-      const { data: sessionData, error: sessionError } = await supabase.functions.invoke('get-checkout-session', {
-        body: { sessionId }
-      });
-      
-      if (sessionError) {
-        console.error('Failed to get session details:', sessionError);
-      } else {
-        console.log('Session details:', sessionData);
-      }
-
-      // Refresh subscription data from database
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
-
       // Try multiple times to get subscription data (webhook might be slow)
-      let attempts = 0;
+      let attempts = 1;
       let subscription = null;
       
-      while (attempts < 8 && !subscription) {
+      while (attempts <= 10 && !subscription) {
         console.log(`🔄 Attempt ${attempts + 1} to fetch subscription...`);
         
-        const result = await this.checkUserSubscription(user.id);
+        const result = await this.checkUserSubscription(userId);
         subscription = result.subscription;
         
         if (!subscription) {
-          console.log('⏳ Subscription not found, waiting 3 seconds...');
-          await new Promise(resolve => setTimeout(resolve, 3000));
+          console.log('⏳ Subscription not found, waiting 2 seconds...');
+          await new Promise(resolve => setTimeout(resolve, 2000));
         }
         
         attempts++;
       }
       
       if (!subscription) {
-        console.error('❌ Subscription not found after 8 attempts, trying manual creation...');
+        console.error('❌ Subscription not found after 10 attempts, trying manual creation...');
         // Try to manually create subscription record if webhook failed
-        await this.manuallyCreateSubscription(sessionId, user.id);
+        await this.manuallyCreateSubscription(sessionId, userId);
         
         // Wait a bit and try one more time
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        const finalResult = await this.checkUserSubscription(user.id);
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        const finalResult = await this.checkUserSubscription(userId);
         subscription = finalResult.subscription;
         
         if (!subscription) {
           console.error('❌ Manual subscription creation also failed');
-          throw new Error('Failed to create subscription record. Please contact support.');
+          
+          // Get session details for debugging
+          try {
+            const { data: sessionData } = await supabase.functions.invoke('get-checkout-session', {
+              body: { sessionId }
+            });
+            console.log('🔍 Session details for debugging:', sessionData);
+          } catch (sessionError) {
+            console.error('Failed to get session details:', sessionError);
+          }
+          
+          throw new Error(`Failed to create subscription record. Session: ${sessionId.substring(0, 20)}...`);
         }
       }
       

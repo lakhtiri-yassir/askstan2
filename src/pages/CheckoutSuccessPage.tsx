@@ -3,6 +3,7 @@ import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CheckCircle, ArrowRight, Sparkles, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
 import { subscriptionService } from '../lib/subscriptionService';
 import { Button } from '../components/ui/Button';
 
@@ -32,19 +33,21 @@ export const CheckoutSuccessPage: React.FC = () => {
       }
 
       try {
-        // Wait for webhook to process (give it more time)
+        // Get current user
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (!user) {
+          throw new Error('User not authenticated');
+        }
+        
+        console.log('👤 Current user:', user.id);
+        
+        // Wait for webhook to process
         console.log('⏳ Waiting for webhook to process...');
-        await new Promise(resolve => setTimeout(resolve, 5000)); // Increased wait time
+        await new Promise(resolve => setTimeout(resolve, 3000));
         
         // Try to refresh subscription data first
         console.log('🔄 Refreshing subscription data...');
         await refreshSubscription();
-        
-        // Check if subscription was created by webhook
-        const { user } = await supabase.auth.getUser();
-        if (!user) {
-          throw new Error('User not authenticated');
-        }
         
         const subscriptionCheck = await subscriptionService.checkUserSubscription(user.id);
         console.log('📊 Subscription check result:', subscriptionCheck);
@@ -53,16 +56,16 @@ export const CheckoutSuccessPage: React.FC = () => {
           console.log('✅ Subscription found via webhook');
           setIsProcessing(false);
           
-          // Auto-redirect to dashboard after 2 seconds
+          // Auto-redirect to dashboard after 1 second
           setTimeout(() => {
             navigate('/dashboard?checkout_success=true');
-          }, 2000);
+          }, 1000);
           return;
         }
         
         // If no subscription found, try manual creation
         console.log('⚠️ No subscription found, attempting manual creation...');
-        const subscription = await subscriptionService.handleCheckoutSuccess(sessionId);
+        const subscription = await subscriptionService.handleCheckoutSuccess(sessionId, user.id);
         
         if (subscription) {
           console.log('✅ Manual subscription creation successful');
@@ -71,29 +74,27 @@ export const CheckoutSuccessPage: React.FC = () => {
           
           setTimeout(() => {
             navigate('/dashboard?checkout_success=true');
-          }, 2000);
+          }, 1000);
         } else {
           throw new Error('Failed to create subscription record');
         }
         
       } catch (error) {
         console.error('Checkout success handling error:', error);
-        setError('Failed to process payment. Please contact support if this persists.');
+        setError(`Failed to process payment: ${error instanceof Error ? error.message : 'Unknown error'}`);
         setDebugInfo({
           sessionId,
           planType,
           couponCode,
-          error: error instanceof Error ? error.message : 'Unknown error'
+          error: error instanceof Error ? error.message : 'Unknown error',
+          timestamp: new Date().toISOString()
         });
         setIsProcessing(false);
       }
     };
 
     handleCheckoutSuccess();
-  }, [sessionId, refreshSubscription, navigate]);
-
-  // Import supabase for user check
-  const { supabase } = require('../lib/supabase');
+  }, [sessionId, refreshSubscription, navigate, planType, couponCode]);
 
   if (isProcessing) {
     return (
