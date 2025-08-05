@@ -11,10 +11,12 @@ export const userService = {
   async createProfile(userId: string, email: string): Promise<UserProfile> {
     const { data, error } = await supabase
       .from('user_profiles')
-      .insert({
+      .upsert({
         id: userId,
         email: email,
         email_verified: false
+      }, {
+        onConflict: 'id'
       })
       .select()
       .single();
@@ -157,26 +159,41 @@ export const chatService = {
 // Email Service
 export const emailService = {
   async sendVerificationEmail(email: string, verificationUrl: string): Promise<void> {
-    const { error } = await supabase.functions.invoke('send-email', {
-      body: {
-        type: 'email_verification',
-        email,
-        data: { verificationUrl }
+    try {
+      const { error } = await supabase.functions.invoke('send-email', {
+        body: {
+          type: 'email_verification',
+          email,
+          data: { verificationUrl }
+        }
+      });
+      
+      if (error) {
+        console.warn('Email service error:', error);
+        // Don't throw error - signup should still succeed even if email fails
       }
-    });
-    
-    if (error) throw error;
+    } catch (error) {
+      console.warn('Email service not available:', error);
+      // Don't throw error - signup should still succeed
+    }
   },
 
   async sendPasswordResetEmail(email: string, resetUrl: string): Promise<void> {
-    const { error } = await supabase.functions.invoke('send-email', {
-      body: {
-        type: 'password_reset',
-        email,
-        data: { resetUrl }
+    try {
+      const { error } = await supabase.functions.invoke('send-email', {
+        body: {
+          type: 'password_reset',
+          email,
+          data: { resetUrl }
+        }
+      });
+      
+      if (error) {
+        console.warn('Email service error:', error);
       }
-    });
-    
-    if (error) throw error;
+    } catch (error) {
+      console.warn('Email service not available:', error);
+      throw new Error('Failed to send password reset email. Please try again later.');
+    }
   }
 };

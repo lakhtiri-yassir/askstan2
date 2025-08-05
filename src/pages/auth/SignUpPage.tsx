@@ -56,7 +56,12 @@ export const SignUpPage: React.FC = () => {
       await signUp(formData.email, formData.password);
       navigate('/confirm-email');
     } catch (error) {
-      setErrors({ submit: 'Failed to create account. Please try again.' });
+      console.error('Signup error:', error);
+      setErrors({ 
+        submit: error instanceof Error 
+          ? error.message 
+          : 'Failed to create account. Please try again.' 
+      });
     } finally {
       setIsLoading(false);
     }

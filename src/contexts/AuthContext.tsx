@@ -106,19 +106,37 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/confirm-email`
+          emailRedirectTo: `${window.location.origin}/confirm-email`,
+          data: {
+            email: email
+          }
         }
       });
 
       if (error) throw error;
 
-      if (data.user && !data.session) {
-        // Email confirmation required
-        const verificationUrl = `${window.location.origin}/confirm-email?token=${data.user.id}`;
-        await emailService.sendVerificationEmail(email, verificationUrl);
+      if (data.user) {
+        // Try to create user profile manually if trigger failed
+        try {
+          await userService.createProfile(data.user.id, email);
+        } catch (profileError) {
+          // Profile might already exist from trigger, that's okay
+          console.log('Profile creation handled by trigger or already exists');
+        }
+        
+        if (!data.session) {
+          // Email confirmation required
+          const verificationUrl = `${window.location.origin}/confirm-email?token=${data.user.id}`;
+          try {
+            await emailService.sendVerificationEmail(email, verificationUrl);
+          } catch (emailError) {
+            console.warn('Email service not configured, but signup successful');
+          }
+        }
       }
     } catch (error: any) {
-      throw new Error(error.message || 'Failed to create account');
+      console.error('Signup error:', error);
+      throw new Error(error.message || 'Failed to create account. Please try again.');
     } finally {
       setLoading(false);
     }
