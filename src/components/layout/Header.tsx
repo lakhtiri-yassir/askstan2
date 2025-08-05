@@ -4,12 +4,8 @@ import { motion } from 'framer-motion';
 import { LogOut, Settings, User } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../ui/Button';
-import { usePerformanceMonitor } from '../../hooks/usePerformanceMonitor';
-import { usePerformanceMonitor } from '../../hooks/usePerformanceMonitor';
 
 export const Header: React.FC = () => {
-  usePerformanceMonitor('Header');
-  usePerformanceMonitor('Header');
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
 
@@ -48,34 +44,6 @@ export const Header: React.FC = () => {
                     Dashboard
                   </motion.div>
                 </Link>
-                
-                <Link to="/settings">
-                  <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    className="p-2 text-gray-600 hover:text-blue-500 transition-colors hidden sm:block"
-                  >
-                    <Settings size={20} />
-                  </motion.div>
-                </Link>
-                
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleSignOut}
-                  className="flex items-center space-x-2 text-xs sm:text-sm"
-                >
-                  <LogOut size={16} />
-                  <span className="hidden sm:inline">Sign Out</span>
-                </Button>
-                  <Link to="/dashboard">
-                    <motion.div
-                      whileHover={{ scale: 1.05 }}
-                      className="px-3 py-1 bg-gradient-to-r from-blue-500 to-yellow-500 text-white text-xs font-semibold rounded-full"
-                    >
-                      Dashboard
-                    </motion.div>
-                  </Link>
-                )}
                 
                 <Link to="/settings">
                   <motion.div

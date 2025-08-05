@@ -7,10 +7,6 @@
     "node": ">=20.10.0",
     "npm": ">=10.2.0"
   },
-  "engines": {
-    "node": ">=20.0.0",
-    "npm": ">=10.0.0"
-  },
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
