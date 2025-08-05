@@ -124,8 +124,8 @@ export const LandingPage: React.FC = () => {
                     </div>
                   </div>
                   <div className="absolute -top-4 -right-4 bg-navy-blue p-4 rounded-xl text-white">
-                <div className="absolute -top-4 -right-4 bg-royal-blue p-4 rounded-xl text-white">
-                  <Bot className="w-8 h-8" />
+                    <Bot className="w-8 h-8" />
+                  </div>
                 </div>
               </div>
             </motion.div>
