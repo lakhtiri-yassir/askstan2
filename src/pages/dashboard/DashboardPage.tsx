@@ -15,11 +15,10 @@ export const DashboardPage: React.FC = () => {
 
   const handleChatbotError = (error: Error) => {
     console.error('Dashboard chatbot error:', error);
-    // You can show an error toast or notification here
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50">
+    <div className="min-h-screen bg-gray-50">
       <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Welcome Section */}
         <motion.div
@@ -28,11 +27,11 @@ export const DashboardPage: React.FC = () => {
           transition={{ duration: 0.8 }}
           className="mb-8"
         >
-          <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl p-6 border border-white/20">
+          <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                  Welcome back, <span className="bg-gradient-to-r from-blue-500 to-yellow-500 bg-clip-text text-transparent">{profile?.display_name || user?.email?.split('@')[0] || 'User'}</span>!
+                  Welcome back, <span className="text-powder-blue">{profile?.display_name || user?.email?.split('@')[0] || 'User'}</span>!
                 </h1>
                 <p className="text-gray-600">
                   Your AI social media coach is ready to help you grow your online presence.
@@ -61,27 +60,27 @@ export const DashboardPage: React.FC = () => {
           transition={{ duration: 0.8, delay: 0.1 }}
           className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"
         >
-          <div className="bg-white/80 backdrop-blur-md rounded-xl shadow-lg p-6 border border-white/20">
+          <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Active Conversations</p>
                 <p className="text-2xl font-bold text-gray-900">Coming Soon</p>
               </div>
-              <MessageSquare className="w-8 h-8 text-blue-500" />
+              <MessageSquare className="w-8 h-8 text-powder-blue" />
             </div>
           </div>
           
-          <div className="bg-white/80 backdrop-blur-md rounded-xl shadow-lg p-6 border border-white/20">
+          <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Growth Tips Given</p>
                 <p className="text-2xl font-bold text-gray-900">Coming Soon</p>
               </div>
-              <Sparkles className="w-8 h-8 text-yellow-500" />
+              <Sparkles className="w-8 h-8 text-powder-blue" />
             </div>
           </div>
           
-          <div className="bg-white/80 backdrop-blur-md rounded-xl shadow-lg p-6 border border-white/20">
+          <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Account Status</p>
@@ -108,9 +107,9 @@ export const DashboardPage: React.FC = () => {
                 <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
                   <MessageSquare className="w-6 h-6 text-navy-blue" />
                 </div>
-                    Welcome back, <span className="text-powder-blue">{profile?.display_name || user?.email?.split('@')[0] || 'User'}</span>!
-                  <h3 className="font-semibold text-lg">Stan - AI Growth Coach</h3>
-                  <p className="text-sm opacity-90">
+                <div>
+                  <h3 className="font-semibold text-lg text-white">Stan - AI Growth Coach</h3>
+                  <p className="text-sm text-white opacity-90">
                     {chatbotLoaded ? 'Ready to help you grow' : 'Loading your personal coach...'}
                   </p>
                 </div>
@@ -141,11 +140,11 @@ export const DashboardPage: React.FC = () => {
           transition={{ duration: 0.8, delay: 0.3 }}
           className="mt-8 bg-blue-50 border border-blue-200 rounded-xl p-6"
         >
-          <h4 className="font-semibold text-blue-900 mb-3">Getting Started with Your AI Coach</h4>
-          <div className="grid md:grid-cols-2 gap-4 text-sm text-blue-800">
+          <h4 className="font-semibold text-navy-blue mb-3">Getting Started with Your AI Coach</h4>
+          <div className="grid md:grid-cols-2 gap-4 text-sm text-navy-blue">
             <div>
               <h5 className="font-medium mb-2">What Stan can help you with:</h5>
-              <ul className="space-y-1 text-blue-700">
+              <ul className="space-y-1 text-gray-700">
                 <li>• Content strategy and optimization</li>
                 <li>• Hashtag research and trends</li>
                 <li>• Posting schedules and timing</li>
@@ -154,7 +153,7 @@ export const DashboardPage: React.FC = () => {
             </div>
             <div>
               <h5 className="font-medium mb-2">Tips for best results:</h5>
-              <ul className="space-y-1 text-blue-700">
+              <ul className="space-y-1 text-gray-700">
                 <li>• Be specific about your goals</li>
                 <li>• Mention your platform (Instagram, TikTok, etc.)</li>
                 <li>• Share your current follower count</li>
