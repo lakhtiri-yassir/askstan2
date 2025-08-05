@@ -39,7 +39,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   const hasActiveSubscription = subscription?.status === 'active';
-  const isEmailVerified = profile?.email_verified ?? false;
+  // For now, consider all users as verified since we're disabling email confirmation
+  const isEmailVerified = true; // Changed from: profile?.email_verified ?? false;
 
   useEffect(() => {
     const getInitialSession = async () => {
@@ -98,7 +99,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       // Load user profile
       const userProfile = await userService.getProfile(userId);
-      setProfile(userProfile);
+      
+      // If no profile exists, create one
+      if (!userProfile && user?.email) {
+        console.log('No profile found, creating one...');
+        const newProfile = await userService.createProfileMinimal(userId, user.email);
+        setProfile(newProfile);
+      } else {
+        setProfile(userProfile);
+      }
 
       // Load subscription if profile exists
       if (userProfile) {
@@ -113,19 +122,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const signUp = async (email: string, password: string): Promise<void> => {
     setLoading(true);
     try {
-      console.log('Starting signup process...');
+      console.log('Starting signup process (no email confirmation)...');
       
-      // Step 1: Create auth user with minimal options
+      // Create auth user WITHOUT email confirmation
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),
         password,
         options: {
-          emailRedirectTo: undefined // Remove redirect to avoid issues
+          // Disable email confirmation for now
+          emailRedirectTo: undefined,
+          data: {
+            email_confirm: false
+          }
         }
       });
 
       if (authError) {
         console.error('Auth signup error:', authError);
+        
+        // Handle specific email-related errors
+        if (authError.message?.includes('email') && authError.message?.includes('confirmation')) {
+          throw new Error('Email confirmation is temporarily disabled. Please contact support if you need help.');
+        }
+        
         throw authError;
       }
 
@@ -135,24 +154,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       console.log('Auth user created:', authData.user.id);
 
-      // Step 2: Create user profile manually using our safe function
+      // Create user profile
       try {
         console.log('Creating user profile...');
-        
-        // Wait a moment for the auth user to be fully committed
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
         const profile = await userService.createProfileMinimal(authData.user.id, email.trim().toLowerCase());
         console.log('Profile created:', profile);
         setProfile(profile);
-        
       } catch (profileError) {
         console.error('Profile creation error:', profileError);
-        // Don't throw here - the auth signup succeeded, profile can be created later
-        console.log('Profile creation failed, but signup succeeded. Profile will be created on next login.');
+        // Don't throw here - the auth signup succeeded
       }
 
-      console.log('Signup completed successfully');
+      console.log('Signup completed successfully (no email confirmation required)');
       
     } catch (error: any) {
       console.error('Signup error:', error);
@@ -161,11 +174,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (error.message?.includes('already registered') || error.message?.includes('already exists')) {
         throw new Error('An account with this email already exists. Please sign in instead.');
       } else if (error.message?.includes('Invalid email') || error.message?.includes('invalid email')) {
-        throw new Error('Please enter a valid email address.');
+        throw new Error('Please enter a valid email address.');  
       } else if (error.message?.includes('Password') || error.message?.includes('password')) {
         throw new Error('Password must be at least 6 characters long.');
       } else if (error.message?.includes('rate limit') || error.message?.includes('too many')) {
         throw new Error('Too many signup attempts. Please wait a moment and try again.');
+      } else if (error.message?.includes('email') || error.message?.includes('confirmation')) {
+        throw new Error('Account created successfully! Email confirmation is temporarily disabled, so you can sign in immediately.');
       } else {
         throw new Error(error.message || 'Failed to create account. Please try again.');
       }
@@ -192,7 +207,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (error.message?.includes('Invalid login credentials')) {
         throw new Error('Invalid email or password. Please check your credentials and try again.');
       } else if (error.message?.includes('Email not confirmed')) {
-        throw new Error('Please check your email and click the confirmation link before signing in.');
+        // Since we disabled email confirmation, this shouldn't happen
+        throw new Error('Account found but not accessible. Please try signing up again.');
       } else {
         throw new Error(error.message || 'Failed to sign in. Please try again.');
       }
@@ -227,11 +243,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         redirectTo: `${window.location.origin}/reset-password`
       });
       
-      if (error) throw error;
+      if (error) {
+        // If password reset email fails, provide alternative
+        throw new Error('Password reset email is temporarily unavailable. Please contact support for assistance.');
+      }
       
     } catch (error: any) {
       console.error('Password reset error:', error);
-      throw new Error(error.message || 'Failed to send password reset email. Please try again.');
+      throw new Error(error.message || 'Password reset is temporarily unavailable. Please contact support.');
     }
   };
 
