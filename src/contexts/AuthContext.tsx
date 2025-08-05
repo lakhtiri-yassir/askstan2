@@ -199,20 +199,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const signOut = async (): Promise<void> => {
-    setLoading(true);
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       
-      // Force page reload to clear all state
+      // Clear all state immediately
+      setUser(null);
+      setProfile(null);
+      setSubscription(null);
+      setSubscriptionStatus(null);
+      setSession(null);
+      
+      // Navigate to home page
       window.location.href = '/';
       
     } catch (error: any) {
       console.error('Sign out error:', error);
-      // Force reload even if signOut fails
+      // Clear state and redirect even if signOut fails
+      setUser(null);
+      setProfile(null);
+      setSubscription(null);
+      setSubscriptionStatus(null);
+      setSession(null);
       window.location.href = '/';
-    } finally {
-      setLoading(false);
     }
   };
 

@@ -56,7 +56,7 @@ export const subscriptionService = {
   userId: string, 
   planType: 'monthly' | 'yearly',
   couponCode?: string
-): Promise<{ sessionId: string; paymentRequired: boolean; couponApplied: boolean }> {
+): Promise<{ sessionId?: string; paymentRequired: boolean; couponApplied: boolean; redirectUrl?: string }> {
   try {
     console.log('Creating checkout with coupon:', { userId, planType, couponCode });
     
@@ -75,14 +75,24 @@ export const subscriptionService = {
       throw new Error(error.message || 'Failed to create checkout session');
     }
 
+    // Handle 100% off coupon case (no payment required)
+    if (data?.paymentRequired === false) {
+      return {
+        paymentRequired: false,
+        couponApplied: true,
+        redirectUrl: data.redirectUrl
+      };
+    }
+
     if (!data?.sessionId) {
       throw new Error('No session ID returned from checkout creation');
     }
 
     return {
       sessionId: data.sessionId,
-      paymentRequired: data.paymentRequired !== false, // Default to true if not specified
-      couponApplied: data.couponApplied || false
+      paymentRequired: data.paymentRequired !== false,
+      couponApplied: data.couponApplied || false,
+      redirectUrl: data.redirectUrl
     };
   } catch (error) {
     console.error('Stripe checkout error:', error);

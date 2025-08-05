@@ -77,7 +77,17 @@ const validateCoupon = async (code: string) => {
     // If payment is not required (100% off coupon), we might handle it differently
     if (!result.paymentRequired) {
       console.log('No payment required - free subscription activated');
-      // You might want to show a success message or redirect differently
+        
+        // Refresh subscription status
+        await refreshSubscription();
+        
+        // Redirect to dashboard with success message
+        if (result.redirectUrl) {
+          window.location.href = result.redirectUrl;
+        } else {
+          navigate('/dashboard?coupon_success=true');
+        }
+        return;
     }
     
     // Redirect to Stripe checkout
@@ -161,7 +171,7 @@ const validateCoupon = async (code: string) => {
         />
       </div>
       
-      {couponValidation && (
+      // Redirect to Stripe checkout for paid plans
         <div className={`mt-2 text-sm ${couponValidation.valid ? 'text-green-600' : 'text-red-600'}`}>
           {couponValidation.valid 
             ? `✅ Coupon valid! ${couponValidation.discount} discount applied`

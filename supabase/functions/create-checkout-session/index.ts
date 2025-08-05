@@ -146,17 +146,58 @@ serve(async (req) => {
     // If 100% off coupon, configure for no payment collection
     if (is100PercentOff) {
       console.log('🆓 Configuring free checkout (no payment required)');
-      sessionConfig.payment_method_types = []; // No payment methods needed
-      sessionConfig.invoice_creation = {
-        enabled: true,
-        invoice_data: {
-          description: `AskStan ${planType === 'monthly' ? 'Monthly' : 'Yearly'} Plan - Free with coupon ${couponCode}`,
-          metadata: {
-            coupon_applied: couponCode,
-            original_amount: planType === 'monthly' ? '4.99' : '49.99'
-          }
+      
+      // For 100% off coupons, we need to create a subscription directly
+      // instead of going through checkout
+      const subscription = await stripe.subscriptions.create({
+        customer: customer.id,
+        items: [{
+          price: priceId,
+        }],
+        coupon: validCoupon.id,
+        metadata: {
+          user_id: userId,
+          plan_type: planType,
+          coupon_applied: couponCode
         }
-      };
+      });
+      
+      // Create subscription record in database
+      const { error: dbError } = await supabase
+        .from('subscriptions')
+        .upsert({
+          user_id: userId,
+          stripe_customer_id: customer.id,
+          stripe_subscription_id: subscription.id,
+          plan_type: planType,
+          status: 'active',
+          current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+          current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+          cancel_at_period_end: false,
+        });
+        
+      if (dbError) {
+        console.error('Database error:', dbError);
+        throw new Error('Failed to create subscription record');
+      }
+      
+      // Return success without checkout session
+      return new Response(
+        JSON.stringify({ 
+          success: true,
+          paymentRequired: false,
+          couponApplied: true,
+          subscriptionId: subscription.id,
+          redirectUrl: `${appUrl}/dashboard?coupon_success=true&plan=${planType}`
+        }), 
+        {
+          headers: { 
+            ...corsHeaders, 
+            'Content-Type': 'application/json' 
+          },
+          status: 200
+        }
+      );
     } else {
       // Normal payment collection
       sessionConfig.payment_method_types = ['card'];

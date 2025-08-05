@@ -12,13 +12,11 @@ export const Header: React.FC = () => {
   const handleSignOut = React.useCallback(async () => {
     try {
       await signOut();
-      // signOut now handles navigation automatically
+      // signOut handles navigation and state clearing
     } catch (error) {
       console.error('Sign out error:', error);
-      // Fallback navigation if signOut fails
-      window.location.href = '/';
     }
-  }, [signOut, navigate]);
+  }, [signOut]);
 
   return (
     <header className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50">

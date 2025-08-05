@@ -27,6 +27,24 @@ export const DashboardPage: React.FC = () => {
           transition={{ duration: 0.8 }}
           className="mb-8"
         >
+          {/* Coupon Success Message */}
+          {showCouponSuccess && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6"
+            >
+              <div className="flex items-center space-x-3">
+                <Gift className="w-6 h-6 text-green-600" />
+                <div>
+                  <h3 className="font-semibold text-green-800">Coupon Applied Successfully!</h3>
+                  <p className="text-green-700">Your subscription has been activated with 100% discount. Welcome to AskStan!</p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+          
           <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
