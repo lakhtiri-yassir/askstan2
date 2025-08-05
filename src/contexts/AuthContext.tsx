@@ -202,13 +202,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       console.log('🚪 Starting sign out process...');
       
-      // Clear all state immediately BEFORE calling Supabase signOut
+      // Clear all state immediately
       setUser(null);
       setProfile(null);
       setSubscription(null);
       setSubscriptionStatus(null);
       setSession(null);
-      setLoading(false);
       
       console.log('🧹 State cleared, calling Supabase signOut...');
       
@@ -217,22 +216,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       console.log('✅ Supabase signOut successful');
       
-      // Navigate to home page
-      window.location.href = '/';
+      // Force reload to ensure clean state
+      window.location.replace('/');
       
     } catch (error: any) {
       console.error('Sign out error:', error);
       
-      // Force clear everything even if Supabase signOut fails
+      // Force clear state even if Supabase signOut fails
       setUser(null);
       setProfile(null);
       setSubscription(null);
       setSubscriptionStatus(null);
       setSession(null);
-      setLoading(false);
       
       // Force redirect
-      window.location.href = '/';
+      window.location.replace('/');
     }
   };
 
