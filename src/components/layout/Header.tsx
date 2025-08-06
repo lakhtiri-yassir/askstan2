@@ -1,13 +1,14 @@
+// src/components/layout/Header.tsx - FIXED VERSION
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { LogOut, Settings, User } from "lucide-react";
+import { LogOut, Settings } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { Button } from "../ui/Button";
 import askstanLogo from "../../img/askstanlogo.png";
 
 export const Header: React.FC = () => {
-  const { user, profile, signOut } = useAuth();
+  const { user, profile, signOut, loading, isAuthenticating } = useAuth();
   const navigate = useNavigate();
 
   const handleSignOut = React.useCallback(async () => {
@@ -18,6 +19,16 @@ export const Header: React.FC = () => {
       console.error("Sign out error:", error);
     }
   }, [signOut]);
+
+  // NEW: Handle dashboard navigation properly
+  const handleDashboardClick = React.useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    
+    // Only navigate if user is authenticated and not currently authenticating
+    if (user && !loading && !isAuthenticating) {
+      navigate('/dashboard');
+    }
+  }, [user, loading, isAuthenticating, navigate]);
 
   return (
     <header className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50">
@@ -35,21 +46,26 @@ export const Header: React.FC = () => {
 
           {/* Navigation */}
           <nav className="flex items-center space-x-4">
-            {user ? (
+            {/* NEW: Show loading state during authentication */}
+            {loading || isAuthenticating ? (
+              <div className="flex items-center space-x-4">
+                <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                <span className="text-sm text-gray-600">Loading...</span>
+              </div>
+            ) : user ? (
               <div className="flex items-center space-x-4">
                 <span className="text-sm text-gray-600 hidden sm:inline">
                   Welcome,{" "}
                   {profile?.display_name || user.email?.split("@")[0] || "User"}
                 </span>
 
-                <Link to="/dashboard">
-                  <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    className="px-3 py-1 bg-royal-blue text-white text-xs font-semibold rounded-full"
-                  >
-                    Dashboard
-                  </motion.div>
-                </Link>
+                {/* FIXED: Use proper navigation handler */}
+                <button 
+                  onClick={handleDashboardClick}
+                  className="px-3 py-1 bg-royal-blue text-white text-xs font-semibold rounded-full hover:bg-blue-700 transition-colors"
+                >
+                  Dashboard
+                </button>
 
                 <Link to="/settings">
                   <motion.div

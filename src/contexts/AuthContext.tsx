@@ -1,3 +1,4 @@
+// src/contexts/AuthContext.tsx - FIXED VERSION
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase, userService } from '../lib/supabase';
@@ -11,6 +12,7 @@ interface AuthContextType {
   subscriptionStatus: SubscriptionCheckResult | null;
   session: Session | null;
   loading: boolean;
+  isAuthenticating: boolean; // NEW: Track authentication in progress
   signUp: (email: string, password: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -20,6 +22,7 @@ interface AuthContextType {
   hasActiveSubscription: boolean;
   isEmailVerified: boolean;
 }
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuth = () => {
@@ -41,32 +44,37 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionCheckResult | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAuthenticating, setIsAuthenticating] = useState(false); // NEW: Track auth operations
 
   const hasActiveSubscription = subscriptionStatus?.hasActiveSubscription ?? false;
   const isEmailVerified = true; // Skip email verification completely
 
   useEffect(() => {
+    let mounted = true; // Prevent state updates if component unmounted
+
     const getInitialSession = async () => {
       try {
         const { data: { session: initialSession }, error } = await supabase.auth.getSession();
         
         if (error) {
           console.error('Error getting session:', error);
-          setLoading(false);
+          if (mounted) setLoading(false);
           return;
         }
 
-        setSession(initialSession);
-        setUser(initialSession?.user ?? null);
+        if (mounted) {
+          setSession(initialSession);
+          setUser(initialSession?.user ?? null);
+        }
         
-        if (initialSession?.user) {
+        if (initialSession?.user && mounted) {
           await loadUserData(initialSession.user);
         }
         
-        setLoading(false);
+        if (mounted) setLoading(false);
       } catch (error) {
         console.error('Session initialization error:', error);
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     };
 
@@ -77,27 +85,34 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       async (event, session) => {
         console.log('Auth event:', event, session?.user?.id);
         
-        setSession(session);
-        setUser(session?.user ?? null);
+        if (!mounted) return; // Don't update if component unmounted
         
-        if (session?.user) {
-          await loadUserData(session.user);
-        } else {
-          setProfile(null);
-          setSubscription(null);
-          setSubscriptionStatus(null);
+        // Only update state if not currently authenticating
+        // This prevents premature state updates during sign-in process
+        if (!isAuthenticating || event === 'SIGNED_OUT') {
+          setSession(session);
+          setUser(session?.user ?? null);
+          
+          if (session?.user) {
+            await loadUserData(session.user);
+          } else {
+            setProfile(null);
+            setSubscription(null);
+            setSubscriptionStatus(null);
+          }
+          
+          setLoading(false);
         }
-        
-        setLoading(false);
       }
     );
 
     return () => {
+      mounted = false;
       if (authSubscription && typeof authSubscription.unsubscribe === 'function') {
         authSubscription.unsubscribe();
       }
     };
-  }, []);
+  }, [isAuthenticating]); // Add isAuthenticating as dependency
 
   const loadUserData = async (user: User) => {
     try {
@@ -128,6 +143,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const signUp = async (email: string, password: string): Promise<void> => {
+    setIsAuthenticating(true); // NEW: Set authenticating flag
     setLoading(true);
     try {
       console.log('Starting signup process without email confirmation');
@@ -171,11 +187,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.error('Signup error:', error);
       throw new Error(error.message || 'Failed to create account. Please try again.');
     } finally {
+      setIsAuthenticating(false); // NEW: Clear authenticating flag
       setLoading(false);
     }
   };
 
   const signIn = async (email: string, password: string): Promise<void> => {
+    setIsAuthenticating(true); // NEW: Prevent premature state updates
     setLoading(true);
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -184,6 +202,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       });
 
       if (error) throw error;
+      
+      // Wait for authentication state change to complete
+      if (data.session) {
+        console.log('Sign in successful, waiting for state update...');
+        // Allow onAuthStateChange to handle the state update
+        await new Promise(resolve => setTimeout(resolve, 500)); // Brief delay for state consistency
+      }
       
     } catch (error: any) {
       console.error('Sign in error:', error);
@@ -194,6 +219,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         throw new Error(error.message || 'Failed to sign in. Please try again.');
       }
     } finally {
+      setIsAuthenticating(false); // NEW: Allow normal state updates
       setLoading(false);
     }
   };
@@ -202,22 +228,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       console.log('🚪 Starting sign out process...');
       
-      // Clear all state immediately
-      setUser(null);
-      setProfile(null);
-      setSubscription(null);
-      setSubscriptionStatus(null);
-      setSession(null);
+      // Set loading state but don't clear user data yet
+      setLoading(true);
       
-      console.log('🧹 State cleared, calling Supabase signOut...');
+      console.log('🧹 Calling Supabase signOut...');
       
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       
       console.log('✅ Supabase signOut successful');
       
-      // Force reload to ensure clean state
-      window.location.replace('/');
+      // Clear all state after successful signOut
+      setUser(null);
+      setProfile(null);
+      setSubscription(null);
+      setSubscriptionStatus(null);
+      setSession(null);
+      setLoading(false);
+      
+      // Force navigation to home without reload
+      window.location.href = '/';
       
     } catch (error: any) {
       console.error('Sign out error:', error);
@@ -228,9 +258,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setSubscription(null);
       setSubscriptionStatus(null);
       setSession(null);
+      setLoading(false);
       
       // Force redirect
-      window.location.replace('/');
+      window.location.href = '/';
     }
   };
 
@@ -274,16 +305,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const confirmEmail = async (token: string): Promise<void> => {
-    try {
-      // Since we're skipping email confirmation, this is a no-op
-      console.log('Email confirmation skipped');
-    } catch (error: any) {
-      console.error('Email confirmation error:', error);
-      throw new Error(error.message || 'Failed to confirm email. Please try again.');
-    }
-  };
-
   const value: AuthContextType = {
     user,
     profile,
@@ -291,6 +312,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     subscriptionStatus,
     session,
     loading,
+    isAuthenticating, // NEW: Expose authenticating state
     signUp,
     signIn,
     signOut,

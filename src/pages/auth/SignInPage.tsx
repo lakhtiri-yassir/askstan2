@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+// src/pages/auth/SignInPage.tsx - FIXED VERSION
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Lock, LogIn } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { subscriptionService } from '../../lib/subscriptionService';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 
@@ -13,12 +13,21 @@ export const SignInPage: React.FC = () => {
     password: ''
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   
-  const { signIn } = useAuth();
+  const { signIn, user, loading, isAuthenticating } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // NEW: Handle navigation after successful authentication
+  useEffect(() => {
+    // Only navigate if user is authenticated, not loading, and not authenticating
+    if (user && !loading && !isAuthenticating) {
+      const from = location.state?.from?.pathname || '/dashboard';
+      console.log('Authentication complete, navigating to:', from);
+      navigate(from, { replace: true });
+    }
+  }, [user, loading, isAuthenticating, navigate, location.state?.from?.pathname]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -46,9 +55,10 @@ export const SignInPage: React.FC = () => {
     try {
       await signIn(formData.email, formData.password);
       
-      // AuthContext will handle redirect based on subscription status
-      const from = location.state?.from?.pathname || '/dashboard';
-      navigate(from, { replace: true });
+      // Navigation is now handled by useEffect above
+      // Don't navigate here to prevent race conditions
+      console.log('Sign in successful, waiting for navigation...');
+      
     } catch (error) {
       setErrors({ submit: 'Invalid email or password' });
     } finally {
@@ -94,74 +104,68 @@ export const SignInPage: React.FC = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            <Input
-              name="email"
-              type="email"
-              label="Email Address"
-              placeholder="Enter your email"
-              value={formData.email}
-              onChange={handleChange}
-              error={errors.email}
-              icon={<Mail size={20} />}
-              required
-            />
+            <div>
+              <Input
+                label="Email Address"
+                type="email"
+                name="email"
+                autoComplete="email"
+                value={formData.email}
+                onChange={handleChange}
+                error={errors.email}
+                icon={<Mail size={20} />}
+                placeholder="Enter your email"
+                required
+              />
+            </div>
 
-            <Input
-              name="password"
-              type="password"
-              label="Password"
-              placeholder="Enter your password"
-              value={formData.password}
-              onChange={handleChange}
-              error={errors.password}
-              icon={<Lock size={20} />}
-              required
-            />
-
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <input
-                  id="remember-me"
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
-                />
-                <label htmlFor="remember-me" className="ml-2 text-sm text-gray-600">
-                  Remember me
-                </label>
-              </div>
-              <Link
-                to="/forgot-password"
-                className="text-sm font-semibold text-blue-600 hover:text-blue-500 transition-colors"
-              >
-                Forgot password?
-              </Link>
+            <div>
+              <Input
+                label="Password"
+                type="password"
+                name="password"
+                autoComplete="current-password"
+                value={formData.password}
+                onChange={handleChange}
+                error={errors.password}
+                icon={<Lock size={20} />}
+                placeholder="Enter your password"
+                required
+              />
             </div>
 
             {errors.submit && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                <p className="text-sm text-red-600">{errors.submit}</p>
+                <p className="text-red-700 text-sm">{errors.submit}</p>
               </div>
             )}
 
             <Button
               type="submit"
               size="lg"
-              isLoading={isLoading}
               className="w-full"
+              isLoading={isLoading || loading || isAuthenticating}
+              loadingText="Signing in..."
             >
               Sign In
-              <LogIn className="ml-2 w-5 h-5" />
             </Button>
+
+            <div className="flex items-center justify-between text-sm">
+              <Link
+                to="/forgot-password"
+                className="text-royal-blue hover:text-powder-blue transition-colors"
+              >
+                Forgot password?
+              </Link>
+            </div>
           </form>
 
-          <div className="mt-6 text-center">
+          <div className="mt-8 text-center">
             <p className="text-gray-600">
-              Don't have an account?{' '}
+              Don't have an account?{" "}
               <Link
                 to="/signup"
-                className="font-semibold text-blue-600 hover:text-blue-500 transition-colors"
+                className="font-semibold text-royal-blue hover:text-powder-blue transition-colors"
               >
                 Sign up here
               </Link>
