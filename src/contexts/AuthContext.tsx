@@ -177,12 +177,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const signIn = async (email: string, password: string): Promise<void> => {
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
         password
       });
 
       if (error) throw error;
+      
+      // Success case - user and session will be set by onAuthStateChange
+      console.log('Sign in successful:', data.user?.id);
       
     } catch (error: any) {
       console.error('Sign in error:', error);
