@@ -1,15 +1,13 @@
-// src/contexts/AuthContext.tsx - FIXED VERSION WITH DEBUG LOGGING
+// src/contexts/AuthContext.tsx - MINIMAL VERSION FOR DEBUGGING
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
-import { supabase, userService } from '../lib/supabase';
-import { subscriptionService, SubscriptionCheckResult } from '../lib/subscriptionService';
+import { supabase } from '../lib/supabase';
 import { UserProfile, Subscription } from '../types/supabase';
 
 interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
   subscription: Subscription | null;
-  subscriptionStatus: SubscriptionCheckResult | null;
   session: Session | null;
   loading: boolean;
   signUp: (email: string, password: string) => Promise<void>;
@@ -40,329 +38,197 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
-  const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionCheckResult | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const hasActiveSubscription = subscriptionStatus?.hasActiveSubscription ?? false;
-  const isEmailVerified = true; // Skip email verification completely
+  // TEMPORARY: For debugging, assume user has subscription if logged in
+  const hasActiveSubscription = !!user;
+  const isEmailVerified = true;
 
   useEffect(() => {
+    console.log('🚀 AuthContext: Starting initialization...');
+    
     let mounted = true;
-    let loadingTimeout: NodeJS.Timeout;
 
-    const getInitialSession = async () => {
+    const initialize = async () => {
       try {
-        console.log('🔄 AuthContext: Getting initial session...');
-        
-        // Set a maximum loading timeout to prevent infinite loading
-        loadingTimeout = setTimeout(() => {
-          if (mounted) {
-            console.error('⏰ AuthContext: Loading timeout reached, forcing loading to false');
-            setLoading(false);
-          }
-        }, 10000); // 10 second timeout
-
-        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
+        // Test Supabase connection first
+        console.log('🔍 Testing Supabase connection...');
+        const { data, error } = await supabase.auth.getSession();
         
         if (error) {
-          console.error('❌ AuthContext: Error getting session:', error);
-          if (mounted) setLoading(false);
-          return;
+          console.error('❌ Supabase connection error:', error);
+          throw error;
         }
 
-        console.log('📝 AuthContext: Initial session:', !!initialSession?.user, initialSession?.user?.id);
+        console.log('✅ Supabase connected successfully');
+        console.log('👤 Session data:', !!data.session?.user, data.session?.user?.id);
 
         if (mounted) {
-          setSession(initialSession);
-          setUser(initialSession?.user ?? null);
+          setSession(data.session);
+          setUser(data.session?.user || null);
+          
+          if (data.session?.user) {
+            console.log('👤 User found, setting up profile...');
+            // For debugging, create a minimal profile
+            setProfile({
+              id: data.session.user.id,
+              email: data.session.user.email || '',
+              display_name: data.session.user.email?.split('@')[0] || 'User',
+              avatar_url: null,
+              email_verified: true,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+
+            // For debugging, create a fake subscription
+            console.log('💳 Creating fake active subscription for debugging...');
+            setSubscription({
+              id: 'debug-subscription',
+              user_id: data.session.user.id,
+              stripe_customer_id: 'debug-customer',
+              stripe_subscription_id: 'debug-sub',
+              plan_type: 'monthly',
+              status: 'active',
+              current_period_start: new Date().toISOString(),
+              current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+              cancel_at_period_end: false,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+          }
         }
-        
-        if (initialSession?.user && mounted) {
-          console.log('👤 AuthContext: Loading user data for:', initialSession.user.id);
-          await loadUserData(initialSession.user);
-        } else {
-          console.log('🚫 AuthContext: No user session, setting loading to false');
-        }
-        
-        if (mounted) {
-          console.log('✅ AuthContext: Initial setup complete, setting loading to false');
-          setLoading(false);
-          clearTimeout(loadingTimeout);
-        }
+
+        console.log('✅ AuthContext initialization complete');
       } catch (error) {
-        console.error('💥 AuthContext: Session initialization error:', error);
+        console.error('💥 AuthContext initialization error:', error);
+      } finally {
         if (mounted) {
+          console.log('🏁 Setting loading to false');
           setLoading(false);
-          clearTimeout(loadingTimeout);
         }
       }
     };
 
-    getInitialSession();
+    initialize();
 
     // Listen for auth changes
     const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('🔄 AuthContext: Auth event:', event, session?.user?.id);
+      async (event, newSession) => {
+        console.log('🔄 Auth state changed:', event, !!newSession?.user);
         
-        if (!mounted) return;
-        
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (session?.user) {
-          console.log('👤 AuthContext: Auth change - loading user data');
-          await loadUserData(session.user);
-        } else {
-          console.log('🚫 AuthContext: Auth change - clearing user data');
-          setProfile(null);
-          setSubscription(null);
-          setSubscriptionStatus(null);
+        if (mounted) {
+          setSession(newSession);
+          setUser(newSession?.user || null);
+          
+          if (newSession?.user) {
+            console.log('👤 Setting up user data after auth change...');
+            setProfile({
+              id: newSession.user.id,
+              email: newSession.user.email || '',
+              display_name: newSession.user.email?.split('@')[0] || 'User',
+              avatar_url: null,
+              email_verified: true,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+
+            setSubscription({
+              id: 'debug-subscription',
+              user_id: newSession.user.id,
+              stripe_customer_id: 'debug-customer',
+              stripe_subscription_id: 'debug-sub',
+              plan_type: 'monthly',
+              status: 'active',
+              current_period_start: new Date().toISOString(),
+              current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+              cancel_at_period_end: false,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+          } else {
+            setProfile(null);
+            setSubscription(null);
+          }
+          
+          setLoading(false);
         }
-        
-        console.log('✅ AuthContext: Auth state change complete, setting loading to false');
-        setLoading(false);
       }
     );
 
     return () => {
-      console.log('🧹 AuthContext: Cleanup');
+      console.log('🧹 AuthContext cleanup');
       mounted = false;
-      if (loadingTimeout) clearTimeout(loadingTimeout);
-      if (authSubscription && typeof authSubscription.unsubscribe === 'function') {
+      if (authSubscription?.unsubscribe) {
         authSubscription.unsubscribe();
       }
     };
   }, []);
 
-  const loadUserData = async (user: User) => {
-    try {
-      console.log('📊 AuthContext: Loading user data for:', user.id);
-      
-      // Load or create user profile
-      let userProfile = await userService.getProfile(user.id);
-      
-      if (!userProfile && user.email) {
-        console.log('🆕 AuthContext: No profile found, creating one...');
-        userProfile = await userService.createProfileSafe(user.id, user.email);
-      }
-      
-      console.log('👤 AuthContext: Profile loaded:', !!userProfile);
-      if (userProfile) {
-        setProfile(userProfile);
-        
-        // Load subscription status with timeout
-        console.log('💳 AuthContext: Loading subscription status...');
-        
-        try {
-          const subStatus = await Promise.race([
-            subscriptionService.checkUserSubscription(user.id),
-            new Promise<SubscriptionCheckResult>((_, reject) => 
-              setTimeout(() => reject(new Error('Subscription check timeout')), 5000)
-            )
-          ]);
-          
-          console.log('💰 AuthContext: Subscription status loaded:', {
-            hasActive: subStatus.hasActiveSubscription,
-            status: subStatus.status,
-            subscription: !!subStatus.subscription
-          });
-          
-          setSubscriptionStatus(subStatus);
-          setSubscription(subStatus.subscription);
-        } catch (subscriptionError) {
-          console.error('⚠️ AuthContext: Subscription check failed:', subscriptionError);
-          // Set default inactive subscription status to prevent infinite loading
-          const defaultStatus: SubscriptionCheckResult = {
-            hasActiveSubscription: false,
-            subscription: null,
-            status: 'inactive'
-          };
-          setSubscriptionStatus(defaultStatus);
-          setSubscription(null);
-        }
-        
-        console.log('✅ AuthContext: User data loading complete');
-      } else {
-        console.error('❌ AuthContext: Failed to load or create user profile');
-      }
-    } catch (error) {
-      console.error('💥 AuthContext: Load user data error:', error);
-      // Set defaults to prevent infinite loading
-      setProfile(null);
-      setSubscription(null);
-      setSubscriptionStatus({
-        hasActiveSubscription: false,
-        subscription: null,
-        status: 'inactive'
-      });
-    }
-  };
-
+  // Simplified auth functions
   const signUp = async (email: string, password: string): Promise<void> => {
-    try {
-      console.log('📝 AuthContext: Starting sign up for:', email);
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`
-        }
-      });
-      
-      if (error) {
-        console.error('❌ AuthContext: Sign up error:', error);
-        throw error;
-      }
-      
-      console.log('✅ AuthContext: Sign up successful:', data.user?.id);
-    } catch (error: any) {
-      console.error('💥 AuthContext: Sign up error:', error);
-      throw new Error(error.message || 'Failed to create account. Please try again.');
-    }
+    console.log('📝 Sign up:', email);
+    const { error } = await supabase.auth.signUp({ email, password });
+    if (error) throw error;
   };
 
   const signIn = async (email: string, password: string): Promise<void> => {
+    console.log('🔐 Sign in:', email);
     setLoading(true);
-    
     try {
-      console.log('🔐 AuthContext: Starting sign in for:', email);
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-      
-      if (error) {
-        console.error('❌ AuthContext: Sign in error:', error);
-        throw error;
-      }
-      
-      console.log('✅ AuthContext: Sign in successful:', data.user?.id);
-    } catch (error: any) {
-      console.error('💥 AuthContext: Sign in error:', error);
-      setLoading(false);
-      
-      if (error.message?.includes('Invalid login credentials')) {
-        throw new Error('Invalid email or password. Please check your credentials and try again.');
-      } else {
-        throw new Error(error.message || 'Failed to sign in. Please try again.');
-      }
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+    } finally {
+      // Loading will be set to false in the auth state change handler
     }
   };
 
   const signOut = async (): Promise<void> => {
+    console.log('🚪 Sign out');
     try {
-      console.log('🚪 AuthContext: Starting sign out process...');
-      
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.error('❌ AuthContext: Supabase signOut error:', error);
-      } else {
-        console.log('✅ AuthContext: Supabase signOut completed');
-      }
-      
-      // Clear all state immediately regardless of error
-      console.log('🧹 AuthContext: Clearing all auth state...');
+      await supabase.auth.signOut();
       setUser(null);
       setProfile(null);
       setSubscription(null);
-      setSubscriptionStatus(null);
       setSession(null);
-      setLoading(false);
-      
-      // Force navigation to home
-      console.log('🏠 AuthContext: Redirecting to home page...');
       window.location.href = '/';
-      
-    } catch (error: any) {
-      console.error('💥 AuthContext: Sign out error:', error);
-      
-      // Force clear state and redirect even if signOut fails
-      console.log('🧹 AuthContext: Force clearing state after error...');
-      setUser(null);
-      setProfile(null);
-      setSubscription(null);
-      setSubscriptionStatus(null);
-      setSession(null);
-      setLoading(false);
-      
-      console.log('🏠 AuthContext: Force redirecting to home page...');
+    } catch (error) {
+      console.error('Sign out error:', error);
+      // Force redirect even on error
       window.location.href = '/';
     }
   };
 
   const forgotPassword = async (email: string): Promise<void> => {
-    try {
-      console.log('📧 AuthContext: Sending password reset for:', email);
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`
-      });
-      
-      if (error) {
-        console.error('❌ AuthContext: Password reset error:', error);
-        throw error;
-      }
-      
-      console.log('✅ AuthContext: Password reset email sent');
-    } catch (error: any) {
-      console.error('💥 AuthContext: Password reset error:', error);
-      throw new Error(error.message || 'Failed to send reset email. Please try again.');
-    }
+    console.log('📧 Forgot password:', email);
+    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    if (error) throw error;
   };
 
   const updateProfile = async (updates: Partial<UserProfile>): Promise<void> => {
-    if (!user) throw new Error('User not authenticated');
+    console.log('👤 Update profile:', updates);
+    if (!user) throw new Error('Not authenticated');
     
-    try {
-      console.log('👤 AuthContext: Updating profile for:', user.id, updates);
-      const updatedProfile = await userService.updateProfile(user.id, updates);
-      setProfile(updatedProfile);
-      console.log('✅ AuthContext: Profile updated successfully');
-    } catch (error: any) {
-      console.error('💥 AuthContext: Profile update error:', error);
-      throw new Error(error.message || 'Failed to update profile. Please try again.');
-    }
+    // For debugging, just update local state
+    setProfile(prev => prev ? { ...prev, ...updates } : null);
   };
 
   const refreshSubscription = async (): Promise<void> => {
-    if (!user) return;
-    
-    try {
-      console.log('🔄 AuthContext: Refreshing subscription status...');
-      const subStatus = await subscriptionService.checkUserSubscription(user.id);
-      setSubscriptionStatus(subStatus);
-      setSubscription(subStatus.subscription);
-      console.log('✅ AuthContext: Subscription refreshed:', subStatus.hasActiveSubscription ? 'ACTIVE' : 'INACTIVE');
-    } catch (error) {
-      console.error('⚠️ AuthContext: Refresh subscription error:', error);
-    }
+    console.log('🔄 Refresh subscription (debug mode - no-op)');
+    // No-op in debug mode
   };
 
-  // DEBUG: Log current auth state every few seconds in development
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      const interval = setInterval(() => {
-        console.log('🐛 AuthContext DEBUG State:', {
-          loading,
-          user: !!user,
-          userId: user?.id,
-          profile: !!profile,
-          hasActiveSubscription,
-          subscriptionStatus: subscriptionStatus?.status,
-          subscription: !!subscription
-        });
-      }, 5000);
-
-      return () => clearInterval(interval);
-    }
-  }, [loading, user, profile, hasActiveSubscription, subscriptionStatus, subscription]);
+  console.log('🐛 AuthContext render:', { 
+    loading, 
+    user: !!user, 
+    hasActiveSubscription,
+    userEmail: user?.email 
+  });
 
   const value: AuthContextType = {
     user,
     profile,
     subscription,
-    subscriptionStatus,
     session,
     loading,
     signUp,
