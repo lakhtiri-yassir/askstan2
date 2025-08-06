@@ -4,23 +4,37 @@ import Stripe from 'https://esm.sh/stripe@13.10.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, stripe-signature',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
 serve(async (req) => {
   console.log('🎣 Webhook received:', req.method);
+  console.log('📋 Headers:', Object.fromEntries(req.headers.entries()));
   
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  // Get the raw body and signature
   const signature = req.headers.get('stripe-signature');
   const body = await req.text();
   
   console.log('📝 Webhook body length:', body.length);
-  console.log('🔐 Signature present:', !!signature);
-  console.log('🌐 Request headers:', Object.fromEntries(req.headers.entries()));
+  console.log('🔐 Stripe signature present:', !!signature);
   
+  if (!signature) {
+    console.error('❌ No stripe-signature header found');
+    console.log('Available headers:', Object.fromEntries(req.headers.entries()));
+    return new Response(JSON.stringify({ 
+      error: 'Missing stripe-signature header',
+      received_headers: Object.fromEntries(req.headers.entries())
+    }), { 
+      status: 400,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+
   let event;
   
   try {
@@ -31,10 +45,20 @@ serve(async (req) => {
     const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET');
     console.log('🔑 Webhook secret configured:', !!webhookSecret);
     
+    if (!webhookSecret) {
+      console.error('❌ STRIPE_WEBHOOK_SECRET not configured');
+      return new Response(JSON.stringify({ 
+        error: 'Webhook secret not configured' 
+      }), { 
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+    
     event = stripe.webhooks.constructEvent(
       body,
-      signature!,
-      webhookSecret!
+      signature,
+      webhookSecret
     );
     
     console.log('✅ Webhook event verified:', event.type);
@@ -47,13 +71,16 @@ serve(async (req) => {
     console.error('❌ Webhook signature verification failed:', err);
     return new Response(JSON.stringify({ 
       error: 'Webhook signature verification failed',
-      details: err.message 
+      details: err.message,
+      signature_present: !!signature,
+      body_length: body.length
     }), { 
       status: 400,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
   
+  // Initialize Supabase with service role key (no auth headers needed)
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -65,22 +92,25 @@ serve(async (req) => {
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
-        console.log('💳 Checkout session completed:', session.id);
-        console.log('👤 Customer:', session.customer);
-        console.log('📋 Metadata:', session.metadata);
-        console.log('💰 Payment status:', session.payment_status);
-        console.log('🔗 Subscription ID:', session.subscription);
+        console.log('💳 Checkout session completed:', {
+          id: session.id,
+          customer: session.customer,
+          subscription: session.subscription,
+          payment_status: session.payment_status,
+          metadata: session.metadata
+        });
         
-        if (session.mode === 'subscription') {
+        if (session.mode === 'subscription' && session.subscription) {
           const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
             apiVersion: '2023-10-16',
           });
           
           const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
-          console.log('📊 Subscription retrieved:', subscription.id, subscription.status);
-          console.log('📅 Period:', {
-            start: new Date(subscription.current_period_start * 1000).toISOString(),
-            end: new Date(subscription.current_period_end * 1000).toISOString()
+          console.log('📊 Subscription retrieved:', {
+            id: subscription.id,
+            status: subscription.status,
+            current_period_start: subscription.current_period_start,
+            current_period_end: subscription.current_period_end
           });
           
           const userId = session.metadata?.user_id;
@@ -89,31 +119,27 @@ serve(async (req) => {
             throw new Error('No user_id found in session metadata');
           }
           
-          // Create or update subscription record
+          // Create subscription record in database
           const subscriptionData = {
             user_id: userId,
             stripe_customer_id: session.customer as string,
             stripe_subscription_id: subscription.id,
-            plan_type: session.metadata?.plan_type || 'monthly',
-            status: subscription.status,
+            plan_type: (session.metadata?.plan_type || 'monthly') as 'monthly' | 'yearly',
+            status: subscription.status as 'active' | 'cancelled' | 'expired' | 'past_due' | 'trialing',
             current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
             current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
             cancel_at_period_end: subscription.cancel_at_period_end,
           };
           
-          console.log('💾 Upserting subscription data:', subscriptionData);
+          console.log('💾 Creating subscription record:', subscriptionData);
           
-          // First try to update existing subscription
+          // Try to update existing subscription first, then insert if not found
           const { data: existingData, error: selectError } = await supabase
             .from('subscriptions')
             .select('id')
             .eq('user_id', userId)
             .maybeSingle();
             
-          if (selectError && selectError.code !== 'PGRST116') {
-            console.error('❌ Error checking existing subscription:', selectError);
-          }
-          
           let upsertData, upsertError;
           
           if (existingData) {
@@ -121,7 +147,10 @@ serve(async (req) => {
             console.log('🔄 Updating existing subscription for user:', userId);
             const { data, error } = await supabase
               .from('subscriptions')
-              .update(subscriptionData)
+              .update({
+                ...subscriptionData,
+                updated_at: new Date().toISOString()
+              })
               .eq('user_id', userId)
               .select()
               .single();
@@ -140,27 +169,27 @@ serve(async (req) => {
           }
           
           if (upsertError) {
-            console.error('❌ Subscription upsert error:', upsertError);
+            console.error('❌ Subscription database error:', upsertError);
             throw upsertError;
           }
           
-          console.log('✅ Subscription created/updated:', upsertData);
+          console.log('✅ Subscription created/updated successfully:', upsertData);
           
           // Send welcome email
           try {
-            const customerEmail = session.customer_details?.email || 
-                                (typeof session.customer === 'object' ? session.customer.email : null);
-                                
-            await supabase.functions.invoke('send-email', {
-              body: {
-                type: 'subscription_success',
-                email: customerEmail,
-                data: {
-                  planType: session.metadata?.plan_type || 'monthly'
+            const customerEmail = session.customer_details?.email;
+            if (customerEmail) {
+              await supabase.functions.invoke('send-email', {
+                body: {
+                  type: 'subscription_success',
+                  email: customerEmail,
+                  data: {
+                    planType: session.metadata?.plan_type || 'monthly'
+                  }
                 }
-              }
-            });
-            console.log('📧 Welcome email sent');
+              });
+              console.log('📧 Welcome email sent to:', customerEmail);
+            }
           } catch (emailError) {
             console.error('📧 Email sending failed:', emailError);
             // Don't fail the webhook for email errors
@@ -171,12 +200,17 @@ serve(async (req) => {
       
       case 'customer.subscription.updated': {
         const subscription = event.data.object as Stripe.Subscription;
-        console.log('🔄 Subscription updated:', subscription.id, subscription.status);
+        console.log('🔄 Subscription updated:', {
+          id: subscription.id,
+          status: subscription.status,
+          current_period_start: subscription.current_period_start,
+          current_period_end: subscription.current_period_end
+        });
         
         const { error } = await supabase
           .from('subscriptions')
           .update({
-            status: subscription.status,
+            status: subscription.status as 'active' | 'cancelled' | 'expired' | 'past_due' | 'trialing',
             current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
             current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
             cancel_at_period_end: subscription.cancel_at_period_end,
@@ -284,8 +318,13 @@ serve(async (req) => {
     
     console.log('✅ Webhook processed successfully');
     
-    return new Response(JSON.stringify({ received: true }), {
-      headers: { 'Content-Type': 'application/json' },
+    return new Response(JSON.stringify({ 
+      received: true,
+      event_type: event.type,
+      event_id: event.id
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 200
     });
     
   } catch (error) {
@@ -293,11 +332,12 @@ serve(async (req) => {
     
     return new Response(JSON.stringify({ 
       error: error.message,
-      event_type: event.type,
+      event_type: event?.type || 'unknown',
+      event_id: event?.id || 'unknown',
       timestamp: new Date().toISOString()
     }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 });

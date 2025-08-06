@@ -154,31 +154,35 @@ async validateCoupon(couponCode: string): Promise<{ valid: boolean; discount?: s
     try {
       console.log('🎉 Handling checkout success for session:', sessionId);
       
-      // Try multiple times to get subscription data (webhook might be slow)
-      let attempts = 1;
+      // Wait a bit for webhook to process
+      console.log('⏳ Waiting 5 seconds for webhook to process...');
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      
+      // Try multiple times to get subscription data
+      let attempts = 0;
       let subscription = null;
       
-      while (attempts <= 10 && !subscription) {
+      while (attempts < 8 && !subscription) {
         console.log(`🔄 Attempt ${attempts + 1} to fetch subscription...`);
         
         const result = await this.checkUserSubscription(userId);
         subscription = result.subscription;
         
         if (!subscription) {
-          console.log('⏳ Subscription not found, waiting 2 seconds...');
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          console.log('⏳ Subscription not found, waiting 3 seconds...');
+          await new Promise(resolve => setTimeout(resolve, 3000));
         }
         
         attempts++;
       }
       
       if (!subscription) {
-        console.error('❌ Subscription not found after 10 attempts, trying manual creation...');
+        console.error('❌ Subscription not found after 8 attempts, trying manual creation...');
         // Try to manually create subscription record if webhook failed
         await this.manuallyCreateSubscription(sessionId, userId);
         
-        // Wait a bit and try one more time
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        // Wait and try one more time
+        await new Promise(resolve => setTimeout(resolve, 5000));
         const finalResult = await this.checkUserSubscription(userId);
         subscription = finalResult.subscription;
         
