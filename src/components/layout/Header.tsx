@@ -1,6 +1,6 @@
-// src/components/layout/Header.tsx - SIMPLIFIED FUNCTIONAL VERSION
+// src/components/layout/Header.tsx - FIXED VERSION THAT ALWAYS SHOWS SIGN IN/GET STARTED ON LANDING PAGE
 import React from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { LogOut, Settings } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
@@ -10,6 +10,10 @@ import askstanLogo from "../../img/askstanlogo.png";
 export const Header: React.FC = () => {
   const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Always show Sign In/Get Started on landing page, regardless of auth state
+  const isLandingPage = location.pathname === '/';
 
   const handleSignOut = React.useCallback(async () => {
     try {
@@ -44,7 +48,22 @@ export const Header: React.FC = () => {
 
           {/* Navigation */}
           <nav className="flex items-center space-x-4">
-            {user ? (
+            {/* On landing page, always show Sign In/Get Started regardless of auth state */}
+            {isLandingPage ? (
+              <div className="flex items-center space-x-4">
+                <Link to="/signin">
+                  <Button variant="ghost" size="md">
+                    Sign In
+                  </Button>
+                </Link>
+                <Link to="/signup">
+                  <Button variant="primary" size="md">
+                    Get Started
+                  </Button>
+                </Link>
+              </div>
+            ) : user ? (
+              /* On other pages, show authenticated navigation if user is logged in */
               <div className="flex items-center space-x-4">
                 <span className="text-sm text-gray-600 hidden sm:inline">
                   Welcome,{" "}
@@ -80,6 +99,7 @@ export const Header: React.FC = () => {
                 </motion.button>
               </div>
             ) : (
+              /* On other pages, show Sign In/Get Started if not authenticated */
               <div className="flex items-center space-x-4">
                 <Link to="/signin">
                   <Button variant="ghost" size="md">
