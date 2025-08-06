@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import Stripe from 'https://esm.sh/stripe@13.10.0';
+import Stripe from 'https://esm.sh/stripe@13.10.0?target=deno';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -34,14 +34,20 @@ serve(async (req) => {
       throw new Error('Missing required environment variables');
     }
 
-    // Initialize Stripe
+    // Initialize Stripe with crypto provider for Deno
     const stripe = new Stripe(stripeSecretKey, {
       apiVersion: '2023-10-16',
     });
+    
+    // This is needed in order to use the Web Crypto API in Deno
+    const cryptoProvider = Stripe.createSubtleCryptoProvider();
 
     // Get the Stripe signature from headers
     const signature = req.headers.get('stripe-signature');
     console.log('🔐 Stripe signature present:', !!signature);
+    console.log('🔐 Signature value:', signature?.substring(0, 20) + '...');
+    console.log('🔧 Webhook secret configured:', !!webhookSecret);
+    console.log('🔧 Secret prefix:', webhookSecret?.substring(0, 8));
     
     if (!signature) {
       console.error('❌ No stripe-signature header found');
@@ -52,10 +58,16 @@ serve(async (req) => {
     const body = await req.text();
     console.log('📝 Webhook body length:', body.length);
 
-    // Verify webhook signature
+    // Verify webhook signature using ASYNC method with crypto provider
     let event;
     try {
-      event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+      event = await stripe.webhooks.constructEventAsync(
+        body,
+        signature,
+        webhookSecret,
+        undefined,
+        cryptoProvider
+      );
       console.log('✅ Webhook signature verified:', event.type);
     } catch (err) {
       console.error('❌ Webhook signature verification failed:', err);
