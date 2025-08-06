@@ -1,4 +1,4 @@
-// src/pages/auth/SignInPage.tsx - FIXED VERSION
+// src/pages/auth/SignInPage.tsx - SIMPLIFIED VERSION
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -15,19 +15,18 @@ export const SignInPage: React.FC = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   
-  const { signIn, user, loading, isAuthenticating } = useAuth();
+  const { signIn, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
-  // NEW: Handle navigation after successful authentication
+  // Simple navigation after user is authenticated
   useEffect(() => {
-    // Only navigate if user is authenticated, not loading, not authenticating, and subscription data is loaded
-    if (user && !loading && !isAuthenticating) {
+    if (user) {
       const from = location.state?.from?.pathname || '/dashboard';
-      console.log('Authentication complete, navigating to:', from);
+      console.log('User authenticated, navigating to:', from);
       navigate(from, { replace: true });
     }
-  }, [user, loading, isAuthenticating, navigate, location.state?.from?.pathname]);
+  }, [user, navigate, location.state?.from?.pathname]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -54,10 +53,8 @@ export const SignInPage: React.FC = () => {
     setIsLoading(true);
     try {
       await signIn(formData.email, formData.password);
-      
-      // Navigation is now handled by useEffect above
-      // Don't navigate here to prevent race conditions
-      console.log('Sign in successful, waiting for navigation...');
+      // Navigation handled by useEffect above
+      console.log('Sign in successful');
       
     } catch (error) {
       setErrors({ submit: 'Invalid email or password' });
@@ -91,7 +88,7 @@ export const SignInPage: React.FC = () => {
               initial={{ scale: 0.8 }}
               animate={{ scale: 1 }}
               transition={{ duration: 0.5 }}
-              className="inline-flex items-center justify-center w-16 h-16 bg-royal-blue rounded-xl mb-4"
+              className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-xl mb-4"
             >
               <LogIn className="w-8 h-8 text-white" />
             </motion.div>
@@ -144,7 +141,7 @@ export const SignInPage: React.FC = () => {
               type="submit"
               size="lg"
               className="w-full"
-              isLoading={isLoading || loading || isAuthenticating}
+              isLoading={isLoading}
               loadingText="Signing in..."
             >
               Sign In
@@ -153,7 +150,7 @@ export const SignInPage: React.FC = () => {
             <div className="flex items-center justify-between text-sm">
               <Link
                 to="/forgot-password"
-                className="text-royal-blue hover:text-powder-blue transition-colors"
+                className="text-blue-600 hover:text-blue-700 transition-colors"
               >
                 Forgot password?
               </Link>
@@ -165,7 +162,7 @@ export const SignInPage: React.FC = () => {
               Don't have an account?{" "}
               <Link
                 to="/signup"
-                className="font-semibold text-royal-blue hover:text-powder-blue transition-colors"
+                className="font-semibold text-blue-600 hover:text-blue-700 transition-colors"
               >
                 Sign up here
               </Link>

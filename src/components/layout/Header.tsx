@@ -1,4 +1,4 @@
-// src/components/layout/Header.tsx - FIXED VERSION
+// src/components/layout/Header.tsx - SIMPLIFIED FUNCTIONAL VERSION
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -8,27 +8,25 @@ import { Button } from "../ui/Button";
 import askstanLogo from "../../img/askstanlogo.png";
 
 export const Header: React.FC = () => {
-  const { user, profile, signOut, loading, isAuthenticating } = useAuth();
+  const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
 
   const handleSignOut = React.useCallback(async () => {
     try {
+      console.log('Header: Starting sign out...');
       await signOut();
-      // signOut handles navigation and state clearing
+      console.log('Header: Sign out completed');
     } catch (error) {
-      console.error("Sign out error:", error);
+      console.error("Header: Sign out error:", error);
+      // Force navigation even if signOut fails
+      window.location.href = '/';
     }
   }, [signOut]);
 
-  // NEW: Handle dashboard navigation properly
-  const handleDashboardClick = React.useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    
-    // Only navigate if user is authenticated and not currently authenticating
-    if (user && !loading && !isAuthenticating) {
-      navigate('/dashboard');
-    }
-  }, [user, loading, isAuthenticating, navigate]);
+  const handleDashboardClick = React.useCallback(() => {
+    console.log('Header: Dashboard clicked, navigating...');
+    navigate('/dashboard');
+  }, [navigate]);
 
   return (
     <header className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50">
@@ -46,45 +44,40 @@ export const Header: React.FC = () => {
 
           {/* Navigation */}
           <nav className="flex items-center space-x-4">
-            {/* NEW: Show loading state during authentication */}
-            {loading || isAuthenticating ? (
-              <div className="flex items-center space-x-4">
-                <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                <span className="text-sm text-gray-600">Loading...</span>
-              </div>
-            ) : user ? (
+            {user ? (
               <div className="flex items-center space-x-4">
                 <span className="text-sm text-gray-600 hidden sm:inline">
                   Welcome,{" "}
                   {profile?.display_name || user.email?.split("@")[0] || "User"}
                 </span>
 
-                {/* FIXED: Use proper navigation handler */}
-                <button 
+                {/* Dashboard Button - Direct onClick handler */}
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
                   onClick={handleDashboardClick}
-                  className="px-3 py-1 bg-royal-blue text-white text-xs font-semibold rounded-full hover:bg-blue-700 transition-colors"
+                  className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-full transition-colors"
                 >
                   Dashboard
-                </button>
+                </motion.button>
 
                 <Link to="/settings">
                   <motion.div
                     whileHover={{ scale: 1.05 }}
-                    className="p-2 text-gray-600 hover:text-powder-blue transition-colors hidden sm:block"
+                    className="p-2 text-gray-600 hover:text-blue-600 transition-colors hidden sm:block"
                   >
                     <Settings size={20} />
                   </motion.div>
                 </Link>
 
-                <Button
-                  variant="ghost"
-                  size="sm"
+                {/* Sign Out Button - Direct onClick handler */}
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
                   onClick={handleSignOut}
-                  className="flex items-center space-x-2 text-xs sm:text-sm"
+                  className="flex items-center space-x-2 text-xs sm:text-sm px-3 py-1 text-gray-700 hover:text-red-600 transition-colors"
                 >
                   <LogOut size={16} />
                   <span className="hidden sm:inline">Sign Out</span>
-                </Button>
+                </motion.button>
               </div>
             ) : (
               <div className="flex items-center space-x-4">
