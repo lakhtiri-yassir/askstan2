@@ -130,7 +130,7 @@ export const LandingPage: React.FC = () => {
               <img
                 src={askstanBanner}
                 alt="AskStan Banner"
-                className="w-64 h-64 object-contain"
+                className="w-64 h-64 md:w-80 md:h-80 lg:w-96 lg:h-96 object-contain"
               />
             </motion.div>
           </div>
