@@ -45,9 +45,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAuthenticating, setIsAuthenticating] = useState(false); // NEW: Track auth operations
+  const [subscriptionLoading, setSubscriptionLoading] = useState(false); // NEW: Track subscription loading
 
   const hasActiveSubscription = subscriptionStatus?.hasActiveSubscription ?? false;
   const isEmailVerified = true; // Skip email verification completely
+
+  // Combined loading state that includes subscription loading
+  const isOverallLoading = loading || subscriptionLoading;
 
   useEffect(() => {
     let mounted = true; // Prevent state updates if component unmounted
@@ -117,6 +121,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const loadUserData = async (user: User) => {
     try {
       console.log('Loading user data for:', user.id);
+      setSubscriptionLoading(true); // NEW: Set subscription loading
       
       // Load or create user profile
       let userProfile = await userService.getProfile(user.id);
@@ -130,6 +135,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setProfile(userProfile);
         
         // Load subscription status
+        console.log('Loading subscription status...');
         const subStatus = await subscriptionService.checkUserSubscription(user.id);
         setSubscriptionStatus(subStatus);
         setSubscription(subStatus.subscription);
@@ -139,6 +145,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error) {
       console.error('Error loading user data:', error);
       // Don't throw - allow user to continue with limited functionality
+    } finally {
+      setSubscriptionLoading(false); // NEW: Clear subscription loading
     }
   };
 
@@ -296,12 +304,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const refreshSubscription = async (): Promise<void> => {
     if (!user) return;
     
+    setSubscriptionLoading(true); // NEW: Set loading during refresh
     try {
+      console.log('Refreshing subscription status...');
       const subStatus = await subscriptionService.checkUserSubscription(user.id);
       setSubscriptionStatus(subStatus);
       setSubscription(subStatus.subscription);
+      console.log('Subscription refreshed:', subStatus);
     } catch (error) {
       console.error('Refresh subscription error:', error);
+    } finally {
+      setSubscriptionLoading(false); // NEW: Clear loading
     }
   };
 
@@ -311,7 +324,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     subscription,
     subscriptionStatus,
     session,
-    loading,
+    loading: isOverallLoading, // NEW: Use combined loading state
     isAuthenticating, // NEW: Expose authenticating state
     signUp,
     signIn,

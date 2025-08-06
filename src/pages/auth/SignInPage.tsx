@@ -21,7 +21,7 @@ export const SignInPage: React.FC = () => {
 
   // NEW: Handle navigation after successful authentication
   useEffect(() => {
-    // Only navigate if user is authenticated, not loading, and not authenticating
+    // Only navigate if user is authenticated, not loading, not authenticating, and subscription data is loaded
     if (user && !loading && !isAuthenticating) {
       const from = location.state?.from?.pathname || '/dashboard';
       console.log('Authentication complete, navigating to:', from);
