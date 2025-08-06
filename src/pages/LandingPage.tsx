@@ -127,21 +127,11 @@ export const LandingPage: React.FC = () => {
               transition={{ duration: 0.8, delay: 0.2 }}
               className="relative flex justify-center"
             >
-              <div className="relative bg-white rounded-2xl shadow-2xl p-8 backdrop-blur-sm">
-                {/* Stan Character - Client will replace with actual cartoon */}
-                <div className="hero-character-container">
-                  <div className="stan-character-placeholder w-64 h-64 bg-powder-blue rounded-full flex items-center justify-center overflow-hidden">
-                    <img
-                      src={askstanBanner}
-                      alt="AskStan Banner"
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                </div>
-                <div className="absolute -top-4 -right-4 bg-navy-blue p-4 rounded-xl text-white">
-                  <Bot className="w-8 h-8" />
-                </div>
-              </div>
+              <img
+                src={askstanBanner}
+                alt="AskStan Banner"
+                className="w-64 h-64 object-contain"
+              />
             </motion.div>
           </div>
         </div>
