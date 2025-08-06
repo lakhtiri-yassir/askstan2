@@ -177,7 +177,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const signIn = async (email: string, password: string): Promise<void> => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
         password
       });
@@ -273,15 +273,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const confirmEmail = async (token: string): Promise<void> => {
-    try {
-      // Since we're skipping email confirmation, this is a no-op
-      console.log('Email confirmation skipped');
-    } catch (error: any) {
-      console.error('Email confirmation error:', error);
-      throw new Error(error.message || 'Failed to confirm email. Please try again.');
-    }
-  };
 
   const value: AuthContextType = {
     user,
