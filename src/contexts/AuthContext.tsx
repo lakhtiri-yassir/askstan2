@@ -111,16 +111,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         userProfile = await userService.createProfileSafe(user.id, user.email);
       }
       
-      if (userProfile) {
-        setProfile(userProfile);
-        
-        // Load subscription status
-        const subStatus = await subscriptionService.checkUserSubscription(user.id);
-        setSubscriptionStatus(subStatus);
-        setSubscription(subStatus.subscription);
-        
-        console.log('User data loaded:', { profile: userProfile, subscription: subStatus });
-      }
+      // Always set profile (even if null)
+      setProfile(userProfile);
+      
+      // Load subscription status REGARDLESS of profile status
+      const subStatus = await subscriptionService.checkUserSubscription(user.id);
+      setSubscriptionStatus(subStatus);
+      setSubscription(subStatus.subscription);
+      
+      console.log('User data loaded:', { profile: userProfile, subscription: subStatus });
     } catch (error) {
       console.error('Error loading user data:', error);
       // Don't throw - allow user to continue with limited functionality

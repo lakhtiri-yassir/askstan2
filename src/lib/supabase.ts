@@ -77,7 +77,7 @@ export const userService = {
   async getProfile(userId: string): Promise<UserProfile | null> {
     try {
       const { data, error } = await supabase
-        .from('user_profile')
+        .from('user_profiles')
         .select('*')
         .eq('id', userId)
         .single();
