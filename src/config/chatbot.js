@@ -1,6 +1,17 @@
-// Chatbot configuration for AskStan!
-export const chatbotConfig = {
-  // Replace this with your actual chatbot embed code
+// src/config/chatbot.ts - SIMPLE CHATBOT CONFIGURATION
+export interface ChatbotConfig {
+  enabled: boolean;
+  embedCode: string;
+  title?: string;
+  subtitle?: string;
+  sendUserData?: boolean;
+}
+
+// 🎯 CHATBOT CONFIGURATION - JUST PASTE YOUR EMBED CODE HERE!
+export const chatbotConfig: ChatbotConfig = {
+  enabled: true, // Set to false to disable chatbot completely
+  
+  // 📋 PASTE YOUR CHATBOT EMBED CODE HERE:
   embedCode: `
    <script type="text/javascript">
   (function(d, t) {
@@ -20,38 +31,10 @@ export const chatbotConfig = {
 </script>
   `,
   
-  // Alternative configurations for different chatbot platforms
-  voiceflowProjectID: 'YOUR_VOICEFLOW_PROJECT_ID_HERE',
+  // 🎨 Optional UI customization
+  title: 'AI Coach Ready!',
+  subtitle: 'Click the chat widget to start your conversation.',
   
-  // Custom API endpoint for chatbot
-  apiEndpoint: 'YOUR_CHATBOT_API_ENDPOINT',
-  
-  // Chatbot UI settings
-  settings: {
-    theme: 'custom',
-    primaryColor: '#3B82F6',
-    accentColor: '#F59E0B',
-    fontFamily: 'Inter, sans-serif',
-    borderRadius: '12px'
-  }
-};
-
-// Email service configuration (replace with your SendGrid details)
-export const emailConfig = {
-  apiKey: import.meta.env.VITE_SENDGRID_API_KEY,
-  fromEmail: import.meta.env.VITE_FROM_EMAIL || 'noreply@askstan.com',
-  templates: {
-    emailConfirmation: 'd-your-template-id',
-    passwordReset: 'd-your-template-id',
-    welcome: 'd-your-template-id'
-  }
-};
-
-// Stripe configuration (replace with your actual keys and price IDs)
-export const stripeConfig = {
-  publishableKey: import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 'pk_test_placeholder',
-  prices: {
-    monthly: import.meta.env.VITE_STRIPE_PRICE_MONTHLY || 'price_monthly_placeholder',
-    yearly: import.meta.env.VITE_STRIPE_PRICE_YEARLY || 'price_yearly_placeholder'
-  }
+  // 👤 Send user data to chatbot (works with most providers)
+  sendUserData: true
 };
