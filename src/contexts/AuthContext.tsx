@@ -127,38 +127,60 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const loadUserData = async (user: User) => {
     try {
-      console.log("Loading user data for:", user.id);
+      console.log("🔄 Loading user data for:", user.id);
 
       // Load or create user profile
       let userProfile = await userService.getProfile(user.id);
 
       if (!userProfile && user.email) {
-        console.log("No profile found, creating one manually...");
+        console.log("📝 No profile found, creating one manually...");
         userProfile = await userService.createProfileSafe(user.id, user.email);
       }
 
       // Always set profile (even if null)
       setProfile(userProfile);
+      console.log("👤 Profile set:", userProfile?.id);
+      console.log(
+        "🔗 User ID relationship - Auth ID:",
+        user.id,
+        "Profile ID:",
+        userProfile?.id
+      );
 
       // Load subscription status REGARDLESS of profile status
-      const subStatus = await subscriptionService.checkUserSubscription(
-        user.id
+      console.log("💳 Loading subscription status...");
+
+      // Use profile ID for subscription query since subscription table references user_profiles(id)
+      const userIdForSubscription = userProfile?.id || user.id;
+      console.log(
+        "🔍 Using user ID for subscription query:",
+        userIdForSubscription
       );
+
+      const subStatus = await subscriptionService.checkUserSubscription(
+        userIdForSubscription
+      );
+      console.log("💳 Subscription status loaded:", subStatus);
+
       setSubscriptionStatus(subStatus);
       setSubscription(subStatus.subscription);
 
-      console.log("User data loaded:", {
-        profile: userProfile,
+      console.log("✅ User data loaded:", {
+        authUserId: user.id,
+        profileId: userProfile?.id,
         subscription: subStatus,
+        hasActiveSubscription: subStatus.hasActiveSubscription,
       });
     } catch (error) {
-      console.error("Error loading user data:", error);
+      console.error("❌ Error loading user data:", error);
       // Set default subscription status on error to prevent infinite loading
-      setSubscriptionStatus({
+      const defaultStatus = {
         hasActiveSubscription: false,
         subscription: null,
         status: "inactive",
-      });
+      };
+      console.log("🔄 Setting default subscription status:", defaultStatus);
+      setSubscriptionStatus(defaultStatus);
     }
   };
 

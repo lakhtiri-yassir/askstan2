@@ -1,10 +1,15 @@
-import { supabase } from './supabase';
-import { loadStripe } from '@stripe/stripe-js';
-import { Subscription } from '../types/supabase';
+import { supabase } from "./supabase";
+import { loadStripe } from "@stripe/stripe-js";
+import { Subscription } from "../types/supabase";
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY!);
 
-export type SubscriptionStatus = 'active' | 'inactive' | 'expired' | 'past_due' | 'cancelled';
+export type SubscriptionStatus =
+  | "active"
+  | "inactive"
+  | "expired"
+  | "past_due"
+  | "cancelled";
 
 export interface SubscriptionCheckResult {
   hasActiveSubscription: boolean;
@@ -16,35 +21,46 @@ export const subscriptionService = {
   /**
    * Check user's current subscription status
    */
-  async checkUserSubscription(userId: string): Promise<SubscriptionCheckResult> {
+  async checkUserSubscription(
+    userId: string
+  ): Promise<SubscriptionCheckResult> {
     try {
+      console.log("🔍 Checking subscription for user:", userId);
+
       const { data: subscription, error } = await supabase
-        .from('subscriptions')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
+        .from("subscriptions")
+        .select("*")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error checking subscription:', error);
+      console.log("📊 Subscription query result:", { subscription, error });
+
+      if (error && error.code !== "PGRST116") {
+        console.error("❌ Error checking subscription:", error);
         throw error;
       }
 
-      const hasActiveSubscription = subscription?.status === 'active' && 
-        (!subscription.current_period_end || new Date(subscription.current_period_end) > new Date());
+      const hasActiveSubscription =
+        subscription?.status === "active" &&
+        (!subscription.current_period_end ||
+          new Date(subscription.current_period_end) > new Date());
 
-      return {
+      const result = {
         hasActiveSubscription,
         subscription,
-        status: subscription?.status as SubscriptionStatus || 'inactive'
+        status: (subscription?.status as SubscriptionStatus) || "inactive",
       };
+
+      console.log("✅ Subscription check result:", result);
+      return result;
     } catch (error) {
-      console.error('Subscription check error:', error);
+      console.error("❌ Subscription check error:", error);
       return {
         hasActiveSubscription: false,
         subscription: null,
-        status: 'inactive'
+        status: "inactive",
       };
     }
   },
@@ -53,79 +69,100 @@ export const subscriptionService = {
    * Create Stripe checkout session
    */
   async createStripeCheckout(
-  userId: string, 
-  planType: 'monthly' | 'yearly',
-  couponCode?: string
-): Promise<{ sessionId?: string; paymentRequired: boolean; couponApplied: boolean; redirectUrl?: string }> {
-  try {
-    console.log('Creating checkout with coupon:', { userId, planType, couponCode });
-    
-    const { data, error } = await supabase.functions.invoke('create-checkout-session', {
-      body: { 
-        planType,
+    userId: string,
+    planType: "monthly" | "yearly",
+    couponCode?: string
+  ): Promise<{
+    sessionId?: string;
+    paymentRequired: boolean;
+    couponApplied: boolean;
+    redirectUrl?: string;
+  }> {
+    try {
+      console.log("Creating checkout with coupon:", {
         userId,
-        couponCode: couponCode || null,
-        successUrl: `${window.location.origin}/checkout-success?session_id={CHECKOUT_SESSION_ID}&plan=${planType}&coupon=${couponCode || ''}`,
-        cancelUrl: `${window.location.origin}/plans`
+        planType,
+        couponCode,
+      });
+
+      const { data, error } = await supabase.functions.invoke(
+        "create-checkout-session",
+        {
+          body: {
+            planType,
+            userId,
+            couponCode: couponCode || null,
+            successUrl: `${
+              window.location.origin
+            }/checkout-success?session_id={CHECKOUT_SESSION_ID}&plan=${planType}&coupon=${
+              couponCode || ""
+            }`,
+            cancelUrl: `${window.location.origin}/plans`,
+          },
+        }
+      );
+
+      if (error) {
+        console.error("Checkout session error:", error);
+        throw new Error(error.message || "Failed to create checkout session");
       }
-    });
 
-    if (error) {
-      console.error('Checkout session error:', error);
-      throw new Error(error.message || 'Failed to create checkout session');
-    }
+      // Handle 100% off coupon case (no payment required)
+      if (data?.paymentRequired === false) {
+        return {
+          paymentRequired: false,
+          couponApplied: true,
+          redirectUrl: data.redirectUrl,
+        };
+      }
 
-    // Handle 100% off coupon case (no payment required)
-    if (data?.paymentRequired === false) {
+      if (!data?.sessionId) {
+        throw new Error("No session ID returned from checkout creation");
+      }
+
       return {
-        paymentRequired: false,
-        couponApplied: true,
-        redirectUrl: data.redirectUrl
+        sessionId: data.sessionId,
+        paymentRequired: data.paymentRequired !== false,
+        couponApplied: data.couponApplied || false,
+        redirectUrl: data.redirectUrl,
+      };
+    } catch (error) {
+      console.error("Stripe checkout error:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Validate coupon code before checkout
+   */
+  async validateCoupon(
+    couponCode: string
+  ): Promise<{ valid: boolean; discount?: string; error?: string }> {
+    try {
+      // This will validate the coupon through the checkout creation
+      // We'll create a test checkout to validate, then use the real one
+      const { data, error } = await supabase.functions.invoke(
+        "validate-coupon",
+        {
+          body: { couponCode },
+        }
+      );
+
+      if (error) {
+        return { valid: false, error: error.message };
+      }
+
+      return {
+        valid: true,
+        discount: data.discount,
+      };
+    } catch (error) {
+      return {
+        valid: false,
+        error: error instanceof Error ? error.message : "Invalid coupon code",
       };
     }
-
-    if (!data?.sessionId) {
-      throw new Error('No session ID returned from checkout creation');
-    }
-
-    return {
-      sessionId: data.sessionId,
-      paymentRequired: data.paymentRequired !== false,
-      couponApplied: data.couponApplied || false,
-      redirectUrl: data.redirectUrl
-    };
-  } catch (error) {
-    console.error('Stripe checkout error:', error);
-    throw error;
-  }
-},
-
-/**
- * Validate coupon code before checkout
- */
-async validateCoupon(couponCode: string): Promise<{ valid: boolean; discount?: string; error?: string }> {
-  try {
-    // This will validate the coupon through the checkout creation
-    // We'll create a test checkout to validate, then use the real one
-    const { data, error } = await supabase.functions.invoke('validate-coupon', {
-      body: { couponCode }
-    });
-
-    if (error) {
-      return { valid: false, error: error.message };
-    }
-
-    return { 
-      valid: true, 
-      discount: data.discount 
-    };
-  } catch (error) {
-    return { 
-      valid: false, 
-      error: error instanceof Error ? error.message : 'Invalid coupon code' 
-    };
-  }
-},
+  },
 
   /**
    * Redirect to Stripe checkout
@@ -134,7 +171,7 @@ async validateCoupon(couponCode: string): Promise<{ valid: boolean; discount?: s
     try {
       const stripe = await stripePromise;
       if (!stripe) {
-        throw new Error('Stripe failed to load');
+        throw new Error("Stripe failed to load");
       }
 
       const { error } = await stripe.redirectToCheckout({ sessionId });
@@ -142,7 +179,7 @@ async validateCoupon(couponCode: string): Promise<{ valid: boolean; discount?: s
         throw error;
       }
     } catch (error) {
-      console.error('Checkout redirect error:', error);
+      console.error("Checkout redirect error:", error);
       throw error;
     }
   },
@@ -150,63 +187,76 @@ async validateCoupon(couponCode: string): Promise<{ valid: boolean; discount?: s
   /**
    * Handle successful checkout completion
    */
-  async handleCheckoutSuccess(sessionId: string, userId: string): Promise<Subscription | null> {
+  async handleCheckoutSuccess(
+    sessionId: string,
+    userId: string
+  ): Promise<Subscription | null> {
     try {
-      console.log('🎉 Handling checkout success for session:', sessionId);
-      
+      console.log("🎉 Handling checkout success for session:", sessionId);
+
       // Wait a bit for webhook to process
-      console.log('⏳ Waiting 5 seconds for webhook to process...');
-      await new Promise(resolve => setTimeout(resolve, 5000));
-      
+      console.log("⏳ Waiting 5 seconds for webhook to process...");
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+
       // Try multiple times to get subscription data
       let attempts = 0;
       let subscription = null;
-      
+
       while (attempts < 8 && !subscription) {
         console.log(`🔄 Attempt ${attempts + 1} to fetch subscription...`);
-        
+
         const result = await this.checkUserSubscription(userId);
         subscription = result.subscription;
-        
+
         if (!subscription) {
-          console.log('⏳ Subscription not found, waiting 3 seconds...');
-          await new Promise(resolve => setTimeout(resolve, 3000));
+          console.log("⏳ Subscription not found, waiting 3 seconds...");
+          await new Promise((resolve) => setTimeout(resolve, 3000));
         }
-        
+
         attempts++;
       }
-      
+
       if (!subscription) {
-        console.error('❌ Subscription not found after 8 attempts, trying manual creation...');
+        console.error(
+          "❌ Subscription not found after 8 attempts, trying manual creation..."
+        );
         // Try to manually create subscription record if webhook failed
         await this.manuallyCreateSubscription(sessionId, userId);
-        
+
         // Wait and try one more time
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        await new Promise((resolve) => setTimeout(resolve, 5000));
         const finalResult = await this.checkUserSubscription(userId);
         subscription = finalResult.subscription;
-        
+
         if (!subscription) {
-          console.error('❌ Manual subscription creation also failed');
-          
+          console.error("❌ Manual subscription creation also failed");
+
           // Get session details for debugging
           try {
-            const { data: sessionData } = await supabase.functions.invoke('get-checkout-session', {
-              body: { sessionId }
-            });
-            console.log('🔍 Session details for debugging:', sessionData);
+            const { data: sessionData } = await supabase.functions.invoke(
+              "get-checkout-session",
+              {
+                body: { sessionId },
+              }
+            );
+            console.log("🔍 Session details for debugging:", sessionData);
           } catch (sessionError) {
-            console.error('Failed to get session details:', sessionError);
+            console.error("Failed to get session details:", sessionError);
           }
-          
-          throw new Error(`Failed to create subscription record. Session: ${sessionId.substring(0, 20)}...`);
+
+          throw new Error(
+            `Failed to create subscription record. Session: ${sessionId.substring(
+              0,
+              20
+            )}...`
+          );
         }
       }
-      
-      console.log('✅ Final subscription result:', subscription);
+
+      console.log("✅ Final subscription result:", subscription);
       return subscription;
     } catch (error) {
-      console.error('Checkout success handling error:', error);
+      console.error("Checkout success handling error:", error);
       throw error;
     }
   },
@@ -214,23 +264,29 @@ async validateCoupon(couponCode: string): Promise<{ valid: boolean; discount?: s
   /**
    * Manually create subscription if webhook failed
    */
-  async manuallyCreateSubscription(sessionId: string, userId: string): Promise<void> {
+  async manuallyCreateSubscription(
+    sessionId: string,
+    userId: string
+  ): Promise<void> {
     try {
-      console.log('🔧 Manually creating subscription for session:', sessionId);
-      
+      console.log("🔧 Manually creating subscription for session:", sessionId);
+
       // Call edge function to retrieve session details and create subscription
-      const { data, error } = await supabase.functions.invoke('manual-subscription-creation', {
-        body: { sessionId, userId }
-      });
-      
+      const { data, error } = await supabase.functions.invoke(
+        "manual-subscription-creation",
+        {
+          body: { sessionId, userId },
+        }
+      );
+
       if (error) {
-        console.error('Manual subscription creation error:', error);
+        console.error("Manual subscription creation error:", error);
         throw error;
       }
-      
-      console.log('✅ Manual subscription created:', data);
+
+      console.log("✅ Manual subscription created:", data);
     } catch (error) {
-      console.error('Manual subscription creation failed:', error);
+      console.error("Manual subscription creation failed:", error);
       throw error;
     }
   },
@@ -240,24 +296,27 @@ async validateCoupon(couponCode: string): Promise<{ valid: boolean; discount?: s
    */
   async createCustomerPortalSession(): Promise<string> {
     try {
-      const { data, error } = await supabase.functions.invoke('create-portal-session', {
-        body: { 
-          returnUrl: `${window.location.origin}/settings`
+      const { data, error } = await supabase.functions.invoke(
+        "create-portal-session",
+        {
+          body: {
+            returnUrl: `${window.location.origin}/settings`,
+          },
         }
-      });
+      );
 
       if (error) {
-        console.error('Portal session error:', error);
-        throw new Error(error.message || 'Failed to create portal session');
+        console.error("Portal session error:", error);
+        throw new Error(error.message || "Failed to create portal session");
       }
 
       if (!data?.url) {
-        throw new Error('No portal URL returned');
+        throw new Error("No portal URL returned");
       }
 
       return data.url;
     } catch (error) {
-      console.error('Customer portal error:', error);
+      console.error("Customer portal error:", error);
       throw error;
     }
   },
@@ -268,33 +327,33 @@ async validateCoupon(couponCode: string): Promise<{ valid: boolean; discount?: s
   getPlansConfig() {
     return {
       monthly: {
-        id: 'monthly',
-        name: 'Monthly Plan',
-        price: '$4.99',
-        interval: 'month',
+        id: "monthly",
+        name: "Monthly Plan",
+        price: "$4.99",
+        interval: "month",
         priceId: import.meta.env.VITE_STRIPE_PRICE_MONTHLY,
         features: [
-          'AI-powered social media coaching',
-          'Multi-platform support',
-          'Growth analytics dashboard',
-          '24/7 AI chat support'
-        ]
+          "AI-powered social media coaching",
+          "Multi-platform support",
+          "Growth analytics dashboard",
+          "24/7 AI chat support",
+        ],
       },
       yearly: {
-        id: 'yearly',
-        name: 'Yearly Plan',
-        price: '$49.99',
-        interval: 'year',
+        id: "yearly",
+        name: "Yearly Plan",
+        price: "$49.99",
+        interval: "year",
         priceId: import.meta.env.VITE_STRIPE_PRICE_YEARLY,
-        savings: '17% savings',
+        savings: "17% savings",
         popular: true,
         features: [
-          'All monthly features',
-          'Priority AI responses',
-          'Advanced analytics',
-          'Custom growth strategies'
-        ]
-      }
+          "All monthly features",
+          "Priority AI responses",
+          "Advanced analytics",
+          "Custom growth strategies",
+        ],
+      },
     };
   },
 
@@ -304,17 +363,17 @@ async validateCoupon(couponCode: string): Promise<{ valid: boolean; discount?: s
   async cancelSubscription(subscriptionId: string): Promise<void> {
     try {
       const { error } = await supabase
-        .from('subscriptions')
-        .update({ 
+        .from("subscriptions")
+        .update({
           cancel_at_period_end: true,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
-        .eq('id', subscriptionId);
+        .eq("id", subscriptionId);
 
       if (error) throw error;
     } catch (error) {
-      console.error('Cancel subscription error:', error);
+      console.error("Cancel subscription error:", error);
       throw error;
     }
-  }
+  },
 };
