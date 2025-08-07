@@ -1,4 +1,4 @@
-// src/config/chatbot.ts - SIMPLE CHATBOT CONFIGURATION
+// src/config/chatbot.ts - UNIFIED CHATBOT CONFIGURATION
 export interface ChatbotConfig {
   enabled: boolean;
   embedCode: string;
@@ -13,7 +13,7 @@ export const chatbotConfig: ChatbotConfig = {
   
   // 📋 PASTE YOUR CHATBOT EMBED CODE HERE:
   embedCode: `
-   <script type="text/javascript">
+    <script type="text/javascript">
   (function(d, t) {
       var v = d.createElement(t), s = d.getElementsByTagName(t)[0];
       v.onload = function() {
@@ -37,4 +37,15 @@ export const chatbotConfig: ChatbotConfig = {
   
   // 👤 Send user data to chatbot (works with most providers)
   sendUserData: true
+};
+
+// Helper function to update user data in window for chatbot access
+export const setUserDataForChatbot = (user: any, profile: any) => {
+  if (typeof window !== 'undefined') {
+    (window as any).currentUser = {
+      id: user?.id,
+      email: user?.email,
+      name: profile?.display_name || user?.email?.split('@')[0] || 'User'
+    };
+  }
 };

@@ -1,7 +1,7 @@
-// src/components/ChatbotEmbed.tsx - UNIVERSAL EMBED COMPONENT
+// src/components/ChatbotEmbed.tsx - FIXED TO WORK WITH UNIFIED CONFIG
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { chatbotConfig } from '../config/chatbot';
+import { chatbotConfig, setUserDataForChatbot } from '../config/chatbot';
 import { MessageSquare, AlertTriangle, RefreshCw } from 'lucide-react';
 
 interface ChatbotEmbedProps {
@@ -16,7 +16,6 @@ export const ChatbotEmbed: React.FC<ChatbotEmbedProps> = ({ onLoad, onError }) =
   const [isLoading, setIsLoading] = useState(true);
   const initializeAttempted = useRef(false);
   const scriptsInjected = useRef(false);
-  const userDataSent = useRef(false);
 
   // Initialize chatbot by injecting embed code
   const initializeChatbot = useCallback(async () => {
@@ -42,6 +41,11 @@ export const ChatbotEmbed: React.FC<ChatbotEmbedProps> = ({ onLoad, onError }) =
       setIsLoading(true);
       setError(null);
 
+      // Set user data for chatbot access
+      if (user && profile) {
+        setUserDataForChatbot(user, profile);
+      }
+
       await injectEmbedCode();
 
     } catch (err) {
@@ -51,7 +55,7 @@ export const ChatbotEmbed: React.FC<ChatbotEmbedProps> = ({ onLoad, onError }) =
       setIsLoading(false);
       onError?.(new Error(errorMessage));
     }
-  }, [onError]);
+  }, [user, profile, onError]);
 
   // Inject the embed code into the page
   const injectEmbedCode = async (): Promise<void> => {
@@ -59,108 +63,59 @@ export const ChatbotEmbed: React.FC<ChatbotEmbedProps> = ({ onLoad, onError }) =
       try {
         if (scriptsInjected.current) {
           console.log('✅ Scripts already injected');
+          setIsLoaded(true);
+          setIsLoading(false);
+          onLoad?.();
           resolve();
           return;
         }
 
         console.log('📜 Injecting embed code...');
 
-        // Create a temporary container to parse the HTML
-        const tempContainer = document.createElement('div');
-        tempContainer.innerHTML = chatbotConfig.embedCode;
+        // Create script element directly
+        const script = document.createElement('script');
+        script.type = 'text/javascript';
+        
+        // Extract just the JavaScript content from the embed code
+        const scriptContent = chatbotConfig.embedCode
+          .replace(/<script[^>]*>/gi, '')
+          .replace(/<\/script>/gi, '')
+          .trim();
 
-        // Extract and inject scripts
-        const scripts = tempContainer.getElementsByTagName('script');
-        let scriptsToLoad = scripts.length;
-        let scriptsLoaded = 0;
+        script.innerHTML = scriptContent;
 
-        if (scriptsToLoad === 0) {
-          // No scripts to load, just inject HTML
-          document.body.appendChild(tempContainer);
+        script.onload = () => {
+          console.log('✅ Chatbot script loaded successfully');
           scriptsInjected.current = true;
+          
+          // Give chatbot time to initialize
           setTimeout(() => {
             setIsLoaded(true);
             setIsLoading(false);
             onLoad?.();
             resolve();
-          }, 1500);
-          return;
-        }
-
-        // Function to handle script loading completion
-        const handleScriptLoad = () => {
-          scriptsLoaded++;
-          console.log(`📜 Script ${scriptsLoaded}/${scriptsToLoad} loaded`);
-
-          if (scriptsLoaded === scriptsToLoad) {
-            scriptsInjected.current = true;
-            console.log('✅ All scripts loaded successfully');
-
-            // Give chatbot time to initialize
-            setTimeout(() => {
-              setIsLoaded(true);
-              setIsLoading(false);
-              onLoad?.();
-              resolve();
-            }, 2000);
-          }
+          }, 3000);
         };
 
-        // Inject each script
-        for (let i = 0; i < scripts.length; i++) {
-          const originalScript = scripts[i];
-          const newScript = document.createElement('script');
+        script.onerror = (err) => {
+          console.error('❌ Failed to load chatbot script:', err);
+          reject(new Error('Failed to load chatbot script'));
+        };
 
-          // Handle script with src attribute
-          if (originalScript.src) {
-            newScript.src = originalScript.src;
-            newScript.async = true;
-            newScript.defer = originalScript.defer;
-            
-            newScript.onload = handleScriptLoad;
-            newScript.onerror = () => {
-              console.error(`❌ Failed to load script: ${originalScript.src}`);
-              // Don't fail completely, just continue
-              handleScriptLoad();
-            };
-          } else {
-            // Handle inline script
-            newScript.innerHTML = originalScript.innerHTML;
-            
-            // Inline scripts load immediately
-            setTimeout(handleScriptLoad, 100);
-          }
+        // Append to head
+        document.head.appendChild(script);
+        scriptsInjected.current = true;
 
-          // Copy other attributes
-          for (let j = 0; j < originalScript.attributes.length; j++) {
-            const attr = originalScript.attributes[j];
-            if (attr.name !== 'src') {
-              newScript.setAttribute(attr.name, attr.value);
-            }
-          }
-
-          document.head.appendChild(newScript);
-        }
-
-        // Inject non-script content
-        const nonScriptElements = tempContainer.querySelectorAll(':not(script)');
-        nonScriptElements.forEach(element => {
-          if (element.tagName !== 'SCRIPT') {
-            document.body.appendChild(element.cloneNode(true));
-          }
-        });
-
-        // Timeout fallback
+        // Fallback timeout - assume success after 5 seconds
         setTimeout(() => {
-          if (!isLoaded && scriptsLoaded < scriptsToLoad) {
-            console.warn('⚠️ Script loading timeout, proceeding anyway...');
-            scriptsInjected.current = true;
+          if (!isLoaded) {
+            console.log('⏰ Chatbot initialization timeout - assuming success');
             setIsLoaded(true);
             setIsLoading(false);
             onLoad?.();
             resolve();
           }
-        }, 15000); // 15 second timeout
+        }, 5000);
 
       } catch (err) {
         console.error('❌ Error injecting embed code:', err);
@@ -168,120 +123,6 @@ export const ChatbotEmbed: React.FC<ChatbotEmbedProps> = ({ onLoad, onError }) =
       }
     });
   };
-
-  // Send user data to chatbot (tries multiple common methods)
-  const sendUserDataToChatbot = useCallback(() => {
-    if (!user || !profile || userDataSent.current || !chatbotConfig.sendUserData) {
-      return;
-    }
-
-    const userData = {
-      userId: user.id,
-      email: user.email,
-      name: profile.display_name || user.email?.split('@')[0] || 'User',
-      profileId: profile.id
-    };
-
-    console.log('👤 Attempting to send user data to chatbot...', userData);
-
-    // Try multiple common chatbot APIs
-    const sendAttempts = [
-      // Voiceflow
-      () => {
-        if ((window as any).voiceflow?.chat?.set) {
-          (window as any).voiceflow.chat.set({ user: userData });
-          return true;
-        }
-        return false;
-      },
-      
-      // Intercom
-      () => {
-        if ((window as any).Intercom) {
-          (window as any).Intercom('update', {
-            user_id: userData.userId,
-            email: userData.email,
-            name: userData.name
-          });
-          return true;
-        }
-        return false;
-      },
-      
-      // Crisp
-      () => {
-        if ((window as any).$crisp) {
-          (window as any).$crisp.push(['set', 'user:email', userData.email]);
-          (window as any).$crisp.push(['set', 'user:nickname', userData.name]);
-          return true;
-        }
-        return false;
-      },
-      
-      // Tawk.to
-      () => {
-        if ((window as any).Tawk_API) {
-          (window as any).Tawk_API.setAttributes({
-            name: userData.name,
-            email: userData.email,
-            userId: userData.userId
-          });
-          return true;
-        }
-        return false;
-      },
-      
-      // Zendesk
-      () => {
-        if ((window as any).zE) {
-          (window as any).zE('webWidget', 'identify', {
-            name: userData.name,
-            email: userData.email
-          });
-          return true;
-        }
-        return false;
-      },
-      
-      // Generic window object approach
-      () => {
-        // Try to find any chatbot object on window and send data
-        const possibleChatbots = ['chatbot', 'chat', 'widget', 'messenger'];
-        for (const name of possibleChatbots) {
-          const chatbotObj = (window as any)[name];
-          if (chatbotObj && typeof chatbotObj.setUser === 'function') {
-            chatbotObj.setUser(userData);
-            return true;
-          }
-          if (chatbotObj && typeof chatbotObj.identify === 'function') {
-            chatbotObj.identify(userData);
-            return true;
-          }
-        }
-        return false;
-      }
-    ];
-
-    // Try each method
-    let sent = false;
-    for (const attempt of sendAttempts) {
-      try {
-        if (attempt()) {
-          sent = true;
-          console.log('✅ User data sent successfully');
-          break;
-        }
-      } catch (err) {
-        console.warn('⚠️ Failed to send user data via one method:', err);
-      }
-    }
-
-    if (!sent) {
-      console.log('ℹ️ No compatible chatbot API found for user data');
-    }
-
-    userDataSent.current = true;
-  }, [user, profile]);
 
   // Initialize on mount
   useEffect(() => {
@@ -297,16 +138,30 @@ export const ChatbotEmbed: React.FC<ChatbotEmbedProps> = ({ onLoad, onError }) =
     return () => clearTimeout(timer);
   }, [initializeChatbot]);
 
-  // Send user data when chatbot is loaded
+  // Update user data when user changes
   useEffect(() => {
-    if (isLoaded) {
-      const timer = setTimeout(() => {
-        sendUserDataToChatbot();
-      }, 2000); // Wait 2 seconds after chatbot loads
-
-      return () => clearTimeout(timer);
+    if (isLoaded && user && profile && chatbotConfig.sendUserData) {
+      setUserDataForChatbot(user, profile);
+      
+      // Try to update Voiceflow user data if available
+      setTimeout(() => {
+        if ((window as any).voiceflow?.chat?.set) {
+          try {
+            (window as any).voiceflow.chat.set({
+              user: {
+                name: profile.display_name || user.email?.split('@')[0] || 'User',
+                email: user.email,
+                userId: user.id
+              }
+            });
+            console.log('🔄 Updated user data in Voiceflow');
+          } catch (e) {
+            console.warn('⚠️ Could not update user data:', e);
+          }
+        }
+      }, 1000);
     }
-  }, [isLoaded, sendUserDataToChatbot]);
+  }, [isLoaded, user, profile]);
 
   // Handle retry
   const handleRetry = useCallback(() => {
@@ -317,20 +172,15 @@ export const ChatbotEmbed: React.FC<ChatbotEmbedProps> = ({ onLoad, onError }) =
     setIsLoading(true);
     initializeAttempted.current = false;
     scriptsInjected.current = false;
-    userDataSent.current = false;
+    
+    // Remove existing scripts
+    const existingScripts = document.querySelectorAll('script[src*="voiceflow"]');
+    existingScripts.forEach(script => script.remove());
     
     setTimeout(() => {
       initializeChatbot();
-    }, 500);
+    }, 1000);
   }, [initializeChatbot]);
-
-  // Handle disable
-  const handleDisable = useCallback(() => {
-    // You can modify chatbotConfig.enabled = false if needed
-    setIsLoaded(false);
-    setIsLoading(false);
-    setError('Chatbot disabled by user');
-  }, []);
 
   // Render based on state
   if (!chatbotConfig.enabled) {
@@ -361,12 +211,6 @@ export const ChatbotEmbed: React.FC<ChatbotEmbedProps> = ({ onLoad, onError }) =
             <RefreshCw className="w-4 h-4" />
             <span>Retry</span>
           </button>
-          <button
-            onClick={handleDisable}
-            className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors text-sm"
-          >
-            Disable
-          </button>
         </div>
       </div>
     );
@@ -380,8 +224,11 @@ export const ChatbotEmbed: React.FC<ChatbotEmbedProps> = ({ onLoad, onError }) =
         </div>
         <h3 className="text-lg font-semibold text-gray-900 mb-2">Loading AI Coach...</h3>
         <p className="text-gray-600 text-sm">
-          Initializing your chatbot...
+          Initializing Voiceflow chatbot...
         </p>
+        <div className="text-xs text-gray-400 mt-2">
+          Project ID: 688d150bdb7293eb99bdbe16
+        </div>
       </div>
     );
   }
@@ -399,11 +246,25 @@ export const ChatbotEmbed: React.FC<ChatbotEmbedProps> = ({ onLoad, onError }) =
           {chatbotConfig.title || 'AI Coach Ready!'}
         </h3>
         <p className="text-gray-600 text-sm mb-4">
-          {chatbotConfig.subtitle || 'Look for the chat widget on your screen.'}
+          {chatbotConfig.subtitle || 'Look for the Voiceflow chat widget on your screen.'}
         </p>
         <div className="text-xs text-gray-500">
-          Chatbot successfully loaded
+          Voiceflow chatbot loaded successfully
         </div>
+        
+        {/* Debug info in development */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="mt-4 text-xs text-gray-400">
+            <details>
+              <summary className="cursor-pointer">Debug Info</summary>
+              <div className="mt-2 text-left bg-gray-50 p-2 rounded">
+                <div>User: {user?.id}</div>
+                <div>Profile: {profile?.id}</div>
+                <div>Voiceflow Available: {(window as any).voiceflow ? 'Yes' : 'No'}</div>
+              </div>
+            </details>
+          </div>
+        )}
       </div>
     </div>
   );
