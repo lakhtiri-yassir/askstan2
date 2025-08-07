@@ -1,9 +1,17 @@
-// src/contexts/AuthContext.tsx - PRODUCTION READY VERSION
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { User, Session } from '@supabase/supabase-js';
-import { supabase, userService } from '../lib/supabase';
-import { subscriptionService, SubscriptionCheckResult } from '../lib/subscriptionService';
-import { UserProfile, Subscription } from '../types/supabase';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+} from "react";
+import { User, Session } from "@supabase/supabase-js";
+import { supabase, userService } from "../lib/supabase";
+import {
+  subscriptionService,
+  SubscriptionCheckResult,
+} from "../lib/subscriptionService";
+import { UserProfile, Subscription } from "../types/supabase";
 
 interface AuthContextType {
   user: User | null;
@@ -21,13 +29,12 @@ interface AuthContextType {
   hasActiveSubscription: boolean;
   isEmailVerified: boolean;
 }
-
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };
@@ -40,98 +47,79 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
-  const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionCheckResult | null>(null);
+  const [subscriptionStatus, setSubscriptionStatus] =
+    useState<SubscriptionCheckResult | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [dataLoading, setDataLoading] = useState(false);
 
-  const hasActiveSubscription = subscriptionStatus?.hasActiveSubscription ?? false;
+  const hasActiveSubscription =
+    subscriptionStatus?.hasActiveSubscription ?? false;
   const isEmailVerified = true; // Skip email verification completely
 
+  // Optimized loading state - true when either auth or data is loading
+  const isLoading = loading || dataLoading;
+
   useEffect(() => {
-    let mounted = true;
-    let loadingTimeoutId: NodeJS.Timeout;
-
-    const initialize = async () => {
+    const getInitialSession = async () => {
       try {
-        console.log('🚀 AuthContext: Starting initialization...');
-        
-        // Set emergency timeout to prevent infinite loading
-        loadingTimeoutId = setTimeout(() => {
-          if (mounted) {
-            console.error('⏰ AuthContext: Emergency timeout - forcing loading to false');
-            setLoading(false);
-          }
-        }, 15000); // 15 second timeout
+        const {
+          data: { session: initialSession },
+          error,
+        } = await supabase.auth.getSession();
 
-        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
-        
         if (error) {
-          console.error('❌ AuthContext: Error getting session:', error);
-          if (mounted) {
-            setLoading(false);
-            clearTimeout(loadingTimeoutId);
-          }
+          console.error("Error getting session:", error);
+          setLoading(false);
           return;
         }
 
-        console.log('✅ AuthContext: Session retrieved successfully');
-        console.log('👤 User found:', !!initialSession?.user, initialSession?.user?.id);
+        setSession(initialSession);
+        setUser(initialSession?.user ?? null);
 
-        if (mounted) {
-          setSession(initialSession);
-          setUser(initialSession?.user ?? null);
-        }
-        
-        if (initialSession?.user && mounted) {
-          console.log('📊 AuthContext: Loading user data...');
+        if (initialSession?.user) {
+          setDataLoading(true);
           await loadUserData(initialSession.user);
+          setDataLoading(false);
         }
-        
-        if (mounted) {
-          console.log('✅ AuthContext: Initialization complete');
-          setLoading(false);
-          clearTimeout(loadingTimeoutId);
-        }
+
+        setLoading(false);
       } catch (error) {
-        console.error('💥 AuthContext: Initialization error:', error);
-        if (mounted) {
-          setLoading(false);
-          clearTimeout(loadingTimeoutId);
-        }
+        console.error("Session initialization error:", error);
+        setLoading(false);
+        setDataLoading(false);
       }
     };
 
-    initialize();
+    getInitialSession();
 
     // Listen for auth changes
-    const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
-      async (event, newSession) => {
-        console.log('🔄 AuthContext: Auth state changed:', event, !!newSession?.user);
-        
-        if (!mounted) return;
-        
-        setSession(newSession);
-        setUser(newSession?.user ?? null);
-        
-        if (newSession?.user) {
-          console.log('📊 AuthContext: Loading user data after auth change...');
-          await loadUserData(newSession.user);
-        } else {
-          console.log('🧹 AuthContext: Clearing user data');
-          setProfile(null);
-          setSubscription(null);
-          setSubscriptionStatus(null);
-        }
-        
-        setLoading(false);
+    const {
+      data: { subscription: authSubscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("Auth event:", event, session?.user?.id);
+
+      setSession(session);
+      setUser(session?.user ?? null);
+
+      if (session?.user) {
+        setDataLoading(true);
+        await loadUserData(session.user);
+        setDataLoading(false);
+      } else {
+        setProfile(null);
+        setSubscription(null);
+        setSubscriptionStatus(null);
       }
-    );
+
+      setLoading(false);
+    });
 
     return () => {
-      console.log('🧹 AuthContext: Cleanup');
-      mounted = false;
-      if (loadingTimeoutId) clearTimeout(loadingTimeoutId);
-      if (authSubscription?.unsubscribe) {
+      if (
+        authSubscription &&
+        typeof authSubscription.unsubscribe === "function"
+      ) {
         authSubscription.unsubscribe();
       }
     };
@@ -139,242 +127,223 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const loadUserData = async (user: User) => {
     try {
-      console.log('👤 AuthContext: Loading profile for user:', user.id);
-      
-      // Load or create user profile with proper error handling
-      let userProfile: UserProfile | null = null;
-      
-      try {
-        userProfile = await userService.getProfile(user.id);
-      } catch (profileError) {
-        console.error('⚠️ AuthContext: Error getting profile:', profileError);
-      }
-      
+      console.log("🔄 Loading user data for:", user.id);
+
+      // Load or create user profile
+      let userProfile = await userService.getProfile(user.id);
+
       if (!userProfile && user.email) {
-        console.log('🆕 AuthContext: Creating new profile...');
-        try {
-          userProfile = await userService.createProfileSafe(user.id, user.email);
-        } catch (createError) {
-          console.error('⚠️ AuthContext: Error creating profile:', createError);
-          // Fallback to basic profile
-          userProfile = {
-            id: user.id,
-            email: user.email,
-            display_name: null,
-            avatar_url: null,
-            email_verified: true,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          };
-        }
+        console.log("📝 No profile found, creating one manually...");
+        userProfile = await userService.createProfileSafe(user.id, user.email);
       }
-      
-      if (userProfile) {
-        console.log('✅ AuthContext: Profile loaded successfully');
-        setProfile(userProfile);
-        
-        // Load subscription status with timeout and error handling
-        console.log('💳 AuthContext: Loading subscription status...');
-        
-        try {
-          const subStatusPromise = subscriptionService.checkUserSubscription(user.id);
-          const timeoutPromise = new Promise<SubscriptionCheckResult>((_, reject) => 
-            setTimeout(() => reject(new Error('Subscription check timeout')), 8000)
-          );
-          
-          const subStatus = await Promise.race([subStatusPromise, timeoutPromise]);
-          
-          console.log('✅ AuthContext: Subscription status loaded:', {
-            hasActive: subStatus.hasActiveSubscription,
-            status: subStatus.status
-          });
-          
-          setSubscriptionStatus(subStatus);
-          setSubscription(subStatus.subscription);
-        } catch (subscriptionError) {
-          console.error('⚠️ AuthContext: Subscription check failed:', subscriptionError);
-          // Set default inactive subscription to prevent blocking
-          const defaultStatus: SubscriptionCheckResult = {
-            hasActiveSubscription: false,
-            subscription: null,
-            status: 'inactive'
-          };
-          setSubscriptionStatus(defaultStatus);
-          setSubscription(null);
-        }
-      } else {
-        console.error('❌ AuthContext: Failed to load/create profile');
-        // Set minimal defaults to prevent blocking
-        setProfile({
-          id: user.id,
-          email: user.email || '',
-          display_name: null,
-          avatar_url: null,
-          email_verified: true,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        });
-        setSubscriptionStatus({
-          hasActiveSubscription: false,
-          subscription: null,
-          status: 'inactive'
-        });
-      }
-    } catch (error) {
-      console.error('💥 AuthContext: Load user data error:', error);
-      // Set fallback data to prevent blocking
-      setProfile({
-        id: user.id,
-        email: user.email || '',
-        display_name: null,
-        avatar_url: null,
-        email_verified: true,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+
+      // Always set profile (even if null)
+      setProfile(userProfile);
+      console.log("👤 Profile set:", userProfile?.id);
+      console.log(
+        "🔗 User ID relationship - Auth ID:",
+        user.id,
+        "Profile ID:",
+        userProfile?.id
+      );
+
+      // Load subscription status REGARDLESS of profile status
+      console.log("💳 Loading subscription status...");
+
+      // Use profile ID for subscription query since subscription table references user_profiles(id)
+      const userIdForSubscription = userProfile?.id || user.id;
+      console.log(
+        "🔍 Using user ID for subscription query:",
+        userIdForSubscription
+      );
+
+      const subStatus = await subscriptionService.checkUserSubscription(
+        userIdForSubscription
+      );
+      console.log("💳 Subscription status loaded:", subStatus);
+
+      setSubscriptionStatus(subStatus);
+      setSubscription(subStatus.subscription);
+
+      console.log("✅ User data loaded:", {
+        authUserId: user.id,
+        profileId: userProfile?.id,
+        subscription: subStatus,
+        hasActiveSubscription: subStatus.hasActiveSubscription,
       });
-      setSubscriptionStatus({
+    } catch (error) {
+      console.error("❌ Error loading user data:", error);
+      // Set default subscription status on error to prevent infinite loading
+      const defaultStatus = {
         hasActiveSubscription: false,
         subscription: null,
-        status: 'inactive'
-      });
+        status: "inactive",
+      };
+      console.log("🔄 Setting default subscription status:", defaultStatus);
+      setSubscriptionStatus(defaultStatus);
     }
   };
 
   const signUp = async (email: string, password: string): Promise<void> => {
+    setLoading(true);
     try {
-      console.log('📝 AuthContext: Starting sign up for:', email);
-      const { data, error } = await supabase.auth.signUp({
-        email,
+      console.log("Starting signup process without email confirmation");
+
+      // Create auth user without email confirmation
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: email.trim().toLowerCase(),
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`
-        }
+          emailRedirectTo: undefined,
+          data: {
+            email_verified: true,
+          },
+        },
       });
-      
-      if (error) {
-        console.error('❌ AuthContext: Sign up error:', error);
-        throw error;
+
+      if (authError) {
+        console.error("Auth signup error:", authError);
+        throw authError;
       }
-      
-      console.log('✅ AuthContext: Sign up successful');
+
+      if (!authData.user) {
+        throw new Error("Signup failed - no user returned");
+      }
+
+      console.log("Auth user created:", authData.user.id);
+
+      // Create user profile using safe function
+      try {
+        const profile = await userService.createProfileSafe(
+          authData.user.id,
+          email.trim().toLowerCase()
+        );
+        setProfile(profile);
+        console.log("Profile created successfully");
+      } catch (profileError) {
+        console.error("Profile creation error:", profileError);
+        // Don't fail signup if profile creation fails
+      }
+
+      console.log("Signup completed successfully");
     } catch (error: any) {
-      console.error('💥 AuthContext: Sign up error:', error);
-      throw new Error(error.message || 'Failed to create account. Please try again.');
+      console.error("Signup error:", error);
+      throw new Error(
+        error.message || "Failed to create account. Please try again."
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
   const signIn = async (email: string, password: string): Promise<void> => {
     setLoading(true);
-    
     try {
-      console.log('🔐 AuthContext: Starting sign in for:', email);
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
+        email: email.trim().toLowerCase(),
+        password,
       });
-      
-      if (error) {
-        console.error('❌ AuthContext: Sign in error:', error);
-        throw error;
-      }
-      
-      console.log('✅ AuthContext: Sign in successful');
-      // Loading will be set to false in the auth state change handler
+
+      if (error) throw error;
+
+      // Success case - user and session will be set by onAuthStateChange
+      console.log("Sign in successful:", data.user?.id);
     } catch (error: any) {
-      console.error('💥 AuthContext: Sign in error:', error);
-      setLoading(false);
-      
-      if (error.message?.includes('Invalid login credentials')) {
-        throw new Error('Invalid email or password. Please check your credentials and try again.');
+      console.error("Sign in error:", error);
+
+      if (error.message?.includes("Invalid login credentials")) {
+        throw new Error(
+          "Invalid email or password. Please check your credentials and try again."
+        );
       } else {
-        throw new Error(error.message || 'Failed to sign in. Please try again.');
+        throw new Error(
+          error.message || "Failed to sign in. Please try again."
+        );
       }
+    } finally {
+      setLoading(false);
     }
   };
 
   const signOut = async (): Promise<void> => {
     try {
-      console.log('🚪 AuthContext: Starting sign out...');
-      
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.error('❌ AuthContext: Supabase signOut error:', error);
-      } else {
-        console.log('✅ AuthContext: Supabase signOut completed');
-      }
-      
+      console.log("🚪 Starting sign out process...");
+
       // Clear all state immediately
-      console.log('🧹 AuthContext: Clearing auth state...');
       setUser(null);
       setProfile(null);
       setSubscription(null);
       setSubscriptionStatus(null);
       setSession(null);
-      setLoading(false);
-      
-      // Force navigation to home
-      console.log('🏠 AuthContext: Redirecting to home...');
-      window.location.href = '/';
-      
+
+      console.log("🧹 State cleared, calling Supabase signOut...");
+
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+
+      console.log("✅ Supabase signOut successful");
+
+      // Force reload to ensure clean state
+      window.location.replace("/");
     } catch (error: any) {
-      console.error('💥 AuthContext: Sign out error:', error);
-      
-      // Force clear state and redirect even if signOut fails
+      console.error("Sign out error:", error);
+
+      // Force clear state even if Supabase signOut fails
       setUser(null);
       setProfile(null);
       setSubscription(null);
       setSubscriptionStatus(null);
       setSession(null);
-      setLoading(false);
-      
-      window.location.href = '/';
+
+      // Force redirect
+      window.location.replace("/");
     }
   };
 
   const forgotPassword = async (email: string): Promise<void> => {
     try {
-      console.log('📧 AuthContext: Sending password reset for:', email);
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`
+        redirectTo: `${window.location.origin}/reset-password`,
       });
-      
+
       if (error) {
-        console.error('❌ AuthContext: Password reset error:', error);
         throw error;
       }
-      
-      console.log('✅ AuthContext: Password reset email sent');
     } catch (error: any) {
-      console.error('💥 AuthContext: Password reset error:', error);
-      throw new Error(error.message || 'Failed to send reset email. Please try again.');
+      console.error("Password reset error:", error);
+      throw new Error(
+        error.message || "Failed to send reset email. Please try again."
+      );
     }
   };
 
-  const updateProfile = async (updates: Partial<UserProfile>): Promise<void> => {
-    if (!user) throw new Error('User not authenticated');
-    
+  const updateProfile = async (
+    updates: Partial<UserProfile>
+  ): Promise<void> => {
+    if (!user) throw new Error("User not authenticated");
+
     try {
-      console.log('👤 AuthContext: Updating profile:', updates);
       const updatedProfile = await userService.updateProfile(user.id, updates);
       setProfile(updatedProfile);
-      console.log('✅ AuthContext: Profile updated successfully');
     } catch (error: any) {
-      console.error('💥 AuthContext: Profile update error:', error);
-      throw new Error(error.message || 'Failed to update profile. Please try again.');
+      console.error("Profile update error:", error);
+      throw new Error(
+        error.message || "Failed to update profile. Please try again."
+      );
     }
   };
 
   const refreshSubscription = async (): Promise<void> => {
     if (!user) return;
-    
+
     try {
-      console.log('🔄 AuthContext: Refreshing subscription...');
-      const subStatus = await subscriptionService.checkUserSubscription(user.id);
+      const subStatus = await subscriptionService.checkUserSubscription(
+        user.id
+      );
       setSubscriptionStatus(subStatus);
       setSubscription(subStatus.subscription);
-      console.log('✅ AuthContext: Subscription refreshed:', subStatus.hasActiveSubscription ? 'ACTIVE' : 'INACTIVE');
     } catch (error) {
-      console.error('⚠️ AuthContext: Refresh subscription error:', error);
+      console.error("Refresh subscription error:", error);
     }
   };
 
@@ -384,7 +353,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     subscription,
     subscriptionStatus,
     session,
-    loading,
+    loading: isLoading,
     signUp,
     signIn,
     signOut,
@@ -392,12 +361,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     updateProfile,
     refreshSubscription,
     hasActiveSubscription,
-    isEmailVerified
+    isEmailVerified,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
