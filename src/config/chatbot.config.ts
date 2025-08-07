@@ -34,9 +34,11 @@ export const defaultChatbotConfig: ChatbotConfig = {
           src="/askstanbanner.png" 
           alt="AskStan Banner" 
           style="
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
+            height: auto;
+            object-fit: contain;
             object-position: center;
           "
         />
