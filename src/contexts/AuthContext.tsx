@@ -1,4 +1,4 @@
-// src/contexts/AuthContext.tsx - FIXED VERSION
+// src/contexts/AuthContext.tsx - FIXED SESSION INITIALIZATION
 import React, {
   createContext,
   useContext,
@@ -55,7 +55,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionCheckResult | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [dataLoading, setDataLoading] = useState(false);
+  const [initialized, setInitialized] = useState(false);
 
   // Computed values with proper memoization
   const hasActiveSubscription = useMemo(
@@ -63,9 +63,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     [subscriptionStatus?.hasActiveSubscription]
   );
   
-  const isEmailVerified = useMemo(() => true, []); // Skip email verification
-
-  const isLoading = useMemo(() => loading || dataLoading, [loading, dataLoading]);
+  const isEmailVerified = useMemo(() => true, []);
 
   // CRITICAL FIX: Memoized loadUserData to prevent infinite loops
   const loadUserData = useCallback(async (authUser: User) => {
@@ -106,92 +104,168 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         status: "inactive",
       });
     }
-  }, []); // Empty dependency array - this function should be stable
+  }, []);
 
-  // CRITICAL FIX: Proper useEffect with stable dependencies
+  // CRITICAL FIX: Proper session initialization and state management
   useEffect(() => {
-    let mounted = true; // Prevent state updates if component unmounted
+    let mounted = true;
+    let authSubscription: { subscription: { unsubscribe: () => void } } | null = null;
 
     const initializeAuth = async () => {
       try {
         console.log("🔐 Initializing auth...");
         
-        // Get initial session
+        // FIXED: Get initial session with proper error handling
         const { data: { session: initialSession }, error } = await supabase.auth.getSession();
         
         if (error) {
-          console.error("Error getting session:", error);
+          console.error("❌ Error getting initial session:", error);
           if (mounted) {
             setLoading(false);
+            setInitialized(true);
           }
           return;
         }
 
-        // Set initial session and user
+        console.log("📱 Initial session:", initialSession?.user?.id || 'No session');
+
+        // FIXED: Set initial state properly
         if (mounted) {
           setSession(initialSession);
           setUser(initialSession?.user ?? null);
 
           // Load user data if session exists
           if (initialSession?.user) {
-            setDataLoading(true);
+            console.log("🔄 Loading initial user data...");
             await loadUserData(initialSession.user);
-            setDataLoading(false);
+          } else {
+            console.log("👤 No initial session - user needs to sign in");
+            // Set default subscription status for non-authenticated users
+            setSubscriptionStatus({
+              hasActiveSubscription: false,
+              subscription: null,
+              status: "inactive",
+            });
           }
 
           setLoading(false);
+          setInitialized(true);
         }
         
       } catch (error) {
-        console.error("Session initialization error:", error);
+        console.error("❌ Session initialization error:", error);
         if (mounted) {
           setLoading(false);
-          setDataLoading(false);
+          setInitialized(true);
         }
       }
     };
 
-    initializeAuth();
+    // Setup auth state listener AFTER initial session check
+    const setupAuthListener = () => {
+      console.log("👂 Setting up auth state listener...");
+      
+      const { data } = supabase.auth.onAuthStateChange(
+        async (event, newSession) => {
+          console.log("🔄 Auth state change:", event, newSession?.user?.id || 'No session');
+          
+          if (!mounted) {
+            console.log("⚠️ Component unmounted, ignoring auth state change");
+            return;
+          }
 
-    // Listen for auth changes with proper cleanup
-    const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
-      async (event, newSession) => {
-        console.log("🔄 Auth state change:", event, newSession?.user?.id);
-        
-        if (!mounted) return; // Prevent state updates if unmounted
+          // Handle different auth events
+          switch (event) {
+            case 'SIGNED_IN':
+              console.log("✅ User signed in");
+              setSession(newSession);
+              setUser(newSession?.user ?? null);
+              if (newSession?.user) {
+                await loadUserData(newSession.user);
+              }
+              break;
+              
+            case 'SIGNED_OUT':
+              console.log("🚪 User signed out");
+              setSession(null);
+              setUser(null);
+              setProfile(null);
+              setSubscription(null);
+              setSubscriptionStatus({
+                hasActiveSubscription: false,
+                subscription: null,
+                status: "inactive",
+              });
+              break;
+              
+            case 'TOKEN_REFRESHED':
+              console.log("🔄 Token refreshed");
+              setSession(newSession);
+              setUser(newSession?.user ?? null);
+              // Don't reload user data on token refresh if we already have it
+              if (newSession?.user && !profile) {
+                await loadUserData(newSession.user);
+              }
+              break;
+              
+            default:
+              console.log("📡 Auth event:", event);
+              setSession(newSession);
+              setUser(newSession?.user ?? null);
+          }
 
-        setSession(newSession);
-        setUser(newSession?.user ?? null);
-
-        if (newSession?.user) {
-          setDataLoading(true);
-          await loadUserData(newSession.user);
-          setDataLoading(false);
-        } else {
-          // Clear data when user signs out
-          setProfile(null);
-          setSubscription(null);
-          setSubscriptionStatus(null);
+          // Always ensure loading is false after auth state change
+          if (mounted) {
+            setLoading(false);
+          }
         }
+      );
 
-        setLoading(false);
-      }
-    );
+      authSubscription = data;
+    };
+
+    // Initialize auth and setup listener
+    const initialize = async () => {
+      await initializeAuth();
+      setupAuthListener();
+    };
+
+    initialize();
 
     // Cleanup function
     return () => {
+      console.log("🧹 Cleaning up auth context...");
       mounted = false;
-      if (authSubscription && typeof authSubscription.unsubscribe === "function") {
-        authSubscription.unsubscribe();
+      if (authSubscription?.subscription && typeof authSubscription.subscription.unsubscribe === "function") {
+        authSubscription.subscription.unsubscribe();
       }
     };
-  }, [loadUserData]); // Include memoized loadUserData
+  }, [loadUserData]);
+
+  // Additional safety timeout to prevent infinite loading
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (loading && !initialized) {
+        console.warn("⚠️ Auth initialization timeout - forcing completion");
+        setLoading(false);
+        setInitialized(true);
+        // Set default state for timeout case
+        setSubscriptionStatus({
+          hasActiveSubscription: false,
+          subscription: null,
+          status: "inactive",
+        });
+      }
+    }, 8000); // 8 second timeout
+
+    return () => clearTimeout(timeoutId);
+  }, [loading, initialized]);
 
   // Memoized auth functions
   const signUp = useCallback(async (email: string, password: string): Promise<void> => {
     setLoading(true);
     try {
-      console.log("Starting signup process");
+      console.log("📝 Starting signup process");
 
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),
@@ -207,7 +281,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (authError) throw authError;
       if (!authData.user) throw new Error("Signup failed - no user returned");
 
-      console.log("Auth user created:", authData.user.id);
+      console.log("✅ Auth user created:", authData.user.id);
 
       // Create user profile
       try {
@@ -216,13 +290,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           email.trim().toLowerCase()
         );
         setProfile(profile);
-        console.log("Profile created successfully");
+        console.log("✅ Profile created successfully");
       } catch (profileError) {
-        console.error("Profile creation error:", profileError);
+        console.error("❌ Profile creation error:", profileError);
       }
 
     } catch (error: any) {
-      console.error("Signup error:", error);
+      console.error("❌ Signup error:", error);
       throw new Error(error.message || "Failed to create account. Please try again.");
     } finally {
       setLoading(false);
@@ -232,6 +306,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const signIn = useCallback(async (email: string, password: string): Promise<void> => {
     setLoading(true);
     try {
+      console.log("🔑 Starting sign in process");
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
         password,
@@ -239,9 +315,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       if (error) throw error;
 
-      console.log("Sign in successful:", data.user?.id);
+      console.log("✅ Sign in successful:", data.user?.id);
+      // Auth state change handler will handle the rest
     } catch (error: any) {
-      console.error("Sign in error:", error);
+      console.error("❌ Sign in error:", error);
 
       if (error.message?.includes("Invalid login credentials")) {
         throw new Error("Invalid email or password. Please check your credentials and try again.");
@@ -257,7 +334,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       console.log("🚪 Starting sign out process...");
 
-      // Clear all state immediately
+      // Clear all state first
       setUser(null);
       setProfile(null);
       setSubscription(null);
@@ -265,12 +342,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setSession(null);
 
       const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      if (error) {
+        console.error("❌ Supabase signOut error:", error);
+        // Don't throw - we still want to redirect
+      }
+
+      console.log("✅ Sign out completed");
 
       // Force redirect to ensure clean state
       window.location.replace("/");
     } catch (error: any) {
-      console.error("Sign out error:", error);
+      console.error("❌ Sign out error:", error);
       
       // Force clear state and redirect even on error
       setUser(null);
@@ -290,7 +372,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       if (error) throw error;
     } catch (error: any) {
-      console.error("Password reset error:", error);
+      console.error("❌ Password reset error:", error);
       throw new Error(error.message || "Failed to send reset email. Please try again.");
     }
   }, []);
@@ -302,7 +384,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const updatedProfile = await userService.updateProfile(user.id, updates);
       setProfile(updatedProfile);
     } catch (error: any) {
-      console.error("Profile update error:", error);
+      console.error("❌ Profile update error:", error);
       throw new Error(error.message || "Failed to update profile. Please try again.");
     }
   }, [user]);
@@ -311,11 +393,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (!user) return;
 
     try {
+      console.log("🔄 Refreshing subscription status...");
       const subStatus = await subscriptionService.checkUserSubscription(user.id);
       setSubscriptionStatus(subStatus);
       setSubscription(subStatus.subscription);
+      console.log("✅ Subscription refreshed:", subStatus);
     } catch (error) {
-      console.error("Refresh subscription error:", error);
+      console.error("❌ Refresh subscription error:", error);
     }
   }, [user]);
 
@@ -326,7 +410,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     subscription,
     subscriptionStatus,
     session,
-    loading: isLoading,
+    loading,
     signUp,
     signIn,
     signOut,
@@ -341,7 +425,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     subscription,
     subscriptionStatus,
     session,
-    isLoading,
+    loading,
     signUp,
     signIn,
     signOut,
