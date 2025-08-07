@@ -21,26 +21,25 @@ export const defaultChatbotConfig: ChatbotConfig = {
     <div id="your-chatbot-container" style="width: 100%; height: 500px;">
       <!-- Your chatbot HTML goes here -->
       
-      <!-- Example placeholder - REPLACE WITH YOUR CODE -->
+      <!-- Banner image placeholder -->
       <div style="
         display: flex;
         align-items: center;
         justify-content: center;
         height: 100%;
-        background: linear-gradient(135deg, #3B82F6 0%, #F59E0B 100%);
         border-radius: 12px;
-        color: white;
-        font-size: 18px;
-        font-weight: 600;
-        text-align: center;
-        flex-direction: column;
-        gap: 20px;
+        overflow: hidden;
       ">
-        🤖 Your Chatbot Will Appear Here
-        <div style="font-size: 14px; opacity: 0.9;">
-          Replace the embedCode in src/config/chatbot.config.ts<br>
-          with your actual chatbot embed code
-        </div>
+        <img 
+          src="/src/img/askstanbanner.png" 
+          alt="AskStan Banner" 
+          style="
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+          "
+        />
       </div>
       
       <!-- Your chatbot JavaScript initialization goes here -->
@@ -57,7 +56,7 @@ export const defaultChatbotConfig: ChatbotConfig = {
       </script>
     </div>
   `,
-  
+
   // Optional initialization script that runs after embed code loads
   initializationScript: `
     // OPTIONAL: Add any additional JavaScript that needs to run after your chatbot loads
@@ -72,15 +71,15 @@ export const defaultChatbotConfig: ChatbotConfig = {
     //   });
     // }
   `,
-  
+
   containerSettings: {
-    width: '100%',
-    height: '600px',
-    borderRadius: '12px',
-    boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
-    backgroundColor: '#ffffff'
+    width: "100%",
+    height: "600px",
+    borderRadius: "12px",
+    boxShadow: "0 10px 25px rgba(0, 0, 0, 0.1)",
+    backgroundColor: "#ffffff",
   },
-  
+
   // Optional custom CSS to style the chatbot container
   customStyles: `
     .chatbot-container {
@@ -93,14 +92,14 @@ export const defaultChatbotConfig: ChatbotConfig = {
       border-radius: 12px;
     }
   `,
-  
+
   onLoad: () => {
-    console.log('Chatbot loaded successfully');
+    console.log("Chatbot loaded successfully");
   },
-  
+
   onError: (error: Error) => {
-    console.error('Chatbot loading error:', error);
-  }
+    console.error("Chatbot loading error:", error);
+  },
 };
 
 // Function to get user-specific chatbot configuration
@@ -114,11 +113,11 @@ export const getChatbotConfig = (user?: any): ChatbotConfig => {
       // Pass user data to your chatbot if needed
       if (typeof window !== 'undefined' && window.YourChatbot) {
         window.YourChatbot.setUser({
-          id: '${user?.id || 'anonymous'}',
-          email: '${user?.email || ''}',
-          subscription: '${user?.subscription?.plan_type || 'free'}'
+          id: '${user?.id || "anonymous"}',
+          email: '${user?.email || ""}',
+          subscription: '${user?.subscription?.plan_type || "free"}'
         });
       }
-    `
+    `,
   };
 };
