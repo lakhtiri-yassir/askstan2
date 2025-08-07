@@ -137,51 +137,7 @@ const validateCoupon = async (code: string) => {
             </p>
           </motion.div>
         )}
-        <div className="mb-8 text-center">
-  <Button 
-    variant="ghost" 
-    onClick={() => setShowCouponInput(!showCouponInput)}
-    className="text-sm text-gray-600 hover:text-gray-900"
-  >
-    {showCouponInput ? 'Hide' : 'Have a'} coupon code?
-  </Button>
-  
-  {showCouponInput && (
-    <motion.div
-      initial={{ opacity: 0, height: 0 }}
-      animate={{ opacity: 1, height: 'auto' }}
-      className="mt-4 max-w-md mx-auto"
-    >
-      <div className="flex gap-2">
-        <Input
-          type="text"
-          placeholder="Enter coupon code"
-          value={couponCode}
-          onChange={(e) => {
-            const code = e.target.value.toUpperCase();
-            setCouponCode(code);
-            // Validate on change with debounce
-            if (code.length >= 3) {
-              setTimeout(() => validateCoupon(code), 500);
-            } else {
-              setCouponValidation(null);
-            }
-          }}
-          className="flex-1"
-        />
-      </div>
-      
-      // Redirect to Stripe checkout for paid plans
-        <div className={`mt-2 text-sm ${couponValidation.valid ? 'text-green-600' : 'text-red-600'}`}>
-          {couponValidation.valid 
-            ? `✅ Coupon valid! ${couponValidation.discount} discount applied`
-            : `❌ ${couponValidation.error}`
-          }
-        </div>
-      )
-    </motion.div>
-  )}
-</div>
+        
 
         <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
           {plans.map((plan, index) => (
