@@ -17,46 +17,22 @@ export interface ChatbotConfig {
 export const defaultChatbotConfig: ChatbotConfig = {
   // PASTE YOUR CHATBOT EMBED CODE HERE
   embedCode: `
-    <!-- REPLACE THIS WITH YOUR ACTUAL CHATBOT EMBED CODE -->
-    <div id="your-chatbot-container" style="width: 100%; height: 500px;">
-      <!-- Your chatbot HTML goes here -->
-      
-      <!-- Banner image placeholder -->
-      <div style="
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        height: 100%;
-        border-radius: 12px;
-        overflow: hidden;
-      ">
-        <img 
-          src="/askstanbanner.png" 
-          alt="AskStan Banner" 
-          style="
-            max-width: 100%;
-            max-height: 100%;
-            width: auto;
-            height: auto;
-            object-fit: contain;
-            object-position: center;
-          "
-        />
-      </div>
-      
-      <!-- Your chatbot JavaScript initialization goes here -->
-      <script>
-        // REPLACE WITH YOUR CHATBOT INITIALIZATION CODE
-        console.log('Chatbot loaded - replace with actual embed code');
-        
-        // Example: If your chatbot has initialization code, put it here
-        // window.YourChatbot.init({
-        //   containerId: 'your-chatbot-container',
-        //   apiKey: 'your-api-key',
-        //   // other config options
-        // });
-      </script>
-    </div>
+    <script type="text/javascript">
+  (function(d, t) {
+      var v = d.createElement(t), s = d.getElementsByTagName(t)[0];
+      v.onload = function() {
+        window.voiceflow.chat.load({
+          verify: { projectID: '688d150bdb7293eb99bdbe16' },
+          url: 'https://general-runtime.voiceflow.com',
+          versionID: 'production',
+          voice: {
+            url: "https://runtime-api.voiceflow.com"
+          }
+        });
+      }
+      v.src = "https://cdn.voiceflow.com/widget-next/bundle.mjs"; v.type = "text/javascript"; s.parentNode.insertBefore(v, s);
+  })(document, 'script');
+</script>
   `,
 
   // Optional initialization script that runs after embed code loads

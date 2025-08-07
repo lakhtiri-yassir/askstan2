@@ -2,27 +2,22 @@
 export const chatbotConfig = {
   // Replace this with your actual chatbot embed code
   embedCode: `
-    <!-- REPLACE THIS WITH YOUR CHATBOT EMBED CODE -->
-    <!-- Example: Voiceflow, Intercom, or custom chatbot -->
-    <div id="chatbot-placeholder" style="
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 400px;
-      background: linear-gradient(135deg, #3B82F6 0%, #F59E0B 100%);
-      border-radius: 12px;
-      color: white;
-      font-size: 18px;
-      font-weight: 600;
-    ">
-      🤖 Your Chatbot Will Appear Here
-      <br><br>
-      Replace the embedCode in src/config/chatbot.js
-    </div>
-    <script>
-      // Your chatbot initialization code goes here
-      console.log('Chatbot loaded - replace with actual embed code');
-    </script>
+    <script type="text/javascript">
+  (function(d, t) {
+      var v = d.createElement(t), s = d.getElementsByTagName(t)[0];
+      v.onload = function() {
+        window.voiceflow.chat.load({
+          verify: { projectID: '688d150bdb7293eb99bdbe16' },
+          url: 'https://general-runtime.voiceflow.com',
+          versionID: 'production',
+          voice: {
+            url: "https://runtime-api.voiceflow.com"
+          }
+        });
+      }
+      v.src = "https://cdn.voiceflow.com/widget-next/bundle.mjs"; v.type = "text/javascript"; s.parentNode.insertBefore(v, s);
+  })(document, 'script');
+</script>
   `,
   
   // Alternative configurations for different chatbot platforms
