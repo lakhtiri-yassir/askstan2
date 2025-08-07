@@ -31,7 +31,7 @@ export const defaultChatbotConfig: ChatbotConfig = {
         overflow: hidden;
       ">
         <img 
-          src="/src/img/askstanbanner.png" 
+          src="/askstanbanner.png" 
           alt="AskStan Banner" 
           style="
             width: 100%;
