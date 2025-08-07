@@ -1,8 +1,11 @@
-// src/components/ChatbotEmbed.tsx - FIXED TO WORK WITH UNIFIED CONFIG
+// src/components/ChatbotEmbed.tsx - BRANDED WITH ASKSTAN LOGO
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { chatbotConfig, setUserDataForChatbot } from '../config/chatbot';
-import { MessageSquare, AlertTriangle, RefreshCw } from 'lucide-react';
+import { AlertTriangle, RefreshCw } from 'lucide-react';
+
+// Import your logo - make sure to place it in src/assets/images
+import askStanLogo from '../assets/images/hero-image.jpg'; // Adjust the filename as needed
 
 interface ChatbotEmbedProps {
   onLoad?: () => void;
@@ -28,7 +31,7 @@ export const ChatbotEmbed: React.FC<ChatbotEmbedProps> = ({ onLoad, onError }) =
     initializeAttempted.current = true;
 
     try {
-      console.log('🤖 Initializing chatbot with embed code...');
+      console.log('🤖 Initializing AskStan AI Coach...');
 
       if (!chatbotConfig.enabled) {
         throw new Error('Chatbot is disabled in configuration');
@@ -85,7 +88,7 @@ export const ChatbotEmbed: React.FC<ChatbotEmbedProps> = ({ onLoad, onError }) =
         script.innerHTML = scriptContent;
 
         script.onload = () => {
-          console.log('✅ Chatbot script loaded successfully');
+          console.log('✅ AskStan AI Coach script loaded successfully');
           scriptsInjected.current = true;
           
           // Give chatbot time to initialize
@@ -98,7 +101,7 @@ export const ChatbotEmbed: React.FC<ChatbotEmbedProps> = ({ onLoad, onError }) =
         };
 
         script.onerror = (err) => {
-          console.error('❌ Failed to load chatbot script:', err);
+          console.error('❌ Failed to load AskStan AI Coach script:', err);
           reject(new Error('Failed to load chatbot script'));
         };
 
@@ -143,7 +146,7 @@ export const ChatbotEmbed: React.FC<ChatbotEmbedProps> = ({ onLoad, onError }) =
     if (isLoaded && user && profile && chatbotConfig.sendUserData) {
       setUserDataForChatbot(user, profile);
       
-      // Try to update Voiceflow user data if available
+      // Try to update chatbot user data if available
       setTimeout(() => {
         if ((window as any).voiceflow?.chat?.set) {
           try {
@@ -154,7 +157,7 @@ export const ChatbotEmbed: React.FC<ChatbotEmbedProps> = ({ onLoad, onError }) =
                 userId: user.id
               }
             });
-            console.log('🔄 Updated user data in Voiceflow');
+            console.log('🔄 Updated user data in AskStan AI Coach');
           } catch (e) {
             console.warn('⚠️ Could not update user data:', e);
           }
@@ -165,7 +168,7 @@ export const ChatbotEmbed: React.FC<ChatbotEmbedProps> = ({ onLoad, onError }) =
 
   // Handle retry
   const handleRetry = useCallback(() => {
-    console.log('🔄 Retrying chatbot initialization...');
+    console.log('🔄 Retrying AskStan AI Coach initialization...');
     
     setError(null);
     setIsLoaded(false);
@@ -174,7 +177,7 @@ export const ChatbotEmbed: React.FC<ChatbotEmbedProps> = ({ onLoad, onError }) =
     scriptsInjected.current = false;
     
     // Remove existing scripts
-    const existingScripts = document.querySelectorAll('script[src*="voiceflow"]');
+    const existingScripts = document.querySelectorAll('script[src*="voiceflow"], script[src*="widget"]');
     existingScripts.forEach(script => script.remove());
     
     setTimeout(() => {
@@ -186,10 +189,20 @@ export const ChatbotEmbed: React.FC<ChatbotEmbedProps> = ({ onLoad, onError }) =
   if (!chatbotConfig.enabled) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-          <MessageSquare className="w-8 h-8 text-gray-400" />
+        <img 
+          src={askStanLogo} 
+          alt="AskStan Logo" 
+          className="w-16 h-16 mb-4"
+          onError={(e) => {
+            // Fallback to a simple div if logo fails to load
+            const target = e.target as HTMLImageElement;
+            target.style.display = 'none';
+          }}
+        />
+        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4" id="logo-fallback" style={{ display: 'none' }}>
+          <span className="text-2xl font-bold text-blue-600">AS</span>
         </div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Chatbot Disabled</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">AI Coach Disabled</h3>
         <p className="text-gray-600 text-sm">The AI assistant is currently disabled.</p>
       </div>
     );
@@ -198,10 +211,21 @@ export const ChatbotEmbed: React.FC<ChatbotEmbedProps> = ({ onLoad, onError }) =
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+        <img 
+          src={askStanLogo} 
+          alt="AskStan Logo" 
+          className="w-16 h-16 mb-4 opacity-50"
+          onError={(e) => {
+            const target = e.target as HTMLImageElement;
+            target.style.display = 'none';
+            const fallback = document.getElementById('error-logo-fallback');
+            if (fallback) fallback.style.display = 'flex';
+          }}
+        />
+        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4" id="error-logo-fallback" style={{ display: 'none' }}>
           <AlertTriangle className="w-8 h-8 text-red-600" />
         </div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Chatbot Error</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">Connection Error</h3>
         <p className="text-gray-600 text-sm mb-4">{error}</p>
         <div className="flex space-x-2">
           <button
@@ -219,15 +243,31 @@ export const ChatbotEmbed: React.FC<ChatbotEmbedProps> = ({ onLoad, onError }) =
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-        <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="relative mb-6">
+          <img 
+            src={askStanLogo} 
+            alt="AskStan Logo" 
+            className="w-20 h-20 animate-pulse"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.style.display = 'none';
+              const fallback = document.getElementById('loading-logo-fallback');
+              if (fallback) fallback.style.display = 'flex';
+            }}
+          />
+          <div className="w-20 h-20 bg-blue-100 rounded-xl flex items-center justify-center animate-pulse" id="loading-logo-fallback" style={{ display: 'none' }}>
+            <span className="text-2xl font-bold text-blue-600">AS</span>
+          </div>
+          
+          {/* Animated loading ring around logo */}
+          <div className="absolute inset-0 w-20 h-20 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
         </div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Loading AI Coach...</h3>
-        <p className="text-gray-600 text-sm">
-          Initializing Voiceflow chatbot...
-        </p>
-        <div className="text-xs text-gray-400 mt-2">
-          Project ID: 688d150bdb7293eb99bdbe16
+        
+        <div className="text-center">
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">Loading...</h3>
+          <p className="text-gray-600 text-sm">
+            Initializing your AI coach
+          </p>
         </div>
       </div>
     );
@@ -239,28 +279,52 @@ export const ChatbotEmbed: React.FC<ChatbotEmbedProps> = ({ onLoad, onError }) =
       className="w-full h-full flex items-center justify-center"
     >
       <div className="text-center p-8">
-        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4 mx-auto">
-          <MessageSquare className="w-8 h-8 text-green-600" />
+        <div className="relative mb-6">
+          <img 
+            src={askStanLogo} 
+            alt="AskStan Logo" 
+            className="w-20 h-20 mx-auto"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.style.display = 'none';
+              const fallback = document.getElementById('ready-logo-fallback');
+              if (fallback) fallback.style.display = 'flex';
+            }}
+          />
+          <div className="w-20 h-20 bg-green-100 rounded-xl flex items-center justify-center mx-auto" id="ready-logo-fallback" style={{ display: 'none' }}>
+            <span className="text-2xl font-bold text-green-600">AS</span>
+          </div>
+          
+          {/* Success indicator */}
+          <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
         </div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">
-          {chatbotConfig.title || 'AI Coach Ready!'}
-        </h3>
-        <p className="text-gray-600 text-sm mb-4">
-          {chatbotConfig.subtitle || 'Look for the Voiceflow chat widget on your screen.'}
-        </p>
-        <div className="text-xs text-gray-500">
-          Voiceflow chatbot loaded successfully
+        
+        <div className="text-center">
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">
+            Stan is ready!
+          </h3>
+          <p className="text-gray-600 text-sm mb-4">
+            Your AI social media coach is now available. Look for the chat widget to start your conversation.
+          </p>
+          <div className="text-xs text-gray-500">
+            Powered by AskStan AI
+          </div>
         </div>
         
         {/* Debug info in development */}
         {process.env.NODE_ENV === 'development' && (
-          <div className="mt-4 text-xs text-gray-400">
+          <div className="mt-6 text-xs text-gray-400">
             <details>
-              <summary className="cursor-pointer">Debug Info</summary>
-              <div className="mt-2 text-left bg-gray-50 p-2 rounded">
-                <div>User: {user?.id}</div>
-                <div>Profile: {profile?.id}</div>
-                <div>Voiceflow Available: {(window as any).voiceflow ? 'Yes' : 'No'}</div>
+              <summary className="cursor-pointer hover:text-gray-600">Debug Info</summary>
+              <div className="mt-2 text-left bg-gray-50 p-3 rounded text-xs">
+                <div><strong>User ID:</strong> {user?.id || 'None'}</div>
+                <div><strong>Profile ID:</strong> {profile?.id || 'None'}</div>
+                <div><strong>Chatbot Available:</strong> {(window as any).voiceflow ? 'Yes' : 'No'}</div>
+                <div><strong>User Data Sent:</strong> {chatbotConfig.sendUserData ? 'Enabled' : 'Disabled'}</div>
               </div>
             </details>
           </div>

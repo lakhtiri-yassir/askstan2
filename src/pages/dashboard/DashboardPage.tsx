@@ -1,7 +1,7 @@
-// src/pages/dashboard/DashboardPage.tsx - OPTIMIZED VERSION
+// src/pages/dashboard/DashboardPage.tsx - UPDATED WITHOUT QUICK ACTIONS
 import React, { useState, useEffect, Suspense } from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, MessageSquare, Settings, Gift, AlertTriangle } from 'lucide-react';
+import { Sparkles, MessageSquare, Gift, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSearchParams } from 'react-router-dom';
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
@@ -98,7 +98,7 @@ export const DashboardPage: React.FC = () => {
   return (
     <DashboardErrorBoundary>
       <div className="min-h-screen bg-gray-50">
-        <div className="max-w-6xl mx-auto px-4 py-8">
+        <div className="max-w-7xl mx-auto px-4 py-8">
           {/* Welcome Section */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -152,251 +152,109 @@ export const DashboardPage: React.FC = () => {
             </div>
           </motion.div>
 
-          {/* Main Dashboard Content */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Chatbot Section */}
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-              className="lg:col-span-2"
-            >
-              <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-200 h-[600px] flex flex-col">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-semibold text-gray-900">AI Social Media Coach</h2>
-                  <div className="flex items-center space-x-2">
-                    <div className={`w-2 h-2 rounded-full ${chatbotLoaded ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
-                    <span className="text-xs text-gray-500">
-                      {chatbotLoaded ? 'Connected' : 'Connecting...'}
-                    </span>
-                  </div>
+          {/* Main Dashboard Content - Full Width Chatbot */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="w-full"
+          >
+            <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-200 h-[700px] flex flex-col">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold text-gray-900">AI Social Media Coach</h2>
+                <div className="flex items-center space-x-2">
+                  <div className={`w-2 h-2 rounded-full ${chatbotLoaded ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
+                  <span className="text-xs text-gray-500">
+                    {chatbotLoaded ? 'Connected' : 'Connecting...'}
+                  </span>
                 </div>
-                
-                <div className="flex-1 flex items-center justify-center">
-                  {chatbotError ? (
-                    <div className="text-center">
-                      <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Chatbot Error</h3>
-                      <p className="text-gray-600 mb-4">{chatbotError}</p>
-                      <Button onClick={() => window.location.reload()}>
-                        Reload Dashboard
-                      </Button>
-                    </div>
-                  ) : (
-                    <Suspense 
-                      fallback={
-                        <div className="flex flex-col items-center justify-center">
-                          <LoadingSpinner size="lg" />
-                          <p className="mt-4 text-gray-600">Loading AI Coach...</p>
-                        </div>
-                      }
-                    >
-                      <div className="w-full h-full">
-                        <ChatbotEmbed 
-                          onLoad={handleChatbotLoad}
-                          onError={handleChatbotError}
-                        />
+              </div>
+              
+              <div className="flex-1 flex items-center justify-center">
+                {chatbotError ? (
+                  <div className="text-center">
+                    <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Chatbot Error</h3>
+                    <p className="text-gray-600 mb-4">{chatbotError}</p>
+                    <Button onClick={() => window.location.reload()}>
+                      Reload Dashboard
+                    </Button>
+                  </div>
+                ) : (
+                  <Suspense 
+                    fallback={
+                      <div className="flex flex-col items-center justify-center">
+                        <LoadingSpinner size="lg" />
+                        <p className="mt-4 text-gray-600">Loading AI Coach...</p>
                       </div>
-                    </Suspense>
-                  )}
-                </div>
-              </div>
-            </motion.div>
-
-            {/* Quick Actions & Tips */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.8, delay: 0.4 }}
-              className="space-y-6"
-            >
-              {/* Quick Actions */}
-              <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-                <div className="space-y-3">
-                  <button 
-                    className="w-full text-left p-3 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors border border-blue-200"
-                    onClick={() => {
-                      // Focus on chatbot if available
-                      const chatElement = document.querySelector('[data-testid="chatbot-embed"]');
-                      if (chatElement) {
-                        chatElement.scrollIntoView({ behavior: 'smooth' });
-                      }
-                    }}
-                    aria-label="Start new conversation with AI coach"
+                    }
                   >
-                    <div className="flex items-center space-x-3">
-                      <MessageSquare className="w-5 h-5 text-blue-600" />
-                      <span className="text-sm font-medium text-blue-800">Start New Conversation</span>
+                    <div className="w-full h-full">
+                      <ChatbotEmbed 
+                        onLoad={handleChatbotLoad}
+                        onError={handleChatbotError}
+                      />
                     </div>
-                  </button>
-                  
-                  <button 
-                    className="w-full text-left p-3 rounded-lg bg-green-50 hover:bg-green-100 transition-colors border border-green-200"
-                    onClick={() => {
-                      // Auto-populate chatbot with growth strategy request
-                      const message = "Can you create a personalized growth strategy for my social media accounts?";
-                      // This would integrate with your chatbot's API to send a message
-                      console.log("Growth strategy request:", message);
-                    }}
-                    aria-label="Get growth strategy from AI coach"
-                  >
-                    <div className="flex items-center space-x-3">
-                      <Sparkles className="w-5 h-5 text-green-600" />
-                      <span className="text-sm font-medium text-green-800">Get Growth Strategy</span>
-                    </div>
-                  </button>
-                  
-                  <button 
-                    className="w-full text-left p-3 rounded-lg bg-purple-50 hover:bg-purple-100 transition-colors border border-purple-200"
-                    onClick={() => window.location.href = '/settings'}
-                    aria-label="Go to settings page"
-                  >
-                    <div className="flex items-center space-x-3">
-                      <Settings className="w-5 h-5 text-purple-600" />
-                      <span className="text-sm font-medium text-purple-800">Customize Settings</span>
-                    </div>
-                  </button>
-                </div>
-              </div>
-
-              {/* Pro Tips */}
-              <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-2xl shadow-xl p-6 border border-yellow-200">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">💡 Pro Tips</h3>
-                <div className="space-y-3 text-sm text-gray-700">
-                  <div className="flex items-start space-x-2">
-                    <div className="w-1.5 h-1.5 bg-yellow-500 rounded-full mt-2 flex-shrink-0"></div>
-                    <p>Ask specific questions about your niche for better advice</p>
-                  </div>
-                  <div className="flex items-start space-x-2">
-                    <div className="w-1.5 h-1.5 bg-yellow-500 rounded-full mt-2 flex-shrink-0"></div>
-                    <p>Share your current follower count for personalized strategies</p>
-                  </div>
-                  <div className="flex items-start space-x-2">
-                    <div className="w-1.5 h-1.5 bg-yellow-500 rounded-full mt-2 flex-shrink-0"></div>
-                    <p>Ask for actionable steps you can implement today</p>
-                  </div>
-                  <div className="flex items-start space-x-2">
-                    <div className="w-1.5 h-1.5 bg-yellow-500 rounded-full mt-2 flex-shrink-0"></div>
-                    <p>Mention your target audience for tailored content ideas</p>
-                  </div>
-                  <div className="flex items-start space-x-2">
-                    <div className="w-1.5 h-1.5 bg-yellow-500 rounded-full mt-2 flex-shrink-0"></div>
-                    <p>Ask for help with specific platforms (Instagram, TikTok, etc.)</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* System Status */}
-              <div className="bg-white rounded-xl p-4 border border-gray-200">
-                <h4 className="text-sm font-semibold text-gray-700 mb-3">System Status</h4>
-                <div className="space-y-2 text-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Authentication</span>
-                    <span className="flex items-center">
-                      <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                      <span className="text-green-600 font-medium">Connected</span>
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Subscription</span>
-                    <span className="flex items-center">
-                      <div className={`w-2 h-2 ${subscription?.status === 'active' ? 'bg-green-500' : 'bg-yellow-500'} rounded-full mr-2`}></div>
-                      <span className={`font-medium ${subscription?.status === 'active' ? 'text-green-600' : 'text-yellow-600'}`}>
-                        {subscription?.status ? subscription.status.charAt(0).toUpperCase() + subscription.status.slice(1) : 'Loading...'}
-                      </span>
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-600">AI Coach</span>
-                    <span className="flex items-center">
-                      <div className={`w-2 h-2 ${chatbotLoaded ? 'bg-green-500' : chatbotError ? 'bg-red-500' : 'bg-yellow-500'} rounded-full mr-2`}></div>
-                      <span className={`font-medium ${chatbotLoaded ? 'text-green-600' : chatbotError ? 'text-red-600' : 'text-yellow-600'}`}>
-                        {chatbotError ? 'Error' : chatbotLoaded ? 'Ready' : 'Loading...'}
-                      </span>
-                    </span>
-                  </div>
-                </div>
-                
-                {/* Debug info in development */}
-                {process.env.NODE_ENV === 'development' && (
-                  <details className="mt-3 text-xs">
-                    <summary className="cursor-pointer text-gray-500 hover:text-gray-700">
-                      Debug Info (Dev Only)
-                    </summary>
-                    <div className="mt-2 p-2 bg-gray-50 rounded text-xs font-mono">
-                      <div>User ID: {user?.id}</div>
-                      <div>Profile ID: {profile?.id}</div>
-                      <div>Subscription ID: {subscription?.id}</div>
-                      <div>Chatbot State: {chatbotError ? 'Error' : chatbotLoaded ? 'Loaded' : 'Loading'}</div>
-                      {chatbotError && <div className="text-red-600">Error: {chatbotError}</div>}
-                    </div>
-                  </details>
+                  </Suspense>
                 )}
               </div>
-
-              {/* Performance Stats (Development Only) */}
-              {process.env.NODE_ENV === 'development' && (
-                <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
-                  <h4 className="text-sm font-semibold text-blue-700 mb-2">⚡ Performance</h4>
-                  <div className="space-y-1 text-xs text-blue-600">
-                    <div>Render Time: {Date.now() % 10000}ms</div>
-                    <div>Memory: {typeof (performance as any).memory !== 'undefined' ? 
-                      `${Math.round((performance as any).memory.usedJSHeapSize / 1048576)}MB` : 'N/A'}</div>
-                    <button 
-                      onClick={() => console.log('Dashboard Performance Check:', {
-                        timestamp: new Date().toISOString(),
-                        user: user?.id,
-                        profile: profile?.id,
-                        subscription: subscription?.status,
-                        chatbotLoaded,
-                        chatbotError
-                      })}
-                      className="text-blue-500 underline"
-                    >
-                      Log State
-                    </button>
-                  </div>
-                </div>
-              )}
-            </motion.div>
-          </div>
-
-          {/* Bottom Action Bar for Mobile */}
-          <div className="lg:hidden mt-8">
-            <div className="bg-white rounded-2xl shadow-xl p-4 border border-gray-200">
-              <div className="grid grid-cols-3 gap-3">
-                <button 
-                  className="flex flex-col items-center p-3 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors"
-                  onClick={() => {
-                    const chatElement = document.querySelector('[data-testid="chatbot-embed"]');
-                    if (chatElement) {
-                      chatElement.scrollIntoView({ behavior: 'smooth' });
-                    }
-                  }}
-                >
-                  <MessageSquare className="w-6 h-6 text-blue-600 mb-1" />
-                  <span className="text-xs font-medium text-blue-800">Chat</span>
-                </button>
-                
-                <button 
-                  className="flex flex-col items-center p-3 rounded-lg bg-green-50 hover:bg-green-100 transition-colors"
-                  onClick={() => console.log("Growth strategy request")}
-                >
-                  <Sparkles className="w-6 h-6 text-green-600 mb-1" />
-                  <span className="text-xs font-medium text-green-800">Strategy</span>
-                </button>
-                
-                <button 
-                  className="flex flex-col items-center p-3 rounded-lg bg-purple-50 hover:bg-purple-100 transition-colors"
-                  onClick={() => window.location.href = '/settings'}
-                >
-                  <Settings className="w-6 h-6 text-purple-600 mb-1" />
-                  <span className="text-xs font-medium text-purple-800">Settings</span>
-                </button>
-              </div>
             </div>
-          </div>
+          </motion.div>
+
+          {/* System Status Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.4 }}
+            className="mt-8"
+          >
+            <div className="bg-white rounded-xl p-4 border border-gray-200">
+              <h4 className="text-sm font-semibold text-gray-700 mb-3">System Status</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-600">Authentication</span>
+                  <span className="flex items-center">
+                    <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                    <span className="text-green-600 font-medium">Connected</span>
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-600">Subscription</span>
+                  <span className="flex items-center">
+                    <div className={`w-2 h-2 ${subscription?.status === 'active' ? 'bg-green-500' : 'bg-yellow-500'} rounded-full mr-2`}></div>
+                    <span className={`font-medium ${subscription?.status === 'active' ? 'text-green-600' : 'text-yellow-600'}`}>
+                      {subscription?.status ? subscription.status.charAt(0).toUpperCase() + subscription.status.slice(1) : 'Loading...'}
+                    </span>
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-600">AI Coach</span>
+                  <span className="flex items-center">
+                    <div className={`w-2 h-2 ${chatbotLoaded ? 'bg-green-500' : chatbotError ? 'bg-red-500' : 'bg-yellow-500'} rounded-full mr-2`}></div>
+                    <span className={`font-medium ${chatbotLoaded ? 'text-green-600' : chatbotError ? 'text-red-600' : 'text-yellow-600'}`}>
+                      {chatbotError ? 'Error' : chatbotLoaded ? 'Ready' : 'Loading...'}
+                    </span>
+                  </span>
+                </div>
+              </div>
+              
+              {/* Debug info in development */}
+              {process.env.NODE_ENV === 'development' && (
+                <details className="mt-3 text-xs">
+                  <summary className="cursor-pointer text-gray-500 hover:text-gray-700">
+                    Debug Info (Dev Only)
+                  </summary>
+                  <div className="mt-2 p-2 bg-gray-50 rounded text-xs font-mono">
+                    <div>User ID: {user?.id}</div>
+                    <div>Profile ID: {profile?.id}</div>
+                    <div>Subscription ID: {subscription?.id}</div>
+                    <div>Chatbot State: {chatbotError ? 'Error' : chatbotLoaded ? 'Loaded' : 'Loading'}</div>
+                    {chatbotError && <div className="text-red-600">Error: {chatbotError}</div>}
+                  </div>
+                </details>
+              )}
+            </div>
+          </motion.div>
         </div>
       </div>
     </DashboardErrorBoundary>
