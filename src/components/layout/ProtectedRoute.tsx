@@ -23,7 +23,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   useEffect(() => {
     const timer = setTimeout(() => {
       setLoadingTimeout(true);
-    }, 20000); // Increased from 10 seconds to 20 seconds
+    }, 8000); // Increased from 10 seconds to 20 seconds
 
     return () => clearTimeout(timer);
   }, []);
