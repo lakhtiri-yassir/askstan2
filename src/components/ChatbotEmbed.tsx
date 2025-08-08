@@ -192,7 +192,7 @@ export const ChatbotEmbed: React.FC<ChatbotEmbedProps> = ({ onLoad, onError }) =
         <img 
           src={askStanLogo} 
           alt="AskStan Logo" 
-          className="w-16 h-16 mb-4"
+          className="w-80 h-80 mb-4"
           onError={(e) => {
             // Fallback to a simple div if logo fails to load
             const target = e.target as HTMLImageElement;
@@ -214,7 +214,7 @@ export const ChatbotEmbed: React.FC<ChatbotEmbedProps> = ({ onLoad, onError }) =
         <img 
           src={askStanLogo} 
           alt="AskStan Logo" 
-          className="w-16 h-16 mb-4 opacity-50"
+          className="w-80 h-80 mb-4 opacity-50"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
             target.style.display = 'none';
@@ -247,7 +247,7 @@ export const ChatbotEmbed: React.FC<ChatbotEmbedProps> = ({ onLoad, onError }) =
           <img 
             src={askStanLogo} 
             alt="AskStan Logo" 
-            className="w-20 h-20 animate-pulse"
+            className="w-80 h-80 animate-pulse"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
               target.style.display = 'none';
@@ -283,7 +283,7 @@ export const ChatbotEmbed: React.FC<ChatbotEmbedProps> = ({ onLoad, onError }) =
           <img 
             src={askStanLogo} 
             alt="AskStan Logo" 
-            className="w-20 h-20 mx-auto"
+            className="w-80 h-80 mx-auto"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
               target.style.display = 'none';
