@@ -113,32 +113,94 @@ serve(async (req) => {
             id: subscription.id,
             status: subscription.status,
             current_period_start: subscription.current_period_start,
-            current_period_end: subscription.current_period_end
+            current_period_end: subscription.current_period_end,
+            metadata: subscription.metadata
           });
 
-          // Extract user info from metadata
-          const userId = session.metadata?.user_id;
-          const planType = session.metadata?.plan_type;
+          // ENHANCED: Extract user info from metadata with multiple fallbacks
+          let userId = session.metadata?.user_id;
+          let planType = session.metadata?.plan_type;
+
+          // Fallback 1: Try subscription metadata if session metadata is missing
+          if (!userId && subscription.metadata) {
+            console.log('🔄 Trying subscription metadata for user_id...');
+            userId = subscription.metadata.user_id;
+            planType = planType || subscription.metadata.plan_type;
+          }
+
+          // Fallback 2: Try to find user by customer email
+          if (!userId && session.customer_details?.email) {
+            console.log('🔍 Looking up user by email:', session.customer_details.email);
+            const { data: userProfile } = await supabase
+              .from('user_profiles')
+              .select('id')
+              .eq('email', session.customer_details.email)
+              .single();
+            
+            if (userProfile) {
+              userId = userProfile.id;
+              console.log('✅ Found user by email:', userId);
+            }
+          }
+
+          // Fallback 3: Try to find user by existing subscription with same customer
+          if (!userId && session.customer) {
+            console.log('🔍 Looking up user by stripe customer:', session.customer);
+            const { data: existingSubscription } = await supabase
+              .from('subscriptions')
+              .select('user_id')
+              .eq('stripe_customer_id', session.customer as string)
+              .single();
+            
+            if (existingSubscription) {
+              userId = existingSubscription.user_id;
+              console.log('✅ Found user by existing customer:', userId);
+            }
+          }
 
           if (!userId) {
-            console.error('❌ No user_id in session metadata');
-            throw new Error('No user_id found in session metadata');
+            console.error('❌ No user_id found in any metadata source');
+            console.error('Available data:', {
+              sessionMetadata: session.metadata,
+              subscriptionMetadata: subscription.metadata,
+              customerEmail: session.customer_details?.email,
+              customerId: session.customer
+            });
+            
+            // Instead of throwing error, return success but log the issue
+            // This prevents webhook retries for unfixable issues
+            console.log('⚠️ Webhook marked as processed despite missing user_id');
+            return new Response(
+              JSON.stringify({ 
+                received: true, 
+                processed: event.type,
+                warning: 'No user_id found but webhook marked as processed to prevent retries'
+              }), 
+              {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 200
+              }
+            );
           }
 
           // Create or update subscription record
           console.log('💾 Upserting subscription record...');
+          const subscriptionData = {
+            user_id: userId,
+            stripe_customer_id: session.customer as string,
+            stripe_subscription_id: subscription.id,
+            plan_type: planType || 'monthly',
+            status: subscription.status,
+            current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+            current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+            cancel_at_period_end: subscription.cancel_at_period_end,
+          };
+
+          console.log('Creating subscription with data:', subscriptionData);
+
           const { error: upsertError } = await supabase
             .from('subscriptions')
-            .upsert({
-              user_id: userId,
-              stripe_customer_id: session.customer as string,
-              stripe_subscription_id: subscription.id,
-              plan_type: planType || 'monthly',
-              status: subscription.status,
-              current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-              current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-              cancel_at_period_end: subscription.cancel_at_period_end,
-            }, {
+            .upsert(subscriptionData, {
               onConflict: 'user_id'
             });
 

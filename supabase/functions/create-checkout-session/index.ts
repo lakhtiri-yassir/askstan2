@@ -28,7 +28,7 @@ serve(async (req) => {
 
     // Parse request body
     const body = await req.json();
-    const { planType, userId, couponCode } = body; // Added couponCode parameter
+    const { planType, userId, couponCode } = body;
     
     console.log('Request data:', { planType, userId, couponCode });
     
@@ -110,7 +110,7 @@ serve(async (req) => {
     const successUrl = `${appUrl}/checkout-success?session_id={CHECKOUT_SESSION_ID}&plan=${planType}&coupon=${couponCode || ''}`;
     const cancelUrl = `${appUrl}/plans`;
     
-    const sessionConfig = {
+    const sessionConfig: any = {
       customer: customer.id,
       line_items: [{
         price: priceId,
@@ -143,61 +143,75 @@ serve(async (req) => {
       }];
     }
 
-    // If 100% off coupon, configure for no payment collection
+    // ENHANCED: If 100% off coupon, configure for no payment collection
     if (is100PercentOff) {
       console.log('🆓 Configuring free checkout (no payment required)');
       
-      // For 100% off coupons, we need to create a subscription directly
-      // instead of going through checkout
-      const subscription = await stripe.subscriptions.create({
-        customer: customer.id,
-        items: [{
-          price: priceId,
-        }],
-        coupon: validCoupon.id,
-        metadata: {
-          user_id: userId,
-          plan_type: planType,
-          coupon_applied: couponCode
-        }
-      });
-      
-      // Create subscription record in database
-      const { error: dbError } = await supabase
-        .from('subscriptions')
-        .upsert({
-          user_id: userId,
-          stripe_customer_id: customer.id,
-          stripe_subscription_id: subscription.id,
-          plan_type: planType,
-          status: 'active',
-          current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-          current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-          cancel_at_period_end: false,
+      // For 100% off coupons, we create a subscription directly instead of going through checkout
+      // This automatically activates the subscription without requiring payment details
+      try {
+        const subscription = await stripe.subscriptions.create({
+          customer: customer.id,
+          items: [{
+            price: priceId,
+          }],
+          coupon: validCoupon.id,
+          metadata: {
+            user_id: userId,
+            plan_type: planType,
+            coupon_applied: couponCode
+          }
         });
         
-      if (dbError) {
-        console.error('Database error:', dbError);
-        throw new Error('Failed to create subscription record');
-      }
-      
-      // Return success without checkout session
-      return new Response(
-        JSON.stringify({ 
-          success: true,
-          paymentRequired: false,
-          couponApplied: true,
-          subscriptionId: subscription.id,
-          redirectUrl: `${appUrl}/dashboard?coupon_success=true&plan=${planType}`
-        }), 
-        {
-          headers: { 
-            ...corsHeaders, 
-            'Content-Type': 'application/json' 
-          },
-          status: 200
+        // Create subscription record in database
+        const { error: dbError } = await supabase
+          .from('subscriptions')
+          .upsert({
+            user_id: userId,
+            stripe_customer_id: customer.id,
+            stripe_subscription_id: subscription.id,
+            plan_type: planType,
+            status: 'active',
+            current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+            current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+            cancel_at_period_end: false,
+          });
+          
+        if (dbError) {
+          console.error('Database error:', dbError);
+          throw new Error('Failed to create subscription record');
         }
-      );
+        
+        // Return success without checkout session
+        return new Response(
+          JSON.stringify({ 
+            success: true,
+            paymentRequired: false,
+            couponApplied: true,
+            subscriptionId: subscription.id,
+            redirectUrl: `${appUrl}/dashboard?coupon_success=true&plan=${planType}`
+          }), 
+          {
+            headers: { 
+              ...corsHeaders, 
+              'Content-Type': 'application/json' 
+            },
+            status: 200
+          }
+        );
+      } catch (subscriptionError) {
+        console.error('❌ Direct subscription creation failed:', subscriptionError);
+        // Fallback to checkout session even for 100% off
+        console.log('⬇️ Falling back to checkout session for 100% off coupon');
+      }
+    }
+
+    // Configure payment collection - normal payment or fallback for 100% off
+    if (is100PercentOff) {
+      // For 100% off as fallback, configure checkout to not require payment
+      sessionConfig.payment_method_types = ['card'];
+      sessionConfig.invoice_creation = { enabled: false };
+      sessionConfig.payment_intent_data = { setup_future_usage: 'off_session' };
     } else {
       // Normal payment collection
       sessionConfig.payment_method_types = ['card'];

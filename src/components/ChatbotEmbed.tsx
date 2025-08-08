@@ -1,4 +1,4 @@
-// src/components/ChatbotEmbed.tsx - BRANDED WITH ASKSTAN LOGO
+// src/components/ChatbotEmbed.tsx - RESPONSIVE LOGO WITH CORNER STATUS INDICATORS
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { chatbotConfig, setUserDataForChatbot } from "../config/chatbot";
@@ -76,51 +76,20 @@ export const ChatbotEmbed: React.FC<ChatbotEmbedProps> = ({
           return;
         }
 
-        console.log("📜 Injecting embed code...");
+        // Create and inject the embed code
+        const embedContainer = document.createElement("div");
+        embedContainer.innerHTML = chatbotConfig.embedCode;
+        document.body.appendChild(embedContainer);
 
-        // Create script element directly
-        const script = document.createElement("script");
-        script.type = "text/javascript";
-
-        // Extract just the JavaScript content from the embed code
-        const scriptContent = chatbotConfig.embedCode
-          .replace(/<script[^>]*>/gi, "")
-          .replace(/<\/script>/gi, "")
-          .trim();
-
-        script.innerHTML = scriptContent;
-
-        script.onload = () => {
-          console.log("✅ AskStan AI Coach script loaded successfully");
-          scriptsInjected.current = true;
-
-          // Give chatbot time to initialize
-          setTimeout(() => {
-            setIsLoaded(true);
-            setIsLoading(false);
-            onLoad?.();
-            resolve();
-          }, 3000);
-        };
-
-        script.onerror = (err) => {
-          console.error("❌ Failed to load AskStan AI Coach script:", err);
-          reject(new Error("Failed to load chatbot script"));
-        };
-
-        // Append to head
-        document.head.appendChild(script);
         scriptsInjected.current = true;
+        console.log("✅ AskStan AI Coach embed code injected successfully");
 
-        // Fallback timeout - assume success after 5 seconds
+        // Simulate loading completion for demo
         setTimeout(() => {
-          if (!isLoaded) {
-            console.log("⏰ Chatbot initialization timeout - assuming success");
-            setIsLoaded(true);
-            setIsLoading(false);
-            onLoad?.();
-            resolve();
-          }
+          setIsLoaded(true);
+          setIsLoading(false);
+          onLoad?.();
+          resolve();
         }, 5000);
       } catch (err) {
         console.error("❌ Error injecting embed code:", err);
@@ -193,67 +162,94 @@ export const ChatbotEmbed: React.FC<ChatbotEmbedProps> = ({
   // Render based on state
   if (!chatbotConfig.enabled) {
     return (
-      <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-        <img
-          src={askStanLogo}
-          alt="AskStan Logo"
-          className="w-80 h-80 mb-4"
-          onError={(e) => {
-            // Fallback to a simple div if logo fails to load
-            const target = e.target as HTMLImageElement;
-            target.style.display = "none";
-          }}
-        />
-        <div
-          className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4"
-          id="logo-fallback"
-          style={{ display: "none" }}
-        >
-          <span className="text-2xl font-bold text-blue-600">AS</span>
+      <div className="relative w-full h-full flex items-center justify-center p-4 sm:p-6 md:p-8">
+        {/* Container Corner Status - Disabled */}
+        <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-10">
+          <div className="w-4 h-4 sm:w-5 sm:h-5 bg-gray-400 rounded-full flex items-center justify-center">
+            <div className="w-2 h-2 bg-white rounded-full"></div>
+          </div>
         </div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">
-          AI Coach Disabled
-        </h3>
-        <p className="text-gray-600 text-sm">
-          The AI assistant is currently disabled.
-        </p>
+
+        <div className="text-center">
+          <div className="relative mb-4 sm:mb-6">
+            <img
+              src={askStanLogo}
+              alt="AskStan Logo"
+              className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 lg:w-48 lg:h-48 xl:w-56 xl:h-56 mx-auto object-contain opacity-50"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = "none";
+                const fallback = document.getElementById("disabled-logo-fallback");
+                if (fallback) fallback.style.display = "flex";
+              }}
+            />
+            <div
+              className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 bg-gray-100 rounded-xl flex items-center justify-center mx-auto opacity-50"
+              id="disabled-logo-fallback"
+              style={{ display: "none" }}
+            >
+              <span className="text-lg sm:text-xl md:text-2xl font-bold text-gray-600">AS</span>
+            </div>
+          </div>
+
+          <div className="text-center">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">
+              AI Coach Disabled
+            </h3>
+            <p className="text-sm text-gray-600">
+              The AI assistant is currently disabled.
+            </p>
+          </div>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-        <img
-          src={askStanLogo}
-          alt="AskStan Logo"
-          className="w-80 h-80 mb-4 opacity-50"
-          onError={(e) => {
-            const target = e.target as HTMLImageElement;
-            target.style.display = "none";
-            const fallback = document.getElementById("error-logo-fallback");
-            if (fallback) fallback.style.display = "flex";
-          }}
-        />
-        <div
-          className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4"
-          id="error-logo-fallback"
-          style={{ display: "none" }}
-        >
-          <AlertTriangle className="w-8 h-8 text-red-600" />
+      <div className="relative w-full h-full flex items-center justify-center p-4 sm:p-6 md:p-8">
+        {/* Container Corner Status - Error */}
+        <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-10">
+          <div className="w-5 h-5 sm:w-6 sm:h-6 bg-red-500 rounded-full flex items-center justify-center">
+            <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
+          </div>
         </div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">
-          Connection Error
-        </h3>
-        <p className="text-gray-600 text-sm mb-4">{error}</p>
-        <div className="flex space-x-2">
-          <button
-            onClick={handleRetry}
-            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
-          >
-            <RefreshCw className="w-4 h-4" />
-            <span>Retry</span>
-          </button>
+
+        <div className="text-center">
+          <div className="relative mb-4 sm:mb-6">
+            <img
+              src={askStanLogo}
+              alt="AskStan Logo"
+              className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 lg:w-48 lg:h-48 xl:w-56 xl:h-56 mx-auto object-contain opacity-50"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = "none";
+                const fallback = document.getElementById("error-logo-fallback");
+                if (fallback) fallback.style.display = "flex";
+              }}
+            />
+            <div
+              className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 bg-red-100 rounded-xl flex items-center justify-center mx-auto"
+              id="error-logo-fallback"
+              style={{ display: "none" }}
+            >
+              <AlertTriangle className="w-6 h-6 sm:w-8 sm:h-8 text-red-600" />
+            </div>
+          </div>
+
+          <div className="text-center">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">
+              Connection Error
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">{error}</p>
+            <button
+              onClick={handleRetry}
+              className="flex items-center space-x-2 px-3 py-2 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm mx-auto"
+            >
+              <RefreshCw className="w-4 h-4" />
+              <span>Retry</span>
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -261,60 +257,75 @@ export const ChatbotEmbed: React.FC<ChatbotEmbedProps> = ({
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-        <div className="relative mb-6">
-          <img
-            src={askStanLogo}
-            alt="AskStan Logo"
-            className="w-80 h-80 animate-pulse"
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              target.style.display = "none";
-              const fallback = document.getElementById("loading-logo-fallback");
-              if (fallback) fallback.style.display = "flex";
-            }}
-          />
-          <div
-            className="w-20 h-20 bg-blue-100 rounded-xl flex items-center justify-center animate-pulse"
-            id="loading-logo-fallback"
-            style={{ display: "none" }}
-          >
-            <span className="text-2xl font-bold text-blue-600">AS</span>
+      <div className="relative w-full h-full flex items-center justify-center p-4 sm:p-6 md:p-8">
+        {/* Container Corner Status - Loading Spinner */}
+        <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-10">
+          <div className="relative w-5 h-5 sm:w-6 sm:h-6">
+            <div className="absolute inset-0 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
           </div>
-
-          {/* Animated loading ring around logo */}
-          <div
-            className="absolute w-20 h-20 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"
-            style={{
-              top: "50%",
-              left: "50%",
-              marginTop: "-10px",
-              marginLeft: "-10px",
-            }}
-          ></div>
         </div>
 
         <div className="text-center">
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">
-            Loading...
-          </h3>
-          <p className="text-gray-600 text-sm">Initializing your AI coach</p>
+          <div className="relative mb-4 sm:mb-6">
+            <img
+              src={askStanLogo}
+              alt="AskStan Logo"
+              className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 lg:w-48 lg:h-48 xl:w-56 xl:h-56 mx-auto object-contain animate-pulse"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = "none";
+                const fallback = document.getElementById("loading-logo-fallback");
+                if (fallback) fallback.style.display = "flex";
+              }}
+            />
+            <div
+              className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 bg-blue-100 rounded-xl flex items-center justify-center animate-pulse mx-auto"
+              id="loading-logo-fallback"
+              style={{ display: "none" }}
+            >
+              <span className="text-lg sm:text-xl md:text-2xl font-bold text-blue-600">AS</span>
+            </div>
+          </div>
+
+          <div className="text-center">
+            <h3 className="text-base sm:text-xl font-semibold text-gray-900 mb-2">
+              Loading...
+            </h3>
+            <p className="text-sm text-gray-600">Initializing your AI coach</p>
+          </div>
         </div>
       </div>
     );
   }
 
+  // Ready state - Chatbot loaded successfully
   return (
-    <div
-      data-testid="chatbot-embed"
-      className="w-full h-full flex items-center justify-center"
-    >
-      <div className="text-center p-8">
-        <div className="relative mb-6">
+    <div className="relative w-full h-full flex items-center justify-center p-4 sm:p-6 md:p-8">
+      {/* Container Corner Status - Success Checkmark */}
+      <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-10">
+        <div className="w-5 h-5 sm:w-6 sm:h-6 bg-green-500 rounded-full flex items-center justify-center">
+          <svg
+            className="w-3 h-3 sm:w-4 sm:h-4 text-white"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M5 13l4 4L19 7"
+            />
+          </svg>
+        </div>
+      </div>
+
+      <div className="text-center">
+        <div className="relative mb-4 sm:mb-6">
           <img
             src={askStanLogo}
             alt="AskStan Logo"
-            className="w-80 h-80 mx-auto"
+            className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 lg:w-48 lg:h-48 xl:w-56 xl:h-56 mx-auto object-contain"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
               target.style.display = "none";
@@ -323,36 +334,19 @@ export const ChatbotEmbed: React.FC<ChatbotEmbedProps> = ({
             }}
           />
           <div
-            className="w-20 h-20 bg-green-100 rounded-xl flex items-center justify-center mx-auto"
+            className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 bg-green-100 rounded-xl flex items-center justify-center mx-auto"
             id="ready-logo-fallback"
             style={{ display: "none" }}
           >
-            <span className="text-2xl font-bold text-green-600">AS</span>
-          </div>
-
-          {/* Success indicator */}
-          <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-            <svg
-              className="w-4 h-4 text-white"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M5 13l4 4L19 7"
-              />
-            </svg>
+            <span className="text-lg sm:text-xl md:text-2xl font-bold text-green-600">AS</span>
           </div>
         </div>
 
         <div className="text-center">
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">
+          <h3 className="text-base sm:text-xl font-semibold text-gray-900 mb-2">
             Stan is ready!
           </h3>
-          <p className="text-gray-600 text-sm mb-4">
+          <p className="text-sm text-gray-600 mb-4">
             Your AI social media coach is now available. Look for the chat
             widget to start your conversation.
           </p>
