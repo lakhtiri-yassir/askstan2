@@ -311,7 +311,7 @@ export const ChatbotEmbed: React.FC<ChatbotEmbedProps> = ({ onLoad, onError }) =
             Your AI social media coach is now available. Look for the chat widget to start your conversation.
           </p>
           <div className="text-xs text-gray-500">
-            Powered by AskStan AI
+            Powered by Yvexan Agency
           </div>
         </div>
         
