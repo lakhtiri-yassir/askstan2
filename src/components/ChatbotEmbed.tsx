@@ -207,7 +207,7 @@ export const ChatbotEmbed: React.FC<ChatbotEmbedProps> = ({
           <img
             src={askStanLogo}
             alt="AskStan Logo"
-            className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 lg:w-48 lg:h-48 xl:w-56 xl:h-56 mx-auto object-contain opacity-50"
+            className="w-48 h-48 sm:w-64 sm:h-64 md:w-80 md:h-80 lg:w-96 lg:h-96 xl:w-112 xl:h-112 mx-auto object-contain opacity-50"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
               target.style.display = "none";
@@ -216,11 +216,11 @@ export const ChatbotEmbed: React.FC<ChatbotEmbedProps> = ({
             }}
           />
           <div
-            className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 bg-gray-100 rounded-xl flex items-center justify-center mx-auto opacity-50"
+            className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 lg:w-48 lg:h-48 xl:w-56 xl:h-56 bg-gray-100 rounded-xl flex items-center justify-center mx-auto opacity-50"
             id="disabled-logo-fallback"
             style={{ display: "none" }}
           >
-            <span className="text-lg sm:text-xl md:text-2xl font-bold text-gray-600">AS</span>
+            <span className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-gray-600">AS</span>
           </div>
         </div>
 
@@ -248,7 +248,7 @@ export const ChatbotEmbed: React.FC<ChatbotEmbedProps> = ({
           <img
             src={askStanLogo}
             alt="AskStan Logo"
-            className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 lg:w-48 lg:h-48 xl:w-56 xl:h-56 mx-auto object-contain opacity-50"
+            className="w-48 h-48 sm:w-64 sm:h-64 md:w-80 md:h-80 lg:w-96 lg:h-96 xl:w-112 xl:h-112 mx-auto object-contain opacity-50"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
               target.style.display = "none";
@@ -257,11 +257,11 @@ export const ChatbotEmbed: React.FC<ChatbotEmbedProps> = ({
             }}
           />
           <div
-            className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 bg-red-100 rounded-xl flex items-center justify-center mx-auto"
+            className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 lg:w-48 lg:h-48 xl:w-56 xl:h-56 bg-red-100 rounded-xl flex items-center justify-center mx-auto"
             id="error-logo-fallback"
             style={{ display: "none" }}
           >
-            <AlertTriangle className="w-6 h-6 sm:w-8 sm:h-8 text-red-600" />
+            <AlertTriangle className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 lg:w-24 lg:h-24 xl:w-28 xl:h-28 text-red-600" />
           </div>
         </div>
 
@@ -294,7 +294,7 @@ export const ChatbotEmbed: React.FC<ChatbotEmbedProps> = ({
           <img
             src={askStanLogo}
             alt="AskStan Logo"
-            className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 lg:w-48 lg:h-48 xl:w-56 xl:h-56 mx-auto object-contain animate-pulse"
+            className="w-48 h-48 sm:w-64 sm:h-64 md:w-80 md:h-80 lg:w-96 lg:h-96 xl:w-112 xl:h-112 mx-auto object-contain animate-pulse"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
               target.style.display = "none";
@@ -303,11 +303,11 @@ export const ChatbotEmbed: React.FC<ChatbotEmbedProps> = ({
             }}
           />
           <div
-            className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 bg-blue-100 rounded-xl flex items-center justify-center animate-pulse mx-auto"
+            className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 lg:w-48 lg:h-48 xl:w-56 xl:h-56 bg-blue-100 rounded-xl flex items-center justify-center animate-pulse mx-auto"
             id="loading-logo-fallback"
             style={{ display: "none" }}
           >
-            <span className="text-lg sm:text-xl md:text-2xl font-bold text-blue-600">AS</span>
+            <span className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-blue-600">AS</span>
           </div>
         </div>
 
@@ -345,7 +345,7 @@ export const ChatbotEmbed: React.FC<ChatbotEmbedProps> = ({
         <img
           src={askStanLogo}
           alt="AskStan Logo"
-          className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 lg:w-48 lg:h-48 xl:w-56 xl:h-56 mx-auto object-contain"
+          className="w-48 h-48 sm:w-64 sm:h-64 md:w-80 md:h-80 lg:w-96 lg:h-96 xl:w-112 xl:h-112 mx-auto object-contain"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
             target.style.display = "none";
@@ -354,11 +354,11 @@ export const ChatbotEmbed: React.FC<ChatbotEmbedProps> = ({
           }}
         />
         <div
-          className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 bg-green-100 rounded-xl flex items-center justify-center mx-auto"
+          className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 lg:w-48 lg:h-48 xl:w-56 xl:h-56 bg-green-100 rounded-xl flex items-center justify-center mx-auto"
           id="ready-logo-fallback"
           style={{ display: "none" }}
         >
-          <span className="text-lg sm:text-xl md:text-2xl font-bold text-green-600">AS</span>
+          <span className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-green-600">AS</span>
         </div>
       </div>
 
