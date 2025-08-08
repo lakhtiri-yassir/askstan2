@@ -256,7 +256,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           status: "inactive",
         });
       }
-    }, 8000); // 8 second timeout
+    }, 18000); // 18 second timeout
 
     return () => clearTimeout(timeoutId);
   }, [loading, initialized]);

@@ -1,4 +1,4 @@
-// src/components/layout/ProtectedRoute.tsx - FIXED VERSION
+// src/components/layout/ProtectedRoute.tsx - FIXED VERSION WITH LONGER TIMEOUT
 import React, { ReactNode, useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
@@ -19,11 +19,11 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const location = useLocation();
   const [loadingTimeout, setLoadingTimeout] = useState(false);
 
-  // Add timeout to prevent infinite loading
+  // FIXED: Increased timeout to prevent premature warning
   useEffect(() => {
     const timer = setTimeout(() => {
       setLoadingTimeout(true);
-    }, 10000); // 10 second timeout
+    }, 20000); // Increased from 10 seconds to 20 seconds
 
     return () => clearTimeout(timer);
   }, []);
@@ -56,10 +56,10 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           <LoadingSpinner size="lg" />
           {loadingTimeout && (
             <p className="mt-4 text-red-600">
-              Loading is taking longer than expected. 
+              Loading is taking longer than expected. Please check your internet connection.{" "}
               <button 
                 onClick={() => window.location.reload()} 
-                className="ml-2 underline"
+                className="ml-2 underline hover:text-red-700"
               >
                 Refresh page
               </button>
@@ -85,7 +85,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to="/plans" replace />;
   }
 
-  // If timeout occurred but we have a user, show the content anyway with a warning
+  // IMPROVED: Better timeout handling with more informative message
   if (loadingTimeout && user) {
     console.log("⚠️ Loading timeout - showing content with warning");
     return (
@@ -99,13 +99,14 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
             </div>
             <div className="ml-3">
               <p className="text-sm text-yellow-700">
-                Loading took longer than expected, but you're authenticated. Some features may not work correctly.{" "}
+                Authentication is still loading some features. Most functionality should work normally.{" "}
                 <button 
                   onClick={() => window.location.reload()} 
                   className="font-medium underline text-yellow-700 hover:text-yellow-600"
                 >
                   Refresh page
                 </button>
+                {" "}if you experience issues.
               </p>
             </div>
           </div>
