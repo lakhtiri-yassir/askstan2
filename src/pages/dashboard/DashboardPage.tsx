@@ -5,6 +5,7 @@ import { MessageSquare, Sparkles, Settings, AlertCircle, CheckCircle } from 'luc
 import { useAuth } from '../../contexts/AuthContext';
 import { chatbotConfig, setUserDataForChatbot, shouldLoadChatbot } from '../../config/chatbot';
 import { useLocation } from 'react-router-dom';
+import askstanBanner from '../../img/askstanbanner.png';
 
 // Error Boundary Component for Dashboard
 class DashboardErrorBoundary extends React.Component<
@@ -225,8 +226,12 @@ export const DashboardPage: React.FC = () => {
                   </div>
                 ) : (
                   <div className="text-center">
-                    <div className="animate-pulse">
-                      <div className="w-16 h-16 bg-blue-200 rounded-full mx-auto mb-4"></div>
+                    <div className="mb-6">
+                      <img
+                        src={askstanBanner}
+                        alt="AskStan! AI Social Media Coach"
+                        className="w-48 h-48 md:w-64 md:h-64 lg:w-80 lg:h-80 object-contain mx-auto animate-pulse"
+                      />
                     </div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">Connecting to AI Coach...</h3>
                     <p className="text-gray-600">

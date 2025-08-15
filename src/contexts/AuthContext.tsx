@@ -174,24 +174,42 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       console.log("🔄 Loading user data for:", authUser.id);
 
-      // Load or create user profile
-      let userProfile = await getProfile(authUser.id);
+      // Load or create user profile - wrapped in try-catch
+      let userProfile = null;
+      try {
+        userProfile = await getProfile(authUser.id);
+      } catch (profileError) {
+        console.log("Profile loading failed, continuing without profile:", profileError);
+      }
       
       if (!userProfile && authUser.email) {
-        console.log("📝 No profile found, creating one manually...");
-        userProfile = await createProfileSafe(authUser.id, authUser.email);
+        try {
+          console.log("📝 No profile found, creating one manually...");
+          userProfile = await createProfileSafe(authUser.id, authUser.email);
+        } catch (createError) {
+          console.log("Profile creation failed, continuing without profile:", createError);
+        }
       }
 
-      // Set profile state
+      // Set profile state (even if null)
       setProfile(userProfile);
-      console.log("👤 Profile loaded:", userProfile?.id);
+      console.log("👤 Profile loaded:", userProfile?.id || 'none');
 
-      // Load subscription status
-      console.log("💳 Loading subscription status...");
-      const userIdForSubscription = userProfile?.id || authUser.id;
+      // Load subscription status - wrapped in try-catch
+      let subStatus = {
+        hasActiveSubscription: false,
+        subscription: null,
+        status: "inactive",
+      };
       
-      const subStatus = await checkUserSubscription(userIdForSubscription);
-      console.log("💳 Subscription status loaded:", subStatus);
+      try {
+        console.log("💳 Loading subscription status...");
+        const userIdForSubscription = userProfile?.id || authUser.id;
+        subStatus = await checkUserSubscription(userIdForSubscription);
+        console.log("💳 Subscription status loaded:", subStatus);
+      } catch (subError) {
+        console.log("Subscription loading failed, using default:", subError);
+      }
 
       setSubscriptionStatus(subStatus);
       setSubscription(subStatus.subscription);
@@ -201,12 +219,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error) {
       console.error("❌ Error loading user data:", error);
       
-      // Set default values to prevent infinite loading
+      // Set safe default values to prevent infinite loading
+      setProfile(null);
       setSubscriptionStatus({
         hasActiveSubscription: false,
         subscription: null,
         status: "inactive",
       });
+      setSubscription(null);
     }
   }, []);
 
@@ -271,56 +291,80 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       const { data } = supabase.auth.onAuthStateChange(
         async (event, newSession) => {
-          console.log("🔄 Auth state change:", event, newSession?.user?.id || 'No session');
-          
-          if (!mounted) {
-            console.log("⚠️ Component unmounted, ignoring auth state change");
-            return;
-          }
+          try {
+            console.log("🔄 Auth state change:", event, newSession?.user?.id || 'No session');
+            
+            if (!mounted) {
+              console.log("⚠️ Component unmounted, ignoring auth state change");
+              return;
+            }
 
-          // Handle different auth events
-          switch (event) {
-            case 'SIGNED_IN':
-              console.log("✅ User signed in");
-              setSession(newSession);
-              setUser(newSession?.user ?? null);
-              if (newSession?.user) {
-                await loadUserData(newSession.user);
-              }
-              break;
-              
-            case 'SIGNED_OUT':
-              console.log("🚪 User signed out");
-              setSession(null);
-              setUser(null);
-              setProfile(null);
-              setSubscription(null);
-              setSubscriptionStatus({
-                hasActiveSubscription: false,
-                subscription: null,
-                status: "inactive",
-              });
-              break;
-              
-            case 'TOKEN_REFRESHED':
-              console.log("🔄 Token refreshed");
-              setSession(newSession);
-              setUser(newSession?.user ?? null);
-              // Don't reload user data on token refresh if we already have it
-              if (newSession?.user && !profile) {
-                await loadUserData(newSession.user);
-              }
-              break;
-              
-            default:
-              console.log("📡 Auth event:", event);
-              setSession(newSession);
-              setUser(newSession?.user ?? null);
-          }
+            // Handle different auth events with individual try-catch
+            switch (event) {
+              case 'SIGNED_IN':
+                try {
+                  console.log("✅ User signed in");
+                  setSession(newSession);
+                  setUser(newSession?.user ?? null);
+                  if (newSession?.user) {
+                    await loadUserData(newSession.user);
+                  }
+                } catch (signInError) {
+                  console.log("Sign in processing error (non-fatal):", signInError);
+                }
+                break;
+                
+              case 'SIGNED_OUT':
+                try {
+                  console.log("🚪 User signed out");
+                  setSession(null);
+                  setUser(null);
+                  setProfile(null);
+                  setSubscription(null);
+                  setSubscriptionStatus({
+                    hasActiveSubscription: false,
+                    subscription: null,
+                    status: "inactive",
+                  });
+                } catch (signOutError) {
+                  console.log("Sign out processing error (non-fatal):", signOutError);
+                }
+                break;
+                
+              case 'TOKEN_REFRESHED':
+                try {
+                  console.log("🔄 Token refreshed");
+                  setSession(newSession);
+                  setUser(newSession?.user ?? null);
+                  // Don't reload user data on token refresh if we already have it
+                  if (newSession?.user && !profile) {
+                    await loadUserData(newSession.user);
+                  }
+                } catch (refreshError) {
+                  console.log("Token refresh processing error (non-fatal):", refreshError);
+                }
+                break;
+                
+              default:
+                try {
+                  console.log("📡 Auth event:", event);
+                  setSession(newSession);
+                  setUser(newSession?.user ?? null);
+                } catch (defaultError) {
+                  console.log("Default auth event processing error (non-fatal):", defaultError);
+                }
+            }
 
-          // Always ensure loading is false after auth state change
-          if (mounted) {
-            setLoading(false);
+            // Always ensure loading is false after auth state change
+            if (mounted) {
+              setLoading(false);
+            }
+          } catch (overallError) {
+            console.log("Overall auth state change error (non-fatal):", overallError);
+            // Ensure loading is false even on error
+            if (mounted) {
+              setLoading(false);
+            }
           }
         }
       );
