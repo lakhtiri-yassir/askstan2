@@ -1,4 +1,4 @@
-// src/components/layout/Header.tsx - Updated to Only Load Chatbot on Dashboard
+// src/components/layout/Header.tsx - Fixed with Logo and Proper Navigation
 import React, { useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -6,6 +6,7 @@ import { Menu, X, LogOut, Settings, User } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../ui/Button';
 import { shouldLoadChatbot, removeChatbot } from '../../config/chatbot';
+import askstanLogo from '../../img/askstanlogo.png';
 
 export const Header: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
@@ -55,7 +56,12 @@ export const Header: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center py-4">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2">
+          <Link to="/" className="flex items-center space-x-3">
+            <img 
+              src={askstanLogo} 
+              alt="AskStan! Logo" 
+              className="w-8 h-8 object-contain"
+            />
             <span className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-yellow-500">
               AskStan!
             </span>
@@ -73,12 +79,14 @@ export const Header: React.FC = () => {
                     Dashboard
                   </Link>
                 )}
-                <Link
-                  to="/plans"
-                  className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
-                >
-                  Plans
-                </Link>
+                {!hasActiveSubscription && (
+                  <Link
+                    to="/plans"
+                    className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
+                  >
+                    Plans
+                  </Link>
+                )}
                 <Link
                   to="/settings"
                   className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
@@ -143,13 +151,15 @@ export const Header: React.FC = () => {
                       Dashboard
                     </Link>
                   )}
-                  <Link
-                    to="/plans"
-                    className="block text-gray-700 hover:text-blue-600 font-medium transition-colors"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    Plans
-                  </Link>
+                  {!hasActiveSubscription && (
+                    <Link
+                      to="/plans"
+                      className="block text-gray-700 hover:text-blue-600 font-medium transition-colors"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      Plans
+                    </Link>
+                  )}
                   <Link
                     to="/settings"
                     className="block text-gray-700 hover:text-blue-600 font-medium transition-colors"

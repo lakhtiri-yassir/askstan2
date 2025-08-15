@@ -1,36 +1,20 @@
-// src/contexts/AuthContext.tsx - FIXED SESSION INITIALIZATION
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  useCallback,
-  useMemo,
-  ReactNode,
-} from "react";
-import { User, Session } from "@supabase/supabase-js";
-import { supabase, userService } from "../lib/supabase";
-import {
-  subscriptionService,
-  SubscriptionCheckResult,
-} from "../lib/subscriptionService";
-import { UserProfile, Subscription } from "../types/supabase";
+// src/contexts/AuthContext.tsx - Simplified and More Robust Version
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { User } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabase';
+import { UserProfile, Subscription } from '../types/supabase';
 
 interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
-  subscription: Subscription | null;
-  subscriptionStatus: SubscriptionCheckResult | null;
-  session: Session | null;
-  loading: boolean;
-  signUp: (email: string, password: string) => Promise<void>;
+  subscriptionStatus: Subscription | null;
+  isLoading: boolean;
+  signUp: (email: string, password: string, fullName: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
-  forgotPassword: (email: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
   refreshSubscription: () => Promise<void>;
-  hasActiveSubscription: boolean;
-  isEmailVerified: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -38,7 +22,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
 };
@@ -48,323 +32,243 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  // State management
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [subscription, setSubscription] = useState<Subscription | null>(null);
-  const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionCheckResult | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [initialized, setInitialized] = useState(false);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<Subscription | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Computed values with proper memoization
-  const hasActiveSubscription = useMemo(
-    () => subscriptionStatus?.hasActiveSubscription ?? false,
-    [subscriptionStatus?.hasActiveSubscription]
-  );
-  
-  const isEmailVerified = useMemo(() => true, []);
-
-  // CRITICAL FIX: Memoized loadUserData to prevent infinite loops
-  const loadUserData = useCallback(async (authUser: User) => {
+  // Load user profile
+  const loadUserProfile = async (userId: string): Promise<UserProfile | null> => {
     try {
-      console.log("🔄 Loading user data for:", authUser.id);
-
-      // Load or create user profile
-      let userProfile = await userService.getProfile(authUser.id);
+      console.log('📊 Loading user profile for:', userId);
       
-      if (!userProfile && authUser.email) {
-        console.log("📝 No profile found, creating one manually...");
-        userProfile = await userService.createProfileSafe(authUser.id, authUser.email);
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (error && error.code === 'PGRST116') {
+        // Profile doesn't exist, create it
+        console.log('📝 Creating user profile...');
+        const { data: userData } = await supabase.auth.getUser();
+        if (userData.user) {
+          const { data: newProfile, error: createError } = await supabase.rpc(
+            'create_user_profile_safe',
+            {
+              user_id: userData.user.id,
+              user_email: userData.user.email || ''
+            }
+          );
+
+          if (createError) {
+            console.error('Error creating profile:', createError);
+            return null;
+          }
+          console.log('✅ User profile created');
+          return newProfile;
+        }
+      } else if (error) {
+        console.error('Error loading profile:', error);
+        return null;
+      } else {
+        console.log('✅ User profile loaded');
+        return data;
+      }
+    } catch (error) {
+      console.error('❌ Error in loadUserProfile:', error);
+      return null;
+    }
+    return null;
+  };
+
+  // Load subscription status
+  const loadSubscriptionStatus = async (userId: string): Promise<Subscription | null> => {
+    try {
+      console.log('💳 Loading subscription status for:', userId);
+      
+      const { data, error } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (error) {
+        console.error('Subscription query error:', error);
+        return null;
       }
 
-      // Set profile state
-      setProfile(userProfile);
-      console.log("👤 Profile loaded:", userProfile?.id);
-
-      // Load subscription status
-      console.log("💳 Loading subscription status...");
-      const userIdForSubscription = userProfile?.id || authUser.id;
-      
-      const subStatus = await subscriptionService.checkUserSubscription(userIdForSubscription);
-      console.log("💳 Subscription status loaded:", subStatus);
-
-      setSubscriptionStatus(subStatus);
-      setSubscription(subStatus.subscription);
-
-      console.log("✅ User data loaded successfully");
-      
+      const subscription = data && data.length > 0 ? data[0] : null;
+      console.log('✅ Subscription status loaded:', subscription?.status || 'none');
+      return subscription;
     } catch (error) {
-      console.error("❌ Error loading user data:", error);
-      
-      // Set default values to prevent infinite loading
-      setSubscriptionStatus({
-        hasActiveSubscription: false,
-        subscription: null,
-        status: "inactive",
-      });
+      console.error('❌ Error in loadSubscriptionStatus:', error);
+      return null;
     }
-  }, []);
+  };
 
-  // CRITICAL FIX: Proper session initialization and state management
+  // Refresh subscription status
+  const refreshSubscription = async () => {
+    if (!user) return;
+    
+    try {
+      const subscription = await loadSubscriptionStatus(user.id);
+      setSubscriptionStatus(subscription);
+    } catch (error) {
+      console.error('Error refreshing subscription:', error);
+    }
+  };
+
+  // Initialize user data
+  const initializeUserData = async (currentUser: User) => {
+    try {
+      console.log('🔄 Initializing user data for:', currentUser.email);
+      
+      const [userProfile, subscription] = await Promise.all([
+        loadUserProfile(currentUser.id),
+        loadSubscriptionStatus(currentUser.id)
+      ]);
+
+      setProfile(userProfile);
+      setSubscriptionStatus(subscription);
+      
+      console.log('✅ User data initialized:', {
+        profile: !!userProfile,
+        subscription: subscription?.status || 'none'
+      });
+    } catch (error) {
+      console.error('❌ Error initializing user data:', error);
+    }
+  };
+
+  // Initial session check
   useEffect(() => {
-    let mounted = true;
-    let authSubscription: { subscription: { unsubscribe: () => void } } | null = null;
-
     const initializeAuth = async () => {
       try {
-        console.log("🔐 Initializing auth...");
+        console.log('🔍 Checking initial auth session...');
+        setIsLoading(true);
         
-        // FIXED: Get initial session with proper error handling
-        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
+        const { data: { user: currentUser }, error } = await supabase.auth.getUser();
         
         if (error) {
-          console.error("❌ Error getting initial session:", error);
-          if (mounted) {
-            setLoading(false);
-            setInitialized(true);
-          }
-          return;
+          console.error('Auth error:', error);
+          setUser(null);
+          setProfile(null);
+          setSubscriptionStatus(null);
+        } else if (currentUser) {
+          console.log('👤 User found:', currentUser.email);
+          setUser(currentUser);
+          await initializeUserData(currentUser);
+        } else {
+          console.log('👤 No user session found');
+          setUser(null);
+          setProfile(null);
+          setSubscriptionStatus(null);
         }
-
-        console.log("📱 Initial session:", initialSession?.user?.id || 'No session');
-
-        // FIXED: Set initial state properly
-        if (mounted) {
-          setSession(initialSession);
-          setUser(initialSession?.user ?? null);
-
-          // Load user data if session exists
-          if (initialSession?.user) {
-            console.log("🔄 Loading initial user data...");
-            await loadUserData(initialSession.user);
-          } else {
-            console.log("👤 No initial session - user needs to sign in");
-            // Set default subscription status for non-authenticated users
-            setSubscriptionStatus({
-              hasActiveSubscription: false,
-              subscription: null,
-              status: "inactive",
-            });
-          }
-
-          setLoading(false);
-          setInitialized(true);
-        }
-        
       } catch (error) {
-        console.error("❌ Session initialization error:", error);
-        if (mounted) {
-          setLoading(false);
-          setInitialized(true);
-        }
+        console.error('Initialization error:', error);
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    // Setup auth state listener AFTER initial session check
-    const setupAuthListener = () => {
-      console.log("👂 Setting up auth state listener...");
-      
-      const { data } = supabase.auth.onAuthStateChange(
-        async (event, newSession) => {
-          console.log("🔄 Auth state change:", event, newSession?.user?.id || 'No session');
-          
-          if (!mounted) {
-            console.log("⚠️ Component unmounted, ignoring auth state change");
-            return;
-          }
+    initializeAuth();
+  }, []);
 
-          // Handle different auth events
-          switch (event) {
-            case 'SIGNED_IN':
-              console.log("✅ User signed in");
-              setSession(newSession);
-              setUser(newSession?.user ?? null);
-              if (newSession?.user) {
-                await loadUserData(newSession.user);
-              }
-              break;
-              
-            case 'SIGNED_OUT':
-              console.log("🚪 User signed out");
-              setSession(null);
-              setUser(null);
-              setProfile(null);
-              setSubscription(null);
-              setSubscriptionStatus({
-                hasActiveSubscription: false,
-                subscription: null,
-                status: "inactive",
-              });
-              break;
-              
-            case 'TOKEN_REFRESHED':
-              console.log("🔄 Token refreshed");
-              setSession(newSession);
-              setUser(newSession?.user ?? null);
-              // Don't reload user data on token refresh if we already have it
-              if (newSession?.user && !profile) {
-                await loadUserData(newSession.user);
-              }
-              break;
-              
-            default:
-              console.log("📡 Auth event:", event);
-              setSession(newSession);
-              setUser(newSession?.user ?? null);
-          }
-
-          // Always ensure loading is false after auth state change
-          if (mounted) {
-            setLoading(false);
-          }
-        }
-      );
-
-      authSubscription = data;
-    };
-
-    // Initialize auth and setup listener
-    const initialize = async () => {
-      await initializeAuth();
-      setupAuthListener();
-    };
-
-    initialize();
-
-    // Cleanup function
-    return () => {
-      console.log("🧹 Cleaning up auth context...");
-      mounted = false;
-      if (authSubscription?.subscription && typeof authSubscription.subscription.unsubscribe === "function") {
-        authSubscription.subscription.unsubscribe();
-      }
-    };
-  }, [loadUserData]);
-
-  // Additional safety timeout to prevent infinite loading
+  // Listen for auth changes
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      if (loading && !initialized) {
-        console.warn("⚠️ Auth initialization timeout - forcing completion");
-        setLoading(false);
-        setInitialized(true);
-        // Set default state for timeout case
-        setSubscriptionStatus({
-          hasActiveSubscription: false,
-          subscription: null,
-          status: "inactive",
-        });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('🔄 Auth state changed:', event, session?.user?.email);
+        
+        if (event === 'SIGNED_OUT') {
+          setUser(null);
+          setProfile(null);
+          setSubscriptionStatus(null);
+          setIsLoading(false);
+        } else if (session?.user) {
+          setUser(session.user);
+          await initializeUserData(session.user);
+          setIsLoading(false);
+        } else {
+          setUser(null);
+          setProfile(null);
+          setSubscriptionStatus(null);
+          setIsLoading(false);
+        }
       }
-    }, 6000); // 18 second timeout
+    );
 
-    return () => clearTimeout(timeoutId);
-  }, [loading, initialized]);
+    return () => subscription.unsubscribe();
+  }, []);
 
-  // Memoized auth functions
-  const signUp = useCallback(async (email: string, password: string): Promise<void> => {
-    setLoading(true);
+  const signUp = async (email: string, password: string, fullName: string) => {
     try {
-      console.log("📝 Starting signup process");
-
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: email.trim().toLowerCase(),
+      console.log('📝 Starting sign up for:', email);
+      
+      const { data, error } = await supabase.auth.signUp({
+        email,
         password,
         options: {
-          emailRedirectTo: undefined,
           data: {
-            email_verified: true,
+            full_name: fullName,
           },
         },
       });
 
-      if (authError) throw authError;
-      if (!authData.user) throw new Error("Signup failed - no user returned");
+      if (error) throw error;
 
-      console.log("✅ Auth user created:", authData.user.id);
-
-      // Create user profile
-      try {
-        const profile = await userService.createProfileSafe(
-          authData.user.id,
-          email.trim().toLowerCase()
-        );
-        setProfile(profile);
-        console.log("✅ Profile created successfully");
-      } catch (profileError) {
-        console.error("❌ Profile creation error:", profileError);
+      if (data.user && !data.session) {
+        console.log('✅ Sign up successful, email confirmation required');
+        throw new Error('Please check your email and click the confirmation link to complete your registration.');
       }
 
+      console.log('✅ Sign up and auto-login successful');
     } catch (error: any) {
-      console.error("❌ Signup error:", error);
-      throw new Error(error.message || "Failed to create account. Please try again.");
-    } finally {
-      setLoading(false);
+      console.error('❌ Sign up error:', error);
+      throw error;
     }
-  }, []);
+  };
 
-  const signIn = useCallback(async (email: string, password: string): Promise<void> => {
-    setLoading(true);
+  const signIn = async (email: string, password: string) => {
     try {
-      console.log("🔑 Starting sign in process");
-
+      console.log('🔑 Starting sign in for:', email);
+      
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim().toLowerCase(),
+        email,
         password,
       });
 
       if (error) throw error;
+      if (!data.user) throw new Error('Sign in failed');
 
-      console.log("✅ Sign in successful:", data.user?.id);
-      // Auth state change handler will handle the rest
-    } catch (error: any) {
-      console.error("❌ Sign in error:", error);
-
-      if (error.message?.includes("Invalid login credentials")) {
-        throw new Error("Invalid email or password. Please check your credentials and try again.");
-      } else {
-        throw new Error(error.message || "Failed to sign in. Please try again.");
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const signOut = useCallback(async (): Promise<void> => {
-    try {
-      console.log("🚪 Starting sign out process...");
-
-      // Clear all state first
-      setUser(null);
-      setProfile(null);
-      setSubscription(null);
-      setSubscriptionStatus(null);
-      setSession(null);
-
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.error("❌ Supabase signOut error:", error);
-        // Don't throw - we still want to redirect
-      }
-
-      console.log("✅ Sign out completed");
-
-      // Force redirect to ensure clean state
-      window.location.replace("/");
-    } catch (error: any) {
-      console.error("❌ Sign out error:", error);
+      console.log('✅ Sign in successful');
       
-      // Force clear state and redirect even on error
-      setUser(null);
-      setProfile(null);
-      setSubscription(null);
-      setSubscriptionStatus(null);
-      setSession(null);
-      window.location.replace("/");
+      // The auth state change listener will handle loading user data
+    } catch (error: any) {
+      console.error('❌ Sign in error:', error);
+      throw error;
     }
-  }, []);
+  };
 
-  const forgotPassword = useCallback(async (email: string): Promise<void> => {
+  const signOut = async () => {
+    try {
+      console.log('👋 Signing out...');
+      
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+
+      // The auth state change listener will handle clearing state
+      console.log('✅ Sign out successful');
+    } catch (error: any) {
+      console.error('❌ Sign out error:', error);
+      throw error;
+    }
+  };
+
+  const resetPassword = async (email: string) => {
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/reset-password`,
@@ -372,69 +276,47 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       if (error) throw error;
     } catch (error: any) {
-      console.error("❌ Password reset error:", error);
-      throw new Error(error.message || "Failed to send reset email. Please try again.");
+      console.error('Password reset error:', error);
+      throw error;
     }
-  }, []);
+  };
 
-  const updateProfile = useCallback(async (updates: Partial<UserProfile>): Promise<void> => {
-    if (!user) throw new Error("User not authenticated");
-
+  const updateProfile = async (updates: Partial<UserProfile>) => {
     try {
-      const updatedProfile = await userService.updateProfile(user.id, updates);
-      setProfile(updatedProfile);
+      if (!user) throw new Error('Not authenticated');
+
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .update(updates)
+        .eq('id', user.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setProfile(data);
     } catch (error: any) {
-      console.error("❌ Profile update error:", error);
-      throw new Error(error.message || "Failed to update profile. Please try again.");
+      console.error('Update profile error:', error);
+      throw error;
     }
-  }, [user]);
+  };
 
-  const refreshSubscription = useCallback(async (): Promise<void> => {
-    if (!user) return;
-
-    try {
-      console.log("🔄 Refreshing subscription status...");
-      const subStatus = await subscriptionService.checkUserSubscription(user.id);
-      setSubscriptionStatus(subStatus);
-      setSubscription(subStatus.subscription);
-      console.log("✅ Subscription refreshed:", subStatus);
-    } catch (error) {
-      console.error("❌ Refresh subscription error:", error);
-    }
-  }, [user]);
-
-  // Memoized context value
-  const value = useMemo((): AuthContextType => ({
+  const value = {
     user,
     profile,
-    subscription,
     subscriptionStatus,
-    session,
-    loading,
+    isLoading,
     signUp,
     signIn,
     signOut,
-    forgotPassword,
+    resetPassword,
     updateProfile,
     refreshSubscription,
-    hasActiveSubscription,
-    isEmailVerified,
-  }), [
-    user,
-    profile,
-    subscription,
-    subscriptionStatus,
-    session,
-    loading,
-    signUp,
-    signIn,
-    signOut,
-    forgotPassword,
-    updateProfile,
-    refreshSubscription,
-    hasActiveSubscription,
-    isEmailVerified,
-  ]);
+  };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
 };

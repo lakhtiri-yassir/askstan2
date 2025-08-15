@@ -21,16 +21,28 @@ export const SignInPage: React.FC = () => {
 
   // Handle navigation after successful authentication
   useEffect(() => {
-    if (user && subscriptionStatus) {
+    if (user) {
       console.log('User authenticated, checking subscription status:', subscriptionStatus);
       
+      // Wait a moment for subscription status to load if it's not available yet
+      if (subscriptionStatus === null) {
+        console.log('Subscription status still loading, waiting...');
+        return;
+      }
+      
       // Check if user has an active subscription
-      const hasActiveSubscription = subscriptionStatus.status === 'active';
+      const hasActiveSubscription = subscriptionStatus?.status === 'active';
+      
+      console.log('Subscription check result:', {
+        hasActiveSubscription,
+        status: subscriptionStatus?.status,
+        redirecting: hasActiveSubscription ? 'to dashboard' : 'to plans'
+      });
       
       if (hasActiveSubscription) {
         // User has subscription, redirect to dashboard
         const from = location.state?.from?.pathname;
-        if (from && from !== '/plans') {
+        if (from && from !== '/plans' && from !== '/signin') {
           navigate(from, { replace: true });
         } else {
           navigate('/dashboard', { replace: true });
