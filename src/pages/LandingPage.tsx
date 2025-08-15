@@ -15,6 +15,7 @@ import {
   Star
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
+import askstanBanner from '../img/askstanbanner.png';
 
 export const LandingPage: React.FC = () => {
   const capabilities = [
@@ -60,28 +61,29 @@ export const LandingPage: React.FC = () => {
       {/* Hero Section */}
       <section className="relative pt-20 pb-32 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8 }}
+              className="text-center lg:text-left"
             >
-              <h1 className="text-5xl md:text-7xl font-black text-gray-900 mb-6 leading-tight">
+              <h1 className="text-5xl md:text-6xl font-black text-gray-900 mb-6 leading-tight">
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-yellow-500">
                   AskStan!
                 </span>
                 <br />
-                <span className="text-3xl md:text-5xl font-bold text-gray-700">
+                <span className="text-3xl md:text-4xl font-bold text-gray-700">
                   Your On-Demand Social Media Growth Coach
                 </span>
               </h1>
               
-              <p className="text-xl md:text-2xl text-gray-600 mb-8 max-w-4xl mx-auto leading-relaxed">
+              <p className="text-xl text-gray-600 mb-8 leading-relaxed">
                 Get AI-powered social media strategies, content creation, and monetization guidance 
                 to transform your online presence into a revenue-generating machine.
               </p>
 
-              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
+              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start items-center mb-8">
                 <Link to="/signup">
                   <Button size="xl" className="px-8 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300">
                     Start Your 3-Day Free Trial
@@ -94,7 +96,7 @@ export const LandingPage: React.FC = () => {
               </div>
 
               {/* Trust Indicators */}
-              <div className="flex flex-wrap justify-center items-center gap-6 text-sm text-gray-500">
+              <div className="flex flex-wrap justify-center lg:justify-start items-center gap-6 text-sm text-gray-500">
                 <div className="flex items-center">
                   <Star className="w-4 h-4 text-yellow-500 mr-1" />
                   <span>AI-Powered Strategies</span>
@@ -108,6 +110,19 @@ export const LandingPage: React.FC = () => {
                   <span>24/7 Support</span>
                 </div>
               </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+              className="relative flex justify-center"
+            >
+              <img
+                src={askstanBanner}
+                alt="AskStan! AI Social Media Coach"
+                className="w-64 h-64 md:w-80 md:h-80 lg:w-96 lg:h-96 object-contain"
+              />
             </motion.div>
           </div>
         </div>
@@ -273,7 +288,7 @@ export const LandingPage: React.FC = () => {
               <Link to="/signup" className="block">
                 <Button 
                   size="lg" 
-                  className="w-full bg-white text-blue-600 hover:bg-gray-100 font-semibold"
+                  className="w-full bg-white text-blue-600 hover:bg-gray-100 font-semibold border-2 border-white hover:border-gray-200 transition-all duration-200"
                 >
                   Start Free Trial
                 </Button>
