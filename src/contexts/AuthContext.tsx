@@ -1,4 +1,4 @@
-// src/contexts/AuthContext.tsx - Simplified and More Robust Version
+// src/contexts/AuthContext.tsx - Fixed Version Without Profile Creation Issues
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
@@ -37,7 +37,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [subscriptionStatus, setSubscriptionStatus] = useState<Subscription | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load user profile
+  // Load user profile - simplified without RPC calls
   const loadUserProfile = async (userId: string): Promise<UserProfile | null> => {
     try {
       console.log('📊 Loading user profile for:', userId);
@@ -48,38 +48,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         .eq('id', userId)
         .single();
 
-      if (error && error.code === 'PGRST116') {
-        // Profile doesn't exist, create it
-        console.log('📝 Creating user profile...');
-        const { data: userData } = await supabase.auth.getUser();
-        if (userData.user) {
-          const { data: newProfile, error: createError } = await supabase.rpc(
-            'create_user_profile_safe',
-            {
-              user_id: userData.user.id,
-              user_email: userData.user.email || ''
-            }
-          );
-
-          if (createError) {
-            console.error('Error creating profile:', createError);
-            return null;
-          }
-          console.log('✅ User profile created');
-          return newProfile;
-        }
-      } else if (error) {
-        console.error('Error loading profile:', error);
+      if (error) {
+        console.log('Profile not found or error:', error.message);
         return null;
-      } else {
-        console.log('✅ User profile loaded');
-        return data;
       }
+
+      console.log('✅ User profile loaded');
+      return data;
     } catch (error) {
-      console.error('❌ Error in loadUserProfile:', error);
+      console.error('❌ Error loading user profile:', error);
       return null;
     }
-    return null;
   };
 
   // Load subscription status
@@ -96,7 +75,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         .limit(1);
 
       if (error) {
-        console.error('Subscription query error:', error);
+        console.log('Subscription query error:', error.message);
         return null;
       }
 
@@ -104,7 +83,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log('✅ Subscription status loaded:', subscription?.status || 'none');
       return subscription;
     } catch (error) {
-      console.error('❌ Error in loadSubscriptionStatus:', error);
+      console.error('❌ Error loading subscription:', error);
       return null;
     }
   };
@@ -140,6 +119,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       });
     } catch (error) {
       console.error('❌ Error initializing user data:', error);
+      // Don't throw, just set to null
+      setProfile(null);
+      setSubscriptionStatus(null);
     }
   };
 
@@ -148,7 +130,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const initializeAuth = async () => {
       try {
         console.log('🔍 Checking initial auth session...');
-        setIsLoading(true);
         
         const { data: { user: currentUser }, error } = await supabase.auth.getUser();
         
@@ -169,6 +150,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
       } catch (error) {
         console.error('Initialization error:', error);
+        // Don't throw, just clear state
+        setUser(null);
+        setProfile(null);
+        setSubscriptionStatus(null);
       } finally {
         setIsLoading(false);
       }
@@ -183,19 +168,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       async (event, session) => {
         console.log('🔄 Auth state changed:', event, session?.user?.email);
         
-        if (event === 'SIGNED_OUT') {
-          setUser(null);
-          setProfile(null);
-          setSubscriptionStatus(null);
-          setIsLoading(false);
-        } else if (session?.user) {
-          setUser(session.user);
-          await initializeUserData(session.user);
-          setIsLoading(false);
-        } else {
-          setUser(null);
-          setProfile(null);
-          setSubscriptionStatus(null);
+        try {
+          if (event === 'SIGNED_OUT') {
+            setUser(null);
+            setProfile(null);
+            setSubscriptionStatus(null);
+          } else if (session?.user) {
+            setUser(session.user);
+            await initializeUserData(session.user);
+          } else {
+            setUser(null);
+            setProfile(null);
+            setSubscriptionStatus(null);
+          }
+        } catch (error) {
+          console.error('Error in auth state change:', error);
+          // Don't let auth errors break the app
+        } finally {
           setIsLoading(false);
         }
       }
@@ -225,7 +214,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         throw new Error('Please check your email and click the confirmation link to complete your registration.');
       }
 
-      console.log('✅ Sign up and auto-login successful');
+      console.log('✅ Sign up successful');
     } catch (error: any) {
       console.error('❌ Sign up error:', error);
       throw error;
@@ -245,8 +234,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (!data.user) throw new Error('Sign in failed');
 
       console.log('✅ Sign in successful');
-      
-      // The auth state change listener will handle loading user data
+      // The auth state change listener will handle the rest
     } catch (error: any) {
       console.error('❌ Sign in error:', error);
       throw error;
@@ -260,8 +248,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
 
-      // The auth state change listener will handle clearing state
       console.log('✅ Sign out successful');
+      // The auth state change listener will handle clearing state
     } catch (error: any) {
       console.error('❌ Sign out error:', error);
       throw error;

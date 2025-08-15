@@ -56,15 +56,12 @@ export const Header: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center py-4">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-3">
+          <Link to="/" className="flex items-center">
             <img 
               src={askstanLogo} 
-              alt="AskStan! Logo" 
-              className="w-8 h-8 object-contain"
+              alt="AskStan! AI Social Media Coach" 
+              className="h-10 w-auto object-contain"
             />
-            <span className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-yellow-500">
-              AskStan!
-            </span>
           </Link>
 
           {/* Desktop Navigation */}
