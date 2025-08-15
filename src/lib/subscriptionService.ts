@@ -1,292 +1,178 @@
-import { supabase } from "./supabase";
-import { loadStripe } from "@stripe/stripe-js";
-import { Subscription } from "../types/supabase";
+// src/lib/subscriptionService.ts - Updated for New Pricing
+import { supabase } from './supabase';
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY!);
-
-export type SubscriptionStatus =
-  | "active"
-  | "inactive"
-  | "expired"
-  | "past_due"
-  | "cancelled";
-
-export interface SubscriptionCheckResult {
-  hasActiveSubscription: boolean;
-  subscription: Subscription | null;
-  status: SubscriptionStatus;
+export interface SubscriptionPlan {
+  id: 'monthly' | 'yearly';
+  name: string;
+  price: string;
+  originalPrice?: string;
+  interval: string;
+  priceId: string;
+  savings?: string;
+  popular?: boolean;
+  features: string[];
 }
 
 export const subscriptionService = {
   /**
-   * Check user's current subscription status
+   * Get subscription plans configuration with updated pricing
    */
-  async checkUserSubscription(
-    userId: string
-  ): Promise<SubscriptionCheckResult> {
-    try {
-      console.log("🔍 Checking subscription for user:", userId);
-
-      const { data: subscription, error } = await supabase
-        .from("subscriptions")
-        .select("*")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      console.log("📊 Subscription query result:", { subscription, error });
-
-      if (error && error.code !== "PGRST116") {
-        console.error("❌ Error checking subscription:", error);
-        throw error;
+  getPlansConfig(): { monthly: SubscriptionPlan; yearly: SubscriptionPlan } {
+    return {
+      monthly: {
+        id: 'monthly',
+        name: 'Monthly Plan',
+        price: '$19.95',
+        interval: 'month',
+        priceId: import.meta.env.VITE_STRIPE_PRICE_MONTHLY,
+        popular: false,
+        features: [
+          'AI-powered social media coaching',
+          'Write viral hooks and captions',
+          'Complete LinkedIn post creation',
+          'Newsletter content generation',
+          'Profile optimization strategies',
+          'Content repurposing for all platforms',
+          'Monetization guidance',
+          '24/7 AI chat support',
+          'Content analysis and optimization tips'
+        ]
+      },
+      yearly: {
+        id: 'yearly',
+        name: 'Annual Plan',
+        price: '$143.95',
+        originalPrice: '$239.40',
+        interval: 'year',
+        priceId: import.meta.env.VITE_STRIPE_PRICE_YEARLY,
+        savings: '40% OFF',
+        popular: true,
+        features: [
+          'Everything in Monthly Plan',
+          'Priority AI responses',
+          'Advanced analytics dashboard',
+          'Custom growth strategies',
+          'Exclusive monetization templates',
+          'Advanced content optimization',
+          'Priority customer support',
+          'Early access to new features',
+          'Save $95.45 per year'
+        ]
       }
-
-      const hasActiveSubscription =
-        subscription?.status === "active" &&
-        (!subscription.current_period_end ||
-          new Date(subscription.current_period_end) > new Date());
-
-      const result = {
-        hasActiveSubscription,
-        subscription,
-        status: (subscription?.status as SubscriptionStatus) || "inactive",
-      };
-
-      console.log("✅ Subscription check result:", result);
-      return result;
-    } catch (error) {
-      console.error("❌ Subscription check error:", error);
-      return {
-        hasActiveSubscription: false,
-        subscription: null,
-        status: "inactive",
-      };
-    }
+    };
   },
 
   /**
-   * Create Stripe checkout session
+   * Create Stripe checkout session with trial period
    */
-  async createStripeCheckout(
+  async createCheckoutSession(
+    planType: 'monthly' | 'yearly',
     userId: string,
-    planType: "monthly" | "yearly",
-    couponCode?: string
-  ): Promise<{
-    sessionId?: string;
-    paymentRequired: boolean;
-    couponApplied: boolean;
-    redirectUrl?: string;
-  }> {
+    userEmail: string
+  ): Promise<string> {
     try {
-      console.log("Creating checkout with coupon:", {
-        userId,
-        planType,
-        couponCode,
+      console.log('Creating checkout session:', { planType, userId, userEmail });
+
+      const plans = this.getPlansConfig();
+      const selectedPlan = plans[planType];
+
+      if (!selectedPlan.priceId) {
+        throw new Error(`Price ID not configured for ${planType} plan`);
+      }
+
+      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+        body: {
+          priceId: selectedPlan.priceId,
+          userId,
+          userEmail,
+          planType,
+          successUrl: `${window.location.origin}/checkout-success?session_id={CHECKOUT_SESSION_ID}`,
+          cancelUrl: `${window.location.origin}/plans`,
+          // 3-day trial configuration
+          trialPeriodDays: 3,
+          allowPromotionCodes: true
+        }
       });
 
-      const { data, error } = await supabase.functions.invoke(
-        "create-checkout-session",
-        {
-          body: {
-            planType,
-            userId,
-            couponCode: couponCode || null,
-            successUrl: `${
-              window.location.origin
-            }/checkout-success?session_id={CHECKOUT_SESSION_ID}&plan=${planType}&coupon=${
-              couponCode || ""
-            }`,
-            cancelUrl: `${window.location.origin}/plans`,
-          },
-        }
-      );
-
       if (error) {
-        console.error("Checkout session error:", error);
-        throw new Error(error.message || "Failed to create checkout session");
+        console.error('Checkout session error:', error);
+        throw new Error(error.message || 'Failed to create checkout session');
       }
 
-      // Handle 100% off coupon case (no payment required)
-      if (data?.paymentRequired === false) {
-        return {
-          paymentRequired: false,
-          couponApplied: true,
-          redirectUrl: data.redirectUrl,
-        };
+      if (!data?.url) {
+        throw new Error('No checkout URL returned');
       }
 
-      if (!data?.sessionId) {
-        throw new Error("No session ID returned from checkout creation");
-      }
-
-      return {
-        sessionId: data.sessionId,
-        paymentRequired: data.paymentRequired !== false,
-        couponApplied: data.couponApplied || false,
-        redirectUrl: data.redirectUrl,
-      };
+      console.log('✅ Checkout session created successfully');
+      return data.url;
     } catch (error) {
-      console.error("Stripe checkout error:", error);
+      console.error('Subscription service error:', error);
       throw error;
     }
   },
 
   /**
-   * Validate coupon code before checkout
+   * Get user's current subscription
    */
-  async validateCoupon(
-    couponCode: string
-  ): Promise<{ valid: boolean; discount?: string; error?: string }> {
+  async getUserSubscription(userId: string) {
     try {
-      // This will validate the coupon through the checkout creation
-      // We'll create a test checkout to validate, then use the real one
-      const { data, error } = await supabase.functions.invoke(
-        "validate-coupon",
-        {
-          body: { couponCode },
-        }
-      );
+      const { data, error } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .single();
 
-      if (error) {
-        return { valid: false, error: error.message };
-      }
-
-      return {
-        valid: true,
-        discount: data.discount,
-      };
-    } catch (error) {
-      return {
-        valid: false,
-        error: error instanceof Error ? error.message : "Invalid coupon code",
-      };
-    }
-  },
-
-  /**
-   * Redirect to Stripe checkout
-   */
-  async redirectToCheckout(sessionId: string): Promise<void> {
-    try {
-      const stripe = await stripePromise;
-      if (!stripe) {
-        throw new Error("Stripe failed to load");
-      }
-
-      const { error } = await stripe.redirectToCheckout({ sessionId });
-      if (error) {
+      if (error && error.code !== 'PGRST116') {
         throw error;
       }
+
+      return data;
     } catch (error) {
-      console.error("Checkout redirect error:", error);
-      throw error;
+      console.error('Get subscription error:', error);
+      return null;
     }
   },
 
   /**
-   * Handle successful checkout completion
+   * Handle successful checkout
    */
-  async handleCheckoutSuccess(
-    sessionId: string,
-    userId: string
-  ): Promise<Subscription | null> {
+  async handleCheckoutSuccess(sessionId: string): Promise<any> {
     try {
-      console.log("🎉 Handling checkout success for session:", sessionId);
+      console.log('🔄 Processing checkout success for session:', sessionId);
 
-      // Wait a bit for webhook to process
-      console.log("⏳ Waiting 5 seconds for webhook to process...");
-      await new Promise((resolve) => setTimeout(resolve, 5000));
-
-      // Try multiple times to get subscription data
+      // Poll for subscription creation with improved retry logic
       let attempts = 0;
-      let subscription = null;
-
-      while (attempts < 8 && !subscription) {
-        console.log(`🔄 Attempt ${attempts + 1} to fetch subscription...`);
-
-        const result = await this.checkUserSubscription(userId);
-        subscription = result.subscription;
-
-        if (!subscription) {
-          console.log("⏳ Subscription not found, waiting 3 seconds...");
-          await new Promise((resolve) => setTimeout(resolve, 3000));
-        }
-
-        attempts++;
-      }
-
-      if (!subscription) {
-        console.error(
-          "❌ Subscription not found after 8 attempts, trying manual creation..."
-        );
-        // Try to manually create subscription record if webhook failed
-        await this.manuallyCreateSubscription(sessionId, userId);
-
-        // Wait and try one more time
-        await new Promise((resolve) => setTimeout(resolve, 5000));
-        const finalResult = await this.checkUserSubscription(userId);
-        subscription = finalResult.subscription;
-
-        if (!subscription) {
-          console.error("❌ Manual subscription creation also failed");
-
-          // Get session details for debugging
-          try {
-            const { data: sessionData } = await supabase.functions.invoke(
-              "get-checkout-session",
-              {
-                body: { sessionId },
-              }
-            );
-            console.log("🔍 Session details for debugging:", sessionData);
-          } catch (sessionError) {
-            console.error("Failed to get session details:", sessionError);
+      const maxAttempts = 15; // Try for 30 seconds
+      
+      while (attempts < maxAttempts) {
+        try {
+          const { data: user } = await supabase.auth.getUser();
+          if (!user.user) {
+            throw new Error('User not authenticated');
           }
 
-          throw new Error(
-            `Failed to create subscription record. Session: ${sessionId.substring(
-              0,
-              20
-            )}...`
-          );
+          const subscription = await this.getUserSubscription(user.user.id);
+          
+          if (subscription) {
+            console.log('✅ Subscription found:', subscription);
+            return subscription;
+          }
+
+          console.log(`⏳ Attempt ${attempts + 1}/${maxAttempts}: Subscription not yet created, retrying...`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          attempts++;
+        } catch (error) {
+          console.warn(`Attempt ${attempts + 1} failed:`, error);
+          attempts++;
+          await new Promise(resolve => setTimeout(resolve, 2000));
         }
       }
 
-      console.log("✅ Final subscription result:", subscription);
-      return subscription;
+      console.warn('⚠️ Subscription not found after polling, manual creation may be needed');
+      throw new Error('Subscription verification timed out. Please contact support if your payment was processed.');
     } catch (error) {
-      console.error("Checkout success handling error:", error);
-      throw error;
-    }
-  },
-
-  /**
-   * Manually create subscription if webhook failed
-   */
-  async manuallyCreateSubscription(
-    sessionId: string,
-    userId: string
-  ): Promise<void> {
-    try {
-      console.log("🔧 Manually creating subscription for session:", sessionId);
-
-      // Call edge function to retrieve session details and create subscription
-      const { data, error } = await supabase.functions.invoke(
-        "manual-subscription-creation",
-        {
-          body: { sessionId, userId },
-        }
-      );
-
-      if (error) {
-        console.error("Manual subscription creation error:", error);
-        throw error;
-      }
-
-      console.log("✅ Manual subscription created:", data);
-    } catch (error) {
-      console.error("Manual subscription creation failed:", error);
+      console.error('Checkout success handling error:', error);
       throw error;
     }
   },
@@ -296,84 +182,89 @@ export const subscriptionService = {
    */
   async createCustomerPortalSession(): Promise<string> {
     try {
-      const { data, error } = await supabase.functions.invoke(
-        "create-portal-session",
-        {
-          body: {
-            returnUrl: `${window.location.origin}/settings`,
-          },
-        }
-      );
+      const { data, error } = await supabase.functions.invoke('create-portal-session', {
+        body: {
+          returnUrl: `${window.location.origin}/settings`,
+        },
+      });
 
       if (error) {
-        console.error("Portal session error:", error);
-        throw new Error(error.message || "Failed to create portal session");
+        console.error('Portal session error:', error);
+        throw new Error(error.message || 'Failed to create portal session');
       }
 
       if (!data?.url) {
-        throw new Error("No portal URL returned");
+        throw new Error('No portal URL returned');
       }
 
       return data.url;
     } catch (error) {
-      console.error("Customer portal error:", error);
+      console.error('Customer portal error:', error);
       throw error;
     }
-  },
-
-  /**
-   * Get subscription plans configuration
-   */
-  getPlansConfig() {
-    return {
-      monthly: {
-        id: "monthly",
-        name: "Monthly Plan",
-        price: "$4.99",
-        interval: "month",
-        priceId: import.meta.env.VITE_STRIPE_PRICE_MONTHLY,
-        features: [
-          "AI-powered social media coaching",
-          "Multi-platform support",
-          "Growth analytics dashboard",
-          "24/7 AI chat support",
-        ],
-      },
-      yearly: {
-        id: "yearly",
-        name: "Yearly Plan",
-        price: "$49.99",
-        interval: "year",
-        priceId: import.meta.env.VITE_STRIPE_PRICE_YEARLY,
-        savings: "17% savings",
-        popular: true,
-        features: [
-          "All monthly features",
-          "Priority AI responses",
-          "Advanced analytics",
-          "Custom growth strategies",
-        ],
-      },
-    };
   },
 
   /**
    * Cancel subscription
    */
-  async cancelSubscription(subscriptionId: string): Promise<void> {
+  async cancelSubscription(): Promise<void> {
     try {
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) throw new Error('Not authenticated');
+
+      const subscription = await this.getUserSubscription(user.user.id);
+      if (!subscription) throw new Error('No active subscription found');
+
+      // Update subscription to cancel at period end
       const { error } = await supabase
-        .from("subscriptions")
-        .update({
+        .from('subscriptions')
+        .update({ 
           cancel_at_period_end: true,
-          updated_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         })
-        .eq("id", subscriptionId);
+        .eq('id', subscription.id);
 
       if (error) throw error;
+
+      console.log('✅ Subscription set to cancel at period end');
     } catch (error) {
-      console.error("Cancel subscription error:", error);
+      console.error('Cancel subscription error:', error);
       throw error;
     }
   },
+
+  /**
+   * Get pricing display info
+   */
+  getPricingDisplay() {
+    return {
+      monthly: {
+        price: 19.95,
+        display: '$19.95/month',
+        yearlyEquivalent: 239.40,
+        trial: '3-day free trial'
+      },
+      yearly: {
+        price: 143.95,
+        display: '$143.95/year',
+        monthlyEquivalent: 11.99,
+        savings: 95.45,
+        savingsPercentage: 40,
+        trial: '3-day free trial + Save 40%'
+      }
+    };
+  },
+
+  /**
+   * Calculate savings for yearly plan
+   */
+  calculateYearlySavings() {
+    const pricing = this.getPricingDisplay();
+    return {
+      monthlyCost: pricing.monthly.yearlyEquivalent,
+      yearlyCost: pricing.yearly.price,
+      totalSavings: pricing.yearly.savings,
+      percentageSavings: pricing.yearly.savingsPercentage
+    };
+  }
 };

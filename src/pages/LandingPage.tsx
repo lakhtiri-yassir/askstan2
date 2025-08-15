@@ -1,262 +1,323 @@
-import React from "react";
-import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
-import {
-  ArrowRight,
-  Bot,
-  TrendingUp,
-  Users,
-  Zap,
-  Star,
+// src/pages/LandingPage.tsx
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { 
+  ArrowRight, 
+  MessageSquare, 
+  FileText, 
+  Users, 
+  TrendingUp, 
+  Repeat, 
+  DollarSign, 
+  BarChart3,
   Check,
-} from "lucide-react";
-import { Button } from "../components/ui/Button";
-import askstanBanner from "../img/askstanbanner.png";
+  Star
+} from 'lucide-react';
+import { Button } from '../components/ui/Button';
 
 export const LandingPage: React.FC = () => {
-  const features = [
+  const capabilities = [
     {
-      icon: <Bot className="w-8 h-8" />,
-      title: "AI-Powered Coaching",
-      description:
-        "Get personalized social media strategies powered by advanced AI technology.",
+      icon: MessageSquare,
+      title: "Write Viral Hooks",
+      description: "Stop the scroll and spark engagement with hooks that captivate your audience"
     },
     {
-      icon: <TrendingUp className="w-8 h-8" />,
-      title: "Growth Analytics",
-      description:
-        "Track your progress with detailed analytics and growth insights.",
+      icon: FileText,
+      title: "Complete LinkedIn Posts",
+      description: "Transform your topics and ideas into compelling LinkedIn content that drives results"
     },
     {
-      icon: <Users className="w-8 h-8" />,
-      title: "Multi-Platform Support",
-      description:
-        "Optimize your presence across Instagram, TikTok, Twitter, and more.",
+      icon: Users,
+      title: "Newsletter Articles",
+      description: "Create newsletter content designed to convert readers into paying customers"
     },
     {
-      icon: <Zap className="w-8 h-8" />,
-      title: "24/7 Availability",
-      description:
-        "Get instant advice and support whenever you need it, day or night.",
-    },
-  ];
-
-  const testimonials = [
-    {
-      name: "Sarah Johnson",
-      role: "Content Creator",
-      content:
-        "AskStan! helped me grow from 1K to 50K followers in just 3 months!",
-      rating: 5,
+      icon: TrendingUp,
+      title: "LinkedIn Profile Optimization",
+      description: "Turn your LinkedIn profile into a high-converting landing page that works 24/7"
     },
     {
-      name: "Mike Chen",
-      role: "Small Business Owner",
-      content: "The AI coaching is incredibly personalized and effective.",
-      rating: 5,
+      icon: Repeat,
+      title: "Content Repurposing",
+      description: "Adapt your content for LinkedIn, X, Instagram, and Threads to maximize reach"
     },
     {
-      name: "Emily Davis",
-      role: "Influencer",
-      content: "Best investment I've made for my social media growth.",
-      rating: 5,
+      icon: DollarSign,
+      title: "Monetization Strategies",
+      description: "Get proven strategies to turn your engaged audience into paying clients"
     },
+    {
+      icon: BarChart3,
+      title: "Content Analysis & Optimization",
+      description: "Analyze your content performance and get specific tips to improve reach and visibility"
+    }
   ];
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50">
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gray-50 pt-16 pb-20">
-        <div className="absolute inset-0 bg-powder-blue/5"></div>
-
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+      <section className="relative pt-20 pb-32 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center">
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8 }}
-              className="text-center lg:text-left"
             >
-              <h1 className="text-5xl lg:text-6xl font-bold text-gray-900 mb-6 leading-tight">
-                Grow Your
-                <span className="text-powder-blue block">Social Media</span>
-                with AI Power
+              <h1 className="text-5xl md:text-7xl font-black text-gray-900 mb-6 leading-tight">
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-yellow-500">
+                  AskStan!
+                </span>
+                <br />
+                <span className="text-3xl md:text-5xl font-bold text-gray-700">
+                  Your On-Demand Social Media Growth Coach
+                </span>
               </h1>
-
-              <p className="text-xl text-gray-600 mb-8 leading-relaxed">
-                Get personalized coaching, growth strategies, and 24/7 support
-                from our AI-powered social media expert. Transform your online
-                presence today.
+              
+              <p className="text-xl md:text-2xl text-gray-600 mb-8 max-w-4xl mx-auto leading-relaxed">
+                Get AI-powered social media strategies, content creation, and monetization guidance 
+                to transform your online presence into a revenue-generating machine.
               </p>
 
-              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
                 <Link to="/signup">
-                  <Button size="lg" className="w-full sm:w-auto">
-                    Start Growing Now
+                  <Button size="xl" className="px-8 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300">
+                    Start Your 3-Day Free Trial
                     <ArrowRight className="ml-2 w-5 h-5" />
                   </Button>
                 </Link>
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className="w-full sm:w-auto"
-                  onClick={() => {
-                    const demoSection = document.getElementById("features");
-                    demoSection?.scrollIntoView({ behavior: "smooth" });
-                  }}
-                >
-                  Learn More
-                </Button>
+                <p className="text-sm text-gray-500">
+                  No credit card required • Cancel anytime
+                </p>
               </div>
 
-              <div className="mt-8 flex items-center justify-center lg:justify-start space-x-6 text-sm text-gray-500">
-                <div className="flex items-center space-x-2">
-                  <Check className="w-4 h-4 text-green-500" />
-                  <span>No credit card required</span>
+              {/* Trust Indicators */}
+              <div className="flex flex-wrap justify-center items-center gap-6 text-sm text-gray-500">
+                <div className="flex items-center">
+                  <Star className="w-4 h-4 text-yellow-500 mr-1" />
+                  <span>AI-Powered Strategies</span>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Check className="w-4 h-4 text-green-500" />
-                  <span>14-day free trial</span>
+                <div className="flex items-center">
+                  <Check className="w-4 h-4 text-green-500 mr-1" />
+                  <span>Proven Results</span>
+                </div>
+                <div className="flex items-center">
+                  <Users className="w-4 h-4 text-blue-500 mr-1" />
+                  <span>24/7 Support</span>
                 </div>
               </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-              className="relative flex justify-center"
-            >
-              <img
-                src={askstanBanner}
-                alt="AskStan Banner"
-                className="w-64 h-64 md:w-80 md:h-80 lg:w-96 lg:h-96 object-contain"
-              />
             </motion.div>
           </div>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section id="features" className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* What AskStan! Can Do Section */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
+        <div className="max-w-7xl mx-auto">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              Everything You Need to
-              <span className="text-powder-blue"> Succeed</span>
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+              What <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-yellow-500">AskStan!</span> Can Do
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Our AI-powered platform provides all the tools and insights you
-              need to grow your social media presence effectively.
+              Your personal AI coach for social media growth, content creation, and audience monetization
             </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {features.map((feature, index) => (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {capabilities.map((capability, index) => (
               <motion.div
                 key={index}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: index * 0.1 }}
+                transition={{ duration: 0.6, delay: index * 0.1 }}
                 viewport={{ once: true }}
-                className="text-center p-6 rounded-2xl bg-gray-50 hover:shadow-lg transition-shadow"
+                className="bg-gradient-to-br from-white to-gray-50 rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100"
               >
-                <div className="bg-powder-blue p-3 rounded-xl inline-block text-white mb-4">
-                  {feature.icon}
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-500 to-yellow-500 rounded-2xl mb-6">
+                  <capability.icon className="w-8 h-8 text-white" />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                  {feature.title}
+                <h3 className="text-xl font-bold text-gray-900 mb-4">
+                  {capability.title}
                 </h3>
-                <p className="text-gray-600">{feature.description}</p>
+                <p className="text-gray-600 leading-relaxed">
+                  {capability.description}
+                </p>
               </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Testimonials Section */}
-      <section className="py-20 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Pricing Section */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-gray-50 to-blue-50">
+        <div className="max-w-4xl mx-auto">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              Loved by <span className="text-powder-blue">Creators</span>
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+              Simple, Transparent Pricing
             </h2>
             <p className="text-xl text-gray-600">
-              See what our users are saying about their growth journey
+              Start with a 3-day free trial, then choose the plan that works for you
             </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            {testimonials.map((testimonial, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: index * 0.1 }}
-                viewport={{ once: true }}
-                className="bg-white p-6 rounded-2xl shadow-lg"
-              >
-                <div className="flex items-center mb-4">
-                  {[...Array(testimonial.rating)].map((_, i) => (
-                    <Star
-                      key={i}
-                      className="w-5 h-5 text-yellow-400 fill-current"
-                    />
-                  ))}
+          <div className="grid md:grid-cols-2 gap-8">
+            {/* Monthly Plan */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+              viewport={{ once: true }}
+              className="bg-white rounded-2xl p-8 shadow-xl border border-gray-200 relative"
+            >
+              <div className="text-center mb-8">
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">Monthly Plan</h3>
+                <div className="text-5xl font-black text-gray-900 mb-2">
+                  $19<span className="text-2xl text-gray-500">.95</span>
                 </div>
-                <p className="text-gray-600 mb-4 italic">
-                  "{testimonial.content}"
-                </p>
-                <div>
-                  <div className="font-semibold text-gray-900">
-                    {testimonial.name}
-                  </div>
-                  <div className="text-sm text-gray-500">
-                    {testimonial.role}
-                  </div>
+                <p className="text-gray-600">per month</p>
+                <div className="mt-4 bg-blue-50 text-blue-700 px-4 py-2 rounded-lg text-sm font-medium">
+                  3-Day Free Trial
                 </div>
-              </motion.div>
-            ))}
+              </div>
+
+              <ul className="space-y-4 mb-8">
+                <li className="flex items-center">
+                  <Check className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
+                  <span className="text-gray-700">AI-powered social media coaching</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
+                  <span className="text-gray-700">Content creation for all platforms</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
+                  <span className="text-gray-700">Profile optimization strategies</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
+                  <span className="text-gray-700">Monetization guidance</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
+                  <span className="text-gray-700">24/7 AI chat support</span>
+                </li>
+              </ul>
+
+              <Link to="/signup" className="block">
+                <Button size="lg" className="w-full">
+                  Start Free Trial
+                </Button>
+              </Link>
+            </motion.div>
+
+            {/* Annual Plan */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              viewport={{ once: true }}
+              className="bg-gradient-to-br from-blue-600 to-yellow-500 rounded-2xl p-8 shadow-xl text-white relative overflow-hidden"
+            >
+              <div className="absolute top-4 right-4 bg-yellow-400 text-blue-900 px-3 py-1 rounded-full text-sm font-bold">
+                40% OFF
+              </div>
+
+              <div className="text-center mb-8">
+                <h3 className="text-2xl font-bold mb-2">Annual Plan</h3>
+                <div className="text-5xl font-black mb-2">
+                  $143<span className="text-2xl opacity-80">.95</span>
+                </div>
+                <p className="opacity-90">per year</p>
+                <div className="mt-4 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg text-sm font-medium">
+                  3-Day Free Trial + Save 40%
+                </div>
+              </div>
+
+              <ul className="space-y-4 mb-8">
+                <li className="flex items-center">
+                  <Check className="w-5 h-5 text-yellow-300 mr-3 flex-shrink-0" />
+                  <span>Everything in Monthly Plan</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="w-5 h-5 text-yellow-300 mr-3 flex-shrink-0" />
+                  <span>Priority AI responses</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="w-5 h-5 text-yellow-300 mr-3 flex-shrink-0" />
+                  <span>Advanced analytics</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="w-5 h-5 text-yellow-300 mr-3 flex-shrink-0" />
+                  <span>Custom growth strategies</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="w-5 h-5 text-yellow-300 mr-3 flex-shrink-0" />
+                  <span className="font-semibold">Save $95.45 per year</span>
+                </li>
+              </ul>
+
+              <Link to="/signup" className="block">
+                <Button 
+                  size="lg" 
+                  className="w-full bg-white text-blue-600 hover:bg-gray-100 font-semibold"
+                >
+                  Start Free Trial
+                </Button>
+              </Link>
+            </motion.div>
+          </div>
+
+          <div className="text-center mt-8">
+            <p className="text-gray-600">
+              No credit card required for trial • Cancel anytime • 100% satisfaction guarantee
+            </p>
           </div>
         </div>
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 bg-navy-blue">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-blue-600 to-yellow-500">
+        <div className="max-w-4xl mx-auto text-center">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-4xl font-bold text-white mb-6">
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
               Ready to Transform Your Social Media?
             </h2>
-            <p className="text-xl text-white/90 mb-8">
-              Join thousands of creators who are already growing with AskStan!
+            <p className="text-xl text-white/90 mb-8 max-w-2xl mx-auto">
+              Join thousands of creators and entrepreneurs who are using AskStan! to grow their audience and revenue.
             </p>
+            
             <Link to="/signup">
-              <Button
-                size="lg"
-                className="bg-white text-navy-blue hover:bg-gray-100 shadow-lg"
+              <Button 
+                size="xl" 
+                className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-4 text-lg font-semibold shadow-lg"
               >
-                Get Started Free
+                Start Your Free 3-Day Trial
                 <ArrowRight className="ml-2 w-5 h-5" />
               </Button>
             </Link>
+            
+            <p className="text-white/80 mt-4 text-sm">
+              No credit card required • Full access during trial
+            </p>
           </motion.div>
         </div>
       </section>
