@@ -1,4 +1,4 @@
-// src/pages/auth/SignInPage.tsx - SIMPLIFIED VERSION
+// src/pages/auth/SignInPage.tsx - Fixed with Proper Redirect Logic
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -15,18 +15,32 @@ export const SignInPage: React.FC = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   
-  const { signIn, user } = useAuth();
+  const { signIn, user, subscriptionStatus } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Simple navigation after user is authenticated
+  // Handle navigation after successful authentication
   useEffect(() => {
-    if (user) {
-      const from = location.state?.from?.pathname || '/dashboard';
-      console.log('User authenticated, navigating to:', from);
-      navigate(from, { replace: true });
+    if (user && subscriptionStatus) {
+      console.log('User authenticated, checking subscription status:', subscriptionStatus);
+      
+      // Check if user has an active subscription
+      const hasActiveSubscription = subscriptionStatus.status === 'active';
+      
+      if (hasActiveSubscription) {
+        // User has subscription, redirect to dashboard
+        const from = location.state?.from?.pathname;
+        if (from && from !== '/plans') {
+          navigate(from, { replace: true });
+        } else {
+          navigate('/dashboard', { replace: true });
+        }
+      } else {
+        // User doesn't have subscription, redirect to plans
+        navigate('/plans', { replace: true });
+      }
     }
-  }, [user, navigate, location.state?.from?.pathname]);
+  }, [user, subscriptionStatus, navigate, location.state?.from?.pathname]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -53,122 +67,117 @@ export const SignInPage: React.FC = () => {
     setIsLoading(true);
     try {
       await signIn(formData.email, formData.password);
-      // Navigation handled by useEffect above
-      console.log('Sign in successful');
-      
-    } catch (error) {
-      setErrors({ submit: 'Invalid email or password' });
+      // Navigation will be handled by the useEffect above
+    } catch (error: any) {
+      console.error('Sign in error:', error);
+      setErrors({ 
+        submit: error.message || 'Failed to sign in. Please check your credentials.' 
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({
-      ...prev,
-      [e.target.name]: e.target.value
-    }));
-    // Clear error when user starts typing
-    if (errors[e.target.name]) {
-      setErrors(prev => ({ ...prev, [e.target.name]: '' }));
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    // Clear errors when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
     }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
-        className="max-w-md w-full"
+        className="max-w-md w-full space-y-8"
       >
-        <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl p-8 border border-white/20">
-          <div className="text-center mb-8">
-            <motion.div
-              initial={{ scale: 0.8 }}
-              animate={{ scale: 1 }}
-              transition={{ duration: 0.5 }}
-              className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-xl mb-4"
-            >
-              <LogIn className="w-8 h-8 text-white" />
-            </motion.div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">
-              Welcome Back
-            </h2>
-            <p className="text-gray-600">
-              Sign in to continue your growth journey
-            </p>
-          </div>
+        {/* Header */}
+        <div className="text-center">
+          <Link to="/" className="inline-block mb-8">
+            <h1 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-yellow-500">
+              AskStan!
+            </h1>
+          </Link>
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h2>
+          <p className="text-gray-600">Sign in to your account</p>
+        </div>
 
+        {/* Form */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="bg-white rounded-2xl shadow-xl p-8 border border-gray-200"
+        >
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <Input
-                label="Email Address"
-                type="email"
-                name="email"
-                autoComplete="email"
-                value={formData.email}
-                onChange={handleChange}
-                error={errors.email}
-                icon={<Mail size={20} />}
-                placeholder="Enter your email"
-                required
-              />
-            </div>
+            <Input
+              label="Email Address"
+              name="email"
+              type="email"
+              value={formData.email}
+              onChange={handleChange}
+              error={errors.email}
+              icon={<Mail className="w-5 h-5" />}
+              placeholder="Enter your email"
+              required
+            />
 
-            <div>
-              <Input
-                label="Password"
-                type="password"
-                name="password"
-                autoComplete="current-password"
-                value={formData.password}
-                onChange={handleChange}
-                error={errors.password}
-                icon={<Lock size={20} />}
-                placeholder="Enter your password"
-                required
-              />
-            </div>
+            <Input
+              label="Password"
+              name="password"
+              type="password"
+              value={formData.password}
+              onChange={handleChange}
+              error={errors.password}
+              icon={<Lock className="w-5 h-5" />}
+              placeholder="Enter your password"
+              required
+            />
 
             {errors.submit && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                <p className="text-red-700 text-sm">{errors.submit}</p>
+                <p className="text-sm text-red-600">{errors.submit}</p>
               </div>
             )}
 
             <Button
               type="submit"
               size="lg"
-              className="w-full"
               isLoading={isLoading}
-              loadingText="Signing in..."
+              className="w-full"
             >
+              <LogIn className="mr-2 w-5 h-5" />
               Sign In
             </Button>
-
-            <div className="flex items-center justify-between text-sm">
-              <Link
-                to="/forgot-password"
-                className="text-blue-600 hover:text-blue-700 transition-colors"
-              >
-                Forgot password?
-              </Link>
-            </div>
           </form>
 
-          <div className="mt-8 text-center">
+          <div className="mt-6">
+            <div className="text-center">
+              <Link
+                to="/forgot-password"
+                className="text-sm text-blue-600 hover:text-blue-500 font-medium"
+              >
+                Forgot your password?
+              </Link>
+            </div>
+          </div>
+
+          <div className="mt-6 text-center">
             <p className="text-gray-600">
-              Don't have an account?{" "}
+              Don't have an account?{' '}
               <Link
                 to="/signup"
-                className="font-semibold text-blue-600 hover:text-blue-700 transition-colors"
+                className="font-semibold text-blue-600 hover:text-blue-500 transition-colors"
               >
                 Sign up here
               </Link>
             </p>
           </div>
-        </div>
+        </motion.div>
       </motion.div>
     </div>
   );

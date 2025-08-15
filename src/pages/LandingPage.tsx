@@ -288,7 +288,8 @@ export const LandingPage: React.FC = () => {
               <Link to="/signup" className="block">
                 <Button 
                   size="lg" 
-                  className="w-full bg-white text-blue-600 hover:bg-gray-100 font-semibold border-2 border-white hover:border-gray-200 transition-all duration-200"
+                  variant="white"
+                  className="w-full"
                 >
                   Start Free Trial
                 </Button>

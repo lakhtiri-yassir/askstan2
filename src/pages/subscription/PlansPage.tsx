@@ -199,9 +199,10 @@ export const PlansPage: React.FC = () => {
                 disabled={isLoading}
                 className={`w-full ${
                   plan.popular
-                    ? 'bg-white text-blue-600 hover:bg-gray-100 font-semibold'
+                    ? ''
                     : 'bg-blue-600 hover:bg-blue-700 text-white'
                 }`}
+                variant={plan.popular ? 'white' : 'primary'}
               >
                 {isLoading && loadingPlan === plan.id ? (
                   <LoadingSpinner size="sm" className="mr-2" />

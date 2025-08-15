@@ -1,23 +1,17 @@
-// src/pages/dashboard/DashboardPage.tsx - UPDATED WITHOUT QUICK ACTIONS
-import React, { useState, useEffect, Suspense } from 'react';
+// src/pages/dashboard/DashboardPage.tsx - Complete Version
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, MessageSquare, Gift, AlertTriangle } from 'lucide-react';
+import { MessageSquare, Sparkles, Settings, AlertCircle, CheckCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { useSearchParams } from 'react-router-dom';
-import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
-import { Button } from '../../components/ui/Button';
+import { chatbotConfig, setUserDataForChatbot, shouldLoadChatbot } from '../../config/chatbot';
+import { useLocation } from 'react-router-dom';
 
-// Lazy load ChatbotEmbed to prevent blocking
-const ChatbotEmbed = React.lazy(() => 
-  import('../../components/ChatbotEmbed').then(module => ({ default: module.ChatbotEmbed }))
-);
-
-// Error boundary component
+// Error Boundary Component for Dashboard
 class DashboardErrorBoundary extends React.Component<
   { children: React.ReactNode },
   { hasError: boolean; error?: Error }
 > {
-  constructor(props: any) {
+  constructor(props: { children: React.ReactNode }) {
     super(props);
     this.state = { hasError: false };
   }
@@ -33,18 +27,19 @@ class DashboardErrorBoundary extends React.Component<
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center px-4">
-          <div className="max-w-md w-full bg-white/80 backdrop-blur-md rounded-2xl shadow-xl p-8 border border-white/20 text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-red-100 rounded-xl mb-4">
-              <AlertTriangle className="w-8 h-8 text-red-600" />
-            </div>
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
+            <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-gray-900 mb-4">Dashboard Error</h2>
             <p className="text-gray-600 mb-6">
-              Something went wrong loading your dashboard. Please try refreshing the page.
+              We encountered an issue loading your dashboard. Please refresh the page or contact support.
             </p>
-            <Button onClick={() => window.location.reload()} className="w-full">
-              Refresh Dashboard
-            </Button>
+            <button
+              onClick={() => window.location.reload()}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+            >
+              Refresh Page
+            </button>
           </div>
         </div>
       );
@@ -55,70 +50,107 @@ class DashboardErrorBoundary extends React.Component<
 }
 
 export const DashboardPage: React.FC = () => {
-  const { user, profile, subscription } = useAuth();
+  const { user, profile, subscriptionStatus } = useAuth();
   const [chatbotLoaded, setChatbotLoaded] = useState(false);
   const [chatbotError, setChatbotError] = useState<string | null>(null);
-  const [searchParams] = useSearchParams();
-  const showCouponSuccess = searchParams.get('coupon_success') === 'true';
+  const chatbotLoadedRef = useRef(false);
+  const location = useLocation();
 
-  // Prevent infinite re-renders by memoizing expensive operations
-  const displayName = React.useMemo(() => 
-    profile?.display_name || user?.email?.split('@')[0] || 'User',
-    [profile?.display_name, user?.email]
-  );
+  const displayName = profile?.display_name || user?.email?.split('@')[0] || 'User';
 
-  // Handle chatbot loading with proper error handling
-  const handleChatbotLoad = React.useCallback(() => {
-    setChatbotLoaded(true);
-    setChatbotError(null);
-    console.log('Chatbot loaded successfully in dashboard');
-  }, []);
-
-  const handleChatbotError = React.useCallback((error: Error) => {
-    console.error('Dashboard chatbot error:', error);
-    setChatbotError(error.message);
-    setChatbotLoaded(false);
-  }, []);
-
-  // Debug logging with rate limiting
+  // Load chatbot only on dashboard
   useEffect(() => {
-    const debugTimer = setTimeout(() => {
-      console.log('Dashboard Debug:', {
-        user: user?.id,
-        profile: profile?.id,
-        subscription: subscription?.status,
-        chatbotLoaded,
-        chatbotError
-      });
-    }, 1000);
+    if (!shouldLoadChatbot(location.pathname)) {
+      return;
+    }
 
-    return () => clearTimeout(debugTimer);
-  }, [user?.id, profile?.id, subscription?.status, chatbotLoaded, chatbotError]);
+    if (chatbotLoadedRef.current || !chatbotConfig.enabled) {
+      return;
+    }
+
+    const loadChatbot = async () => {
+      try {
+        console.log('🤖 Loading chatbot for dashboard...');
+        setChatbotError(null);
+
+        // Set user data for chatbot if enabled
+        if (chatbotConfig.sendUserData && user && profile) {
+          setUserDataForChatbot(user, profile);
+        }
+
+        // Create a script element and inject the chatbot code
+        const script = document.createElement('div');
+        script.innerHTML = chatbotConfig.embedCode;
+        
+        // Find and execute any script tags
+        const scriptTags = script.querySelectorAll('script');
+        scriptTags.forEach((oldScript) => {
+          const newScript = document.createElement('script');
+          
+          // Copy all attributes
+          Array.from(oldScript.attributes).forEach((attr) => {
+            newScript.setAttribute(attr.name, attr.value);
+          });
+          
+          // Copy script content
+          newScript.textContent = oldScript.textContent;
+          
+          // Add to document head
+          document.head.appendChild(newScript);
+        });
+
+        // Set loaded state
+        chatbotLoadedRef.current = true;
+        setChatbotLoaded(true);
+        
+        console.log('✅ Chatbot loaded successfully');
+      } catch (error) {
+        console.error('❌ Chatbot loading error:', error);
+        setChatbotError('Failed to load AI coach');
+        setChatbotLoaded(false);
+      }
+    };
+
+    // Load chatbot after a short delay to ensure page is ready
+    const timer = setTimeout(loadChatbot, 1000);
+    return () => clearTimeout(timer);
+  }, [user, profile, location.pathname]);
+
+  // Cleanup chatbot when leaving dashboard
+  useEffect(() => {
+    return () => {
+      if (location.pathname !== '/dashboard') {
+        console.log('🧹 Cleaning up chatbot when leaving dashboard');
+        chatbotLoadedRef.current = false;
+        setChatbotLoaded(false);
+        setChatbotError(null);
+      }
+    };
+  }, [location.pathname]);
 
   return (
     <DashboardErrorBoundary>
-      <div className="min-h-screen bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 py-8 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
           {/* Welcome Section */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
+            transition={{ duration: 0.6 }}
             className="mb-8"
           >
-            {/* Coupon Success Message */}
-            {showCouponSuccess && (
+            {/* Welcome Message */}
+            {!chatbotLoaded && !chatbotError && (
               <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-blue-50 border border-blue-200 rounded-2xl p-6 mb-6"
               >
-                <div className="flex items-center space-x-3">
-                  <Gift className="w-6 h-6 text-green-600" />
+                <div className="flex items-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-4"></div>
                   <div>
-                    <h3 className="font-semibold text-green-800">Coupon Applied Successfully!</h3>
-                    <p className="text-green-700">Your subscription has been activated. Welcome to AskStan!</p>
+                    <h3 className="text-lg font-semibold text-blue-900">Setting up your AI coach...</h3>
+                    <p className="text-blue-700">Your personalized social media growth assistant is loading.</p>
                   </div>
                 </div>
               </motion.div>
@@ -163,9 +195,9 @@ export const DashboardPage: React.FC = () => {
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold text-gray-900">AI Social Media Coach</h2>
                 <div className="flex items-center space-x-2">
-                  <div className={`w-2 h-2 rounded-full ${chatbotLoaded ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
+                  <div className={`w-2 h-2 rounded-full ${chatbotLoaded ? 'bg-green-500' : chatbotError ? 'bg-red-500' : 'bg-yellow-500'}`}></div>
                   <span className="text-xs text-gray-500">
-                    {chatbotLoaded ? 'Connected' : 'Connecting...'}
+                    {chatbotError ? 'Error' : chatbotLoaded ? 'Connected' : 'Connecting...'}
                   </span>
                 </div>
               </div>
@@ -173,57 +205,55 @@ export const DashboardPage: React.FC = () => {
               <div className="flex-1 flex items-center justify-center">
                 {chatbotError ? (
                   <div className="text-center">
-                    <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Chatbot Error</h3>
+                    <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">AI Coach Unavailable</h3>
                     <p className="text-gray-600 mb-4">{chatbotError}</p>
-                    <Button onClick={() => window.location.reload()}>
-                      Reload Dashboard
-                    </Button>
+                    <button
+                      onClick={() => window.location.reload()}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                    >
+                      Retry Connection
+                    </button>
+                  </div>
+                ) : chatbotLoaded ? (
+                  <div className="text-center">
+                    <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">AI Coach Connected!</h3>
+                    <p className="text-gray-600">
+                      Your AI social media coach is ready. Look for the chat widget to start your conversation.
+                    </p>
                   </div>
                 ) : (
-                  <Suspense 
-                    fallback={
-                      <div className="flex flex-col items-center justify-center">
-                        <LoadingSpinner size="lg" />
-                        <p className="mt-4 text-gray-600">Loading AI Coach...</p>
-                      </div>
-                    }
-                  >
-                    <div className="w-full h-full">
-                      <ChatbotEmbed 
-                        onLoad={handleChatbotLoad}
-                        onError={handleChatbotError}
-                      />
+                  <div className="text-center">
+                    <div className="animate-pulse">
+                      <div className="w-16 h-16 bg-blue-200 rounded-full mx-auto mb-4"></div>
                     </div>
-                  </Suspense>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Connecting to AI Coach...</h3>
+                    <p className="text-gray-600">
+                      Setting up your personalized social media growth assistant.
+                    </p>
+                  </div>
                 )}
               </div>
             </div>
           </motion.div>
 
-          {/* System Status Section */}
+          {/* Status Information */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.4 }}
             className="mt-8"
           >
-            <div className="bg-white rounded-xl p-4 border border-gray-200">
-              <h4 className="text-sm font-semibold text-gray-700 mb-3">System Status</h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Authentication</span>
-                  <span className="flex items-center">
-                    <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                    <span className="text-green-600 font-medium">Connected</span>
-                  </span>
-                </div>
+            <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Account Status</h3>
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">Subscription</span>
                   <span className="flex items-center">
-                    <div className={`w-2 h-2 ${subscription?.status === 'active' ? 'bg-green-500' : 'bg-yellow-500'} rounded-full mr-2`}></div>
-                    <span className={`font-medium ${subscription?.status === 'active' ? 'text-green-600' : 'text-yellow-600'}`}>
-                      {subscription?.status ? subscription.status.charAt(0).toUpperCase() + subscription.status.slice(1) : 'Loading...'}
+                    <div className={`w-2 h-2 ${subscriptionStatus?.status === 'active' ? 'bg-green-500' : 'bg-yellow-500'} rounded-full mr-2`}></div>
+                    <span className={`font-medium ${subscriptionStatus?.status === 'active' ? 'text-green-600' : 'text-yellow-600'}`}>
+                      {subscriptionStatus?.status ? subscriptionStatus.status.charAt(0).toUpperCase() + subscriptionStatus.status.slice(1) : 'Loading...'}
                     </span>
                   </span>
                 </div>
@@ -247,8 +277,9 @@ export const DashboardPage: React.FC = () => {
                   <div className="mt-2 p-2 bg-gray-50 rounded text-xs font-mono">
                     <div>User ID: {user?.id}</div>
                     <div>Profile ID: {profile?.id}</div>
-                    <div>Subscription ID: {subscription?.id}</div>
+                    <div>Subscription ID: {subscriptionStatus?.id}</div>
                     <div>Chatbot State: {chatbotError ? 'Error' : chatbotLoaded ? 'Loaded' : 'Loading'}</div>
+                    <div>Current Path: {location.pathname}</div>
                     {chatbotError && <div className="text-red-600">Error: {chatbotError}</div>}
                   </div>
                 </details>
