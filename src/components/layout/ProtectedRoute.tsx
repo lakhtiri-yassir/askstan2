@@ -1,8 +1,9 @@
-// src/components/layout/ProtectedRoute.tsx - FIXED VERSION WITH LONGER TIMEOUT
+// src/components/layout/ProtectedRoute.tsx - FIXED VERSION WITH BETTER ERROR HANDLING
 import React, { ReactNode, useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { LoadingSpinner } from "../ui/LoadingSpinner";
+import { AlertTriangle, RefreshCw } from "lucide-react";
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -15,55 +16,94 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requireSubscription = false,
   requireEmailVerification = false,
 }) => {
-  const { user, subscriptionStatus, loading, hasActiveSubscription } = useAuth();
+  const { 
+    user, 
+    subscriptionStatus, 
+    loading, 
+    hasActiveSubscription, 
+    initialized,
+    error 
+  } = useAuth();
   const location = useLocation();
-  const [loadingTimeout, setLoadingTimeout] = useState(false);
+  const [showTimeout, setShowTimeout] = useState(false);
 
-  // FIXED: Increased timeout to prevent premature warning
+  // FIXED: Better timeout handling with longer duration
   useEffect(() => {
     const timer = setTimeout(() => {
-      setLoadingTimeout(true);
-    }, 8000); // Increased from 10 seconds to 20 seconds
+      if (loading && !initialized) {
+        setShowTimeout(true);
+      }
+    }, 15000); // FIXED: Increased to 15 seconds
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [loading, initialized]);
 
   console.log("🔍 ProtectedRoute Debug:", {
     requireSubscription,
     loading,
+    initialized,
     user: user?.id,
     subscriptionStatus: subscriptionStatus?.status,
     hasActiveSubscription,
     location: location.pathname,
-    loadingTimeout
+    showTimeout,
+    error
   });
 
-  // CRITICAL FIX: Better loading state management
-  const isLoadingAuth = loading;
-  const isLoadingSubscription = requireSubscription && user && subscriptionStatus === null && !loadingTimeout;
+  // FIXED: Better loading state logic
+  const isLoadingAuth = loading && !initialized;
+  const isLoadingSubscription = requireSubscription && user && subscriptionStatus === null && !showTimeout;
   const shouldShowLoading = isLoadingAuth || isLoadingSubscription;
+
+  // FIXED: Show error state if there's an initialization error
+  if (error && !user && initialized) {
+    console.log("❌ Showing auth error state");
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
+          <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Authentication Error</h2>
+          <p className="text-gray-600 mb-6">
+            {error}
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (shouldShowLoading) {
     console.log("⏳ Showing loading spinner:", {
       isLoadingAuth,
       isLoadingSubscription,
-      loadingTimeout
+      showTimeout
     });
     
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-yellow-50">
         <div className="text-center">
           <LoadingSpinner size="lg" />
-          {loadingTimeout && (
-            <p className="mt-4 text-red-600">
-              Loading is taking longer than expected. Please check your internet connection.{" "}
-              <button 
-                onClick={() => window.location.reload()} 
-                className="ml-2 underline hover:text-red-700"
-              >
-                Refresh page
-              </button>
-            </p>
+          <p className="mt-4 text-gray-600 font-medium">
+            {isLoadingAuth ? "Initializing..." : "Loading subscription..."}
+          </p>
+          {showTimeout && (
+            <div className="mt-4 p-4 bg-yellow-50 rounded-lg">
+              <p className="text-sm text-yellow-700">
+                Loading is taking longer than expected.{" "}
+                <button 
+                  onClick={() => window.location.reload()} 
+                  className="underline hover:text-yellow-800"
+                >
+                  Refresh page
+                </button>
+              </p>
+            </div>
           )}
         </div>
       </div>
@@ -71,13 +111,13 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   // Redirect to signin if not authenticated
-  if (!user) {
+  if (!user && initialized) {
     console.log("🚫 No user, redirecting to signin");
     return <Navigate to="/signin" state={{ from: location }} replace />;
   }
 
   // Check subscription requirement with proper fallback
-  if (requireSubscription && !hasActiveSubscription && !loadingTimeout) {
+  if (requireSubscription && user && initialized && !hasActiveSubscription && !showTimeout) {
     console.log("💳 Subscription required but not active, redirecting to plans", {
       subscriptionStatus: subscriptionStatus?.status,
       hasActiveSubscription
@@ -85,21 +125,19 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to="/plans" replace />;
   }
 
-  // IMPROVED: Better timeout handling with more informative message
-  if (loadingTimeout && user) {
+  // FIXED: Better timeout handling with more informative message
+  if (showTimeout && user) {
     console.log("⚠️ Loading timeout - showing content with warning");
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50">
         <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
           <div className="flex">
             <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
+              <AlertTriangle className="h-5 w-5 text-yellow-400" />
             </div>
             <div className="ml-3">
               <p className="text-sm text-yellow-700">
-                Authentication is still loading some features. Most functionality should work normally.{" "}
+                Some features may still be loading. Most functionality should work normally.{" "}
                 <button 
                   onClick={() => window.location.reload()} 
                   className="font-medium underline text-yellow-700 hover:text-yellow-600"

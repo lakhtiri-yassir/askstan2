@@ -1,4 +1,4 @@
-// src/contexts/AuthContext.tsx - FIXED SESSION INITIALIZATION (Based on Working Version)
+// src/contexts/AuthContext.tsx - FIXED VERSION WITH PROPER INITIALIZATION
 import React, {
   createContext,
   useContext,
@@ -57,7 +57,10 @@ interface AuthContextType {
   refreshSubscription: () => Promise<void>;
   hasActiveSubscription: boolean;
   isEmailVerified: boolean;
-  resetPassword: (email: string) => Promise<void>; // Added for compatibility
+  resetPassword: (email: string) => Promise<void>;
+  // New state for better error handling
+  initialized: boolean;
+  error: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -75,7 +78,7 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  // State management
+  // FIXED: Better state management with error tracking
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
@@ -83,120 +86,53 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [initialized, setInitialized] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Computed values with proper memoization
   const hasActiveSubscription = useMemo(
     () => subscriptionStatus?.hasActiveSubscription ?? false,
-    [subscriptionStatus?.hasActiveSubscription]
+    [subscriptionStatus]
   );
-  
-  const isEmailVerified = useMemo(() => true, []);
 
-  // Simple user service functions
-  const getProfile = async (userId: string): Promise<UserProfile | null> => {
-    try {
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle();
+  const isEmailVerified = useMemo(
+    () => profile?.email_verified ?? user?.email_confirmed_at !== null,
+    [profile?.email_verified, user?.email_confirmed_at]
+  );
 
-      if (error) {
-        console.log('Profile query error:', error.message);
-        return null;
-      }
-      return data;
-    } catch (error) {
-      console.error('Error getting profile:', error);
-      return null;
-    }
-  };
-
-  const createProfileSafe = async (userId: string, email: string): Promise<UserProfile | null> => {
-    try {
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .insert({
-          id: userId,
-          email: email,
-          email_verified: true
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.log('Profile creation error:', error.message);
-        return null;
-      }
-      return data;
-    } catch (error) {
-      console.error('Error creating profile:', error);
-      return null;
-    }
-  };
-
-  const checkUserSubscription = async (userId: string): Promise<SubscriptionCheckResult> => {
-    try {
-      const { data, error } = await supabase
-        .from('subscriptions')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('status', 'active')
-        .limit(1)
-        .maybeSingle();
-
-      if (error) {
-        console.log('Subscription query error:', error.message);
-        return {
-          hasActiveSubscription: false,
-          subscription: null,
-          status: "inactive",
-        };
-      }
-
-      return {
-        hasActiveSubscription: !!data,
-        subscription: data,
-        status: data?.status || "inactive",
-      };
-    } catch (error) {
-      console.error('Error checking subscription:', error);
-      return {
-        hasActiveSubscription: false,
-        subscription: null,
-        status: "inactive",
-      };
-    }
-  };
-
-  // CRITICAL FIX: Memoized loadUserData to prevent infinite loops
+  // FIXED: Improved user data loading with better error handling
   const loadUserData = useCallback(async (authUser: User) => {
     try {
       console.log("🔄 Loading user data for:", authUser.id);
-
-      // Load or create user profile - wrapped in try-catch
-      let userProfile = null;
-      try {
-        userProfile = await getProfile(authUser.id);
-      } catch (profileError) {
-        console.log("Profile loading failed, continuing without profile:", profileError);
-      }
       
-      if (!userProfile && authUser.email) {
-        try {
-          console.log("📝 No profile found, creating one manually...");
-          userProfile = await createProfileSafe(authUser.id, authUser.email);
-        } catch (createError) {
-          console.log("Profile creation failed, continuing without profile:", createError);
+      // Load user profile with timeout
+      let userProfile: UserProfile | null = null;
+      try {
+        const { data: profileData, error: profileError } = await Promise.race([
+          supabase
+            .from('user_profiles')
+            .select('*')
+            .eq('id', authUser.id)
+            .single(),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Profile load timeout')), 5000)
+          )
+        ]) as any;
+
+        if (profileError && profileError.code !== 'PGRST116') {
+          console.warn("⚠️ Profile load error:", profileError);
+        } else {
+          userProfile = profileData;
         }
+      } catch (profileError) {
+        console.warn("Profile loading failed, continuing without profile:", profileError);
       }
 
       // Set profile state (even if null)
       setProfile(userProfile);
       console.log("👤 Profile loaded:", userProfile?.id || 'none');
 
-      // Load subscription status - wrapped in try-catch
-      let subStatus = {
+      // FIXED: Load subscription status with timeout and better error handling
+      let subStatus: SubscriptionCheckResult = {
         hasActiveSubscription: false,
         subscription: null,
         status: "inactive",
@@ -205,10 +141,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       try {
         console.log("💳 Loading subscription status...");
         const userIdForSubscription = userProfile?.id || authUser.id;
-        subStatus = await checkUserSubscription(userIdForSubscription);
+        
+        // Add timeout to subscription check
+        subStatus = await Promise.race([
+          checkUserSubscription(userIdForSubscription),
+          new Promise<SubscriptionCheckResult>((_, reject) => 
+            setTimeout(() => reject(new Error('Subscription check timeout')), 5000)
+          )
+        ]);
         console.log("💳 Subscription status loaded:", subStatus);
       } catch (subError) {
-        console.log("Subscription loading failed, using default:", subError);
+        console.warn("Subscription loading failed, using default:", subError);
+        // Keep default values set above
       }
 
       setSubscriptionStatus(subStatus);
@@ -219,7 +163,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error) {
       console.error("❌ Error loading user data:", error);
       
-      // Set safe default values to prevent infinite loading
+      // FIXED: Set safe default values to prevent infinite loading
       setProfile(null);
       setSubscriptionStatus({
         hasActiveSubscription: false,
@@ -227,10 +171,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         status: "inactive",
       });
       setSubscription(null);
+      
+      // Don't throw error - just log and continue
     }
   }, []);
 
-  // CRITICAL FIX: Proper session initialization and state management
+  // FIXED: Improved session initialization with proper error handling
   useEffect(() => {
     let mounted = true;
     let authSubscription: { subscription: { unsubscribe: () => void } } | null = null;
@@ -238,13 +184,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const initializeAuth = async () => {
       try {
         console.log("🔐 Initializing auth...");
+        setError(null); // Clear any previous errors
         
-        // FIXED: Get initial session with proper error handling
-        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
+        // FIXED: Add timeout to initial session check
+        const sessionResult = await Promise.race([
+          supabase.auth.getSession(),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Session check timeout')), 8000)
+          )
+        ]) as any;
+
+        const { data: { session: initialSession }, error } = sessionResult;
         
         if (error) {
           console.error("❌ Error getting initial session:", error);
           if (mounted) {
+            setError("Failed to initialize authentication");
             setLoading(false);
             setInitialized(true);
           }
@@ -258,10 +213,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setSession(initialSession);
           setUser(initialSession?.user ?? null);
 
-          // Load user data if session exists
+          // FIXED: Load user data with proper error handling
           if (initialSession?.user) {
             console.log("🔄 Loading initial user data...");
-            await loadUserData(initialSession.user);
+            try {
+              await loadUserData(initialSession.user);
+            } catch (loadError) {
+              console.warn("Failed to load user data during initialization:", loadError);
+              // Continue with initialization even if user data fails
+            }
           } else {
             console.log("👤 No initial session - user needs to sign in");
             // Set default subscription status for non-authenticated users
@@ -279,13 +239,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       } catch (error) {
         console.error("❌ Session initialization error:", error);
         if (mounted) {
+          setError("Authentication initialization failed");
           setLoading(false);
           setInitialized(true);
+          // Set safe defaults
+          setSubscriptionStatus({
+            hasActiveSubscription: false,
+            subscription: null,
+            status: "inactive",
+          });
         }
       }
     };
 
-    // Setup auth state listener AFTER initial session check
+    // FIXED: Better auth state listener setup
     const setupAuthListener = () => {
       console.log("👂 Setting up auth state listener...");
       
@@ -299,6 +266,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               return;
             }
 
+            // Clear any previous errors on auth state change
+            setError(null);
+
             // Handle different auth events with individual try-catch
             switch (event) {
               case 'SIGNED_IN':
@@ -310,7 +280,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                     await loadUserData(newSession.user);
                   }
                 } catch (signInError) {
-                  console.log("Sign in processing error (non-fatal):", signInError);
+                  console.warn("Sign in processing error (non-fatal):", signInError);
                 }
                 break;
                 
@@ -327,7 +297,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                     status: "inactive",
                   });
                 } catch (signOutError) {
-                  console.log("Sign out processing error (non-fatal):", signOutError);
+                  console.warn("Sign out processing error (non-fatal):", signOutError);
                 }
                 break;
                 
@@ -341,7 +311,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                     await loadUserData(newSession.user);
                   }
                 } catch (refreshError) {
-                  console.log("Token refresh processing error (non-fatal):", refreshError);
+                  console.warn("Token refresh processing error (non-fatal):", refreshError);
                 }
                 break;
                 
@@ -351,7 +321,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                   setSession(newSession);
                   setUser(newSession?.user ?? null);
                 } catch (defaultError) {
-                  console.log("Default auth event processing error (non-fatal):", defaultError);
+                  console.warn("Default auth event processing error (non-fatal):", defaultError);
                 }
             }
 
@@ -360,7 +330,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               setLoading(false);
             }
           } catch (overallError) {
-            console.log("Overall auth state change error (non-fatal):", overallError);
+            console.warn("Overall auth state change error (non-fatal):", overallError);
             // Ensure loading is false even on error
             if (mounted) {
               setLoading(false);
@@ -390,13 +360,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
   }, [loadUserData]);
 
-  // Additional safety timeout to prevent infinite loading
+  // FIXED: Extended timeout for slower connections
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (loading && !initialized) {
         console.warn("⚠️ Auth initialization timeout - forcing completion");
         setLoading(false);
         setInitialized(true);
+        setError("Authentication took longer than expected");
         // Set default state for timeout case
         setSubscriptionStatus({
           hasActiveSubscription: false,
@@ -404,14 +375,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           status: "inactive",
         });
       }
-    }, 6000); // 6 second timeout
+    }, 12000); // FIXED: Increased from 6 to 12 seconds
 
     return () => clearTimeout(timeoutId);
   }, [loading, initialized]);
 
-  // Memoized auth functions
+  // FIXED: Improved auth functions with better error handling
   const signUp = useCallback(async (email: string, password: string): Promise<void> => {
     setLoading(true);
+    setError(null);
     try {
       console.log("📝 Starting signup process");
 
@@ -440,11 +412,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setProfile(profile);
         console.log("✅ Profile created successfully");
       } catch (profileError) {
-        console.error("❌ Profile creation error:", profileError);
+        console.warn("⚠️ Profile creation warning:", profileError);
+        // Don't throw - continue with signup
       }
 
     } catch (error: any) {
       console.error("❌ Signup error:", error);
+      setError(error.message || "Failed to create account");
       throw new Error(error.message || "Failed to create account. Please try again.");
     } finally {
       setLoading(false);
@@ -453,6 +427,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const signIn = useCallback(async (email: string, password: string): Promise<void> => {
     setLoading(true);
+    setError(null);
     try {
       console.log("🔑 Starting sign in process");
 
@@ -467,6 +442,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Auth state change handler will handle the rest
     } catch (error: any) {
       console.error("❌ Sign in error:", error);
+      setError(error.message || "Failed to sign in");
 
       if (error.message?.includes("Invalid login credentials")) {
         throw new Error("Invalid email or password. Please check your credentials and try again.");
@@ -481,6 +457,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const signOut = useCallback(async (): Promise<void> => {
     try {
       console.log("🚪 Starting sign out process...");
+      setError(null);
 
       // Clear all state first
       setUser(null);
@@ -513,6 +490,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const forgotPassword = useCallback(async (email: string): Promise<void> => {
+    setError(null);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/reset-password`,
@@ -521,82 +499,161 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (error) throw error;
     } catch (error: any) {
       console.error("❌ Password reset error:", error);
+      setError(error.message || "Failed to send reset email");
       throw new Error(error.message || "Failed to send reset email. Please try again.");
     }
   }, []);
 
-  // Added for compatibility
+  // FIXED: Add resetPassword for compatibility
   const resetPassword = useCallback(async (email: string): Promise<void> => {
-    return await forgotPassword(email);
+    return forgotPassword(email);
   }, [forgotPassword]);
 
   const updateProfile = useCallback(async (updates: Partial<UserProfile>): Promise<void> => {
-    if (!user) throw new Error("User not authenticated");
-
+    if (!user) throw new Error("No user logged in");
+    
+    setError(null);
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('user_profiles')
         .update(updates)
-        .eq('id', user.id)
-        .select()
-        .single();
+        .eq('id', user.id);
 
       if (error) throw error;
-      setProfile(data);
+
+      setProfile(prev => prev ? { ...prev, ...updates } : null);
     } catch (error: any) {
       console.error("❌ Profile update error:", error);
-      throw new Error(error.message || "Failed to update profile. Please try again.");
+      setError(error.message || "Failed to update profile");
+      throw error;
     }
   }, [user]);
 
   const refreshSubscription = useCallback(async (): Promise<void> => {
     if (!user) return;
-
+    
+    setError(null);
     try {
-      console.log("🔄 Refreshing subscription status...");
-      const subStatus = await checkUserSubscription(user.id);
-      setSubscriptionStatus(subStatus);
-      setSubscription(subStatus.subscription);
-      console.log("✅ Subscription refreshed:", subStatus);
-    } catch (error) {
-      console.error("❌ Refresh subscription error:", error);
+      const status = await checkUserSubscription(user.id);
+      setSubscriptionStatus(status);
+      setSubscription(status.subscription);
+    } catch (error: any) {
+      console.error("❌ Subscription refresh error:", error);
+      setError("Failed to refresh subscription status");
     }
   }, [user]);
 
-  // Memoized context value
-  const value = useMemo((): AuthContextType => ({
-    user,
-    profile,
-    subscription,
-    subscriptionStatus,
-    session,
-    loading,
-    signUp,
-    signIn,
-    signOut,
-    forgotPassword,
-    updateProfile,
-    refreshSubscription,
-    hasActiveSubscription,
-    isEmailVerified,
-    resetPassword, // Added for compatibility
-  }), [
-    user,
-    profile,
-    subscription,
-    subscriptionStatus,
-    session,
-    loading,
-    signUp,
-    signIn,
-    signOut,
-    forgotPassword,
-    updateProfile,
-    refreshSubscription,
-    hasActiveSubscription,
-    isEmailVerified,
-    resetPassword,
-  ]);
+  // FIXED: Add the missing helper functions
+  const createProfileSafe = async (userId: string, email: string): Promise<UserProfile> => {
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .insert({
+          id: userId,
+          email: email,
+          email_verified: true
+        })
+        .select()
+        .single();
+
+      if (error) {
+        // Profile might already exist, try to fetch it
+        const { data: existingProfile } = await supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('id', userId)
+          .single();
+
+        if (existingProfile) {
+          return existingProfile;
+        }
+        throw error;
+      }
+
+      return data;
+    } catch (error) {
+      console.warn("Profile creation failed, returning minimal profile:", error);
+      // Return minimal profile to prevent blocking
+      return {
+        id: userId,
+        email: email,
+        email_verified: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+    }
+  };
+
+  const checkUserSubscription = async (userId: string): Promise<SubscriptionCheckResult> => {
+    try {
+      const { data, error } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        throw error;
+      }
+
+      const hasActiveSubscription = !!data && data.status === 'active';
+      
+      return {
+        hasActiveSubscription,
+        subscription: data || null,
+        status: data?.status || 'inactive'
+      };
+    } catch (error) {
+      console.warn("Subscription check failed:", error);
+      return {
+        hasActiveSubscription: false,
+        subscription: null,
+        status: 'inactive'
+      };
+    }
+  };
+
+  const value = useMemo(
+    () => ({
+      user,
+      profile,
+      subscription,
+      subscriptionStatus,
+      session,
+      loading,
+      initialized,
+      error,
+      signUp,
+      signIn,
+      signOut,
+      forgotPassword,
+      resetPassword,
+      updateProfile,
+      refreshSubscription,
+      hasActiveSubscription,
+      isEmailVerified,
+    }),
+    [
+      user,
+      profile,
+      subscription,
+      subscriptionStatus,
+      session,
+      loading,
+      initialized,
+      error,
+      signUp,
+      signIn,
+      signOut,
+      forgotPassword,
+      resetPassword,
+      updateProfile,
+      refreshSubscription,
+      hasActiveSubscription,
+      isEmailVerified,
+    ]
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
