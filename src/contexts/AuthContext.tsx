@@ -165,38 +165,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       });
       setSubscription(null);
     }
-  }, []);
-
-  // Helper function to check subscription status
-  const checkUserSubscription = async (userId: string): Promise<SubscriptionCheckResult> => {
-    try {
-      const { data, error } = await supabase
-        .from('subscriptions')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('status', 'active')
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        throw error;
-      }
-
-      const hasActiveSubscription = !!data && data.status === 'active';
-      
-      return {
-        hasActiveSubscription,
-        subscription: data || null,
-        status: data?.status || 'inactive'
-      };
-    } catch (error) {
-      console.warn("Subscription check failed:", error);
-      return {
-        hasActiveSubscription: false,
-        subscription: null,
-        status: 'inactive'
-      };
-    }
-  };
+  }, []); // Remove checkUserSubscription from dependencies to avoid circular dependency
 
   // SIMPLIFIED: Session initialization without timeout logic
   useEffect(() => {
@@ -470,10 +439,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error) {
       console.error("Failed to refresh subscription:", error);
     }
-  }, [user]);
+  }, [user]); // Remove checkUserSubscription from dependencies
 
-  // Helper function to check subscription status
-  const checkUserSubscription = async (userId: string): Promise<SubscriptionCheckResult> => {
+  // Helper function to check subscription status - SINGLE DEFINITION
+  const checkUserSubscription = useCallback(async (userId: string): Promise<SubscriptionCheckResult> => {
     try {
       const { data, error } = await supabase
         .from('subscriptions')
@@ -503,7 +472,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         status: 'inactive'
       };
     }
-  };
+  }, []);
 
   const value = useMemo(
     () => ({
@@ -544,6 +513,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       refreshSubscription,
       hasActiveSubscription,
       isEmailVerified,
+      checkUserSubscription, // Add to dependencies
     ]
   );
 
