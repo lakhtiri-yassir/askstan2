@@ -1,21 +1,20 @@
-// src/pages/admin/AdminDashboard.tsx
+// src/pages/admin/AdminDashboard.tsx - Complete Admin Dashboard
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Users, 
+  CreditCard, 
   UserPlus, 
   UserMinus, 
   Settings, 
   LogOut, 
   Search,
-  Mail,
-  Calendar,
-  Crown,
-  Shield,
   Plus,
+  Edit,
   Trash2,
-  Eye,
-  AlertCircle
+  AlertCircle,
+  CheckCircle,
+  XCircle
 } from 'lucide-react';
 import { useAdminAuth } from '../../contexts/AdminAuthContext';
 import { Button } from '../../components/ui/Button';
@@ -23,90 +22,116 @@ import { Input } from '../../components/ui/Input';
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
 import { supabase } from '../../lib/supabase';
 
-interface UserProfile {
+interface User {
   id: string;
   email: string;
   display_name: string | null;
   email_verified: boolean;
   created_at: string;
-  subscription?: {
-    id: string;
-    plan_type: 'monthly' | 'yearly';
-    status: string;
-    current_period_start: string;
-    current_period_end: string;
-  } | null;
 }
 
-interface NewAdminForm {
+interface Subscription {
+  id: string;
+  user_id: string;
+  plan_type: 'monthly' | 'yearly';
+  status: 'active' | 'cancelled' | 'expired' | 'past_due' | 'trialing';
+  current_period_start: string | null;
+  current_period_end: string | null;
+  created_at: string;
+}
+
+interface UserWithSubscription extends User {
+  subscription: Subscription | null;
+}
+
+interface AdminUser {
+  id: string;
   email: string;
-  password: string;
-  full_name: string;
+  full_name: string | null;
   is_super_admin: boolean;
+  is_active: boolean;
+  created_at: string;
+  last_login: string | null;
 }
 
 export const AdminDashboard: React.FC = () => {
   const { admin, signOut } = useAdminAuth();
   const [activeTab, setActiveTab] = useState<'users' | 'admins'>('users');
-  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [users, setUsers] = useState<UserWithSubscription[]>([]);
+  const [admins, setAdmins] = useState<AdminUser[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [showAddAdmin, setShowAddAdmin] = useState(false);
-  const [newAdminForm, setNewAdminForm] = useState<NewAdminForm>({
-    email: '',
-    password: '',
-    full_name: '',
-    is_super_admin: false
-  });
+  const [showAddSubscription, setShowAddSubscription] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<UserWithSubscription | null>(null);
+  const [notification, setNotification] = useState<{
+    type: 'success' | 'error';
+    message: string;
+  } | null>(null);
 
-  useEffect(() => {
-    loadUsers();
-  }, []);
-
+  // Load users with subscriptions
   const loadUsers = async () => {
     try {
-      setIsLoading(true);
-      
-      // Get users with their subscription info
       const { data: usersData, error: usersError } = await supabase
         .from('user_profiles')
         .select(`
-          id,
-          email,
-          display_name,
-          email_verified,
-          created_at,
-          subscriptions (
-            id,
-            plan_type,
-            status,
-            current_period_start,
-            current_period_end
-          )
+          *,
+          subscriptions:subscriptions(*)
         `)
         .order('created_at', { ascending: false });
 
       if (usersError) throw usersError;
 
-      // Transform data to include subscription info
-      const transformedUsers = usersData?.map(user => ({
+      const formattedUsers: UserWithSubscription[] = usersData.map(user => ({
         ...user,
         subscription: user.subscriptions?.[0] || null
-      })) || [];
+      }));
 
-      setUsers(transformedUsers);
-    } catch (error) {
+      setUsers(formattedUsers);
+    } catch (error: any) {
       console.error('Error loading users:', error);
-    } finally {
-      setIsLoading(false);
+      showNotification('error', 'Failed to load users');
     }
   };
 
+  // Load admin users
+  const loadAdmins = async () => {
+    try {
+      const sessionToken = localStorage.getItem('admin_session_token');
+      if (!sessionToken) throw new Error('No admin session');
+
+      const { data, error } = await supabase.rpc('admin_get_all_admins', {
+        session_token: sessionToken
+      });
+
+      if (error) throw error;
+      setAdmins(data || []);
+    } catch (error: any) {
+      console.error('Error loading admins:', error);
+      showNotification('error', 'Failed to load admin users');
+    }
+  };
+
+  // Initial data load
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      await Promise.all([loadUsers(), loadAdmins()]);
+      setLoading(false);
+    };
+
+    loadData();
+  }, []);
+
+  // Show notification
+  const showNotification = (type: 'success' | 'error', message: string) => {
+    setNotification({ type, message });
+    setTimeout(() => setNotification(null), 5000);
+  };
+
+  // Add subscription to user
   const addSubscription = async (userId: string, planType: 'monthly' | 'yearly') => {
     try {
-      setActionLoading(`add-${userId}`);
-      
       const sessionToken = localStorage.getItem('admin_session_token');
       if (!sessionToken) throw new Error('No admin session');
 
@@ -119,22 +144,19 @@ export const AdminDashboard: React.FC = () => {
 
       if (error) throw error;
 
-      await loadUsers(); // Refresh the user list
-      alert(`Successfully added ${planType} subscription`);
+      showNotification('success', 'Subscription added successfully');
+      await loadUsers();
+      setShowAddSubscription(false);
+      setSelectedUser(null);
     } catch (error: any) {
       console.error('Error adding subscription:', error);
-      alert(error.message || 'Failed to add subscription');
-    } finally {
-      setActionLoading(null);
+      showNotification('error', error.message || 'Failed to add subscription');
     }
   };
 
+  // Remove subscription from user
   const removeSubscription = async (userId: string) => {
-    if (!confirm('Are you sure you want to remove this subscription?')) return;
-
     try {
-      setActionLoading(`remove-${userId}`);
-      
       const sessionToken = localStorage.getItem('admin_session_token');
       if (!sessionToken) throw new Error('No admin session');
 
@@ -145,401 +167,636 @@ export const AdminDashboard: React.FC = () => {
 
       if (error) throw error;
 
-      await loadUsers(); // Refresh the user list
-      alert('Successfully removed subscription');
+      showNotification('success', 'Subscription removed successfully');
+      await loadUsers();
     } catch (error: any) {
       console.error('Error removing subscription:', error);
-      alert(error.message || 'Failed to remove subscription');
-    } finally {
-      setActionLoading(null);
+      showNotification('error', error.message || 'Failed to remove subscription');
     }
   };
 
-  const createAdmin = async () => {
+  // Add new admin
+  const addAdmin = async (email: string, password: string, fullName: string, isSuperAdmin: boolean) => {
     try {
-      setActionLoading('create-admin');
-      
       const sessionToken = localStorage.getItem('admin_session_token');
       if (!sessionToken) throw new Error('No admin session');
 
       const { data, error } = await supabase.rpc('admin_create_admin', {
         session_token: sessionToken,
-        new_admin_email: newAdminForm.email,
-        new_admin_password: newAdminForm.password,
-        new_admin_name: newAdminForm.full_name,
-        make_super_admin: newAdminForm.is_super_admin
+        new_admin_email: email,
+        new_admin_password: password,
+        new_admin_name: fullName,
+        make_super_admin: isSuperAdmin
       });
 
       if (error) throw error;
 
-      alert('Admin created successfully');
+      showNotification('success', 'Admin created successfully');
+      await loadAdmins();
       setShowAddAdmin(false);
-      setNewAdminForm({ email: '', password: '', full_name: '', is_super_admin: false });
     } catch (error: any) {
       console.error('Error creating admin:', error);
-      alert(error.message || 'Failed to create admin');
-    } finally {
-      setActionLoading(null);
+      showNotification('error', error.message || 'Failed to create admin');
     }
   };
 
+  // Filter users based on search term
   const filteredUsers = users.filter(user =>
     user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.display_name?.toLowerCase().includes(searchTerm.toLowerCase())
+    (user.display_name || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const subscribedUsers = users.filter(user => user.subscription?.status === 'active');
-  const totalRevenue = subscribedUsers.reduce((sum, user) => {
-    if (user.subscription?.plan_type === 'monthly') return sum + 19.95;
-    if (user.subscription?.plan_type === 'yearly') return sum + 143.95;
-    return sum;
-  }, 0);
+  // Filter admins based on search term
+  const filteredAdmins = admins.filter(admin =>
+    admin.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (admin.full_name || '').toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-blue-900 to-gray-800">
+        <div className="text-center">
+          <LoadingSpinner size="lg" className="text-white" />
+          <p className="mt-4 text-white font-medium">Loading admin dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-800">
+      {/* Notification */}
+      {notification && (
+        <motion.div
+          initial={{ opacity: 0, y: -50 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -50 }}
+          className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg ${
+            notification.type === 'success' 
+              ? 'bg-green-500 text-white' 
+              : 'bg-red-500 text-white'
+          }`}
+        >
+          <div className="flex items-center">
+            {notification.type === 'success' ? (
+              <CheckCircle className="w-5 h-5 mr-2" />
+            ) : (
+              <XCircle className="w-5 h-5 mr-2" />
+            )}
+            {notification.message}
+          </div>
+        </motion.div>
+      )}
+
       {/* Header */}
-      <header className="bg-white shadow-lg border-b border-gray-200">
+      <header className="bg-white/10 backdrop-blur-lg border-b border-white/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center">
-              <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl mr-4">
-                <Shield className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">AskStan! Admin</h1>
-                <p className="text-gray-600">Welcome back, {admin?.full_name}</p>
-              </div>
+          <div className="flex justify-between items-center py-4">
+            <div>
+              <h1 className="text-2xl font-bold text-white">Admin Dashboard</h1>
+              <p className="text-blue-200">
+                Welcome back, {admin?.full_name || admin?.email}
+                {admin?.is_super_admin && (
+                  <span className="ml-2 px-2 py-1 bg-yellow-500 text-yellow-900 text-xs rounded-full">
+                    Super Admin
+                  </span>
+                )}
+              </p>
             </div>
-            
-            <div className="flex items-center space-x-4">
-              {admin?.is_super_admin && (
-                <div className="flex items-center bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-medium">
-                  <Crown className="w-4 h-4 mr-1" />
-                  Super Admin
-                </div>
-              )}
-              <Button
-                onClick={signOut}
-                variant="outline"
-                className="flex items-center"
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                Sign Out
-              </Button>
-            </div>
+            <Button
+              onClick={signOut}
+              variant="secondary"
+              className="text-white border-white/30 hover:bg-white/20"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Sign Out
+            </Button>
           </div>
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-xl p-6 shadow-lg border border-gray-200"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-600 text-sm font-medium">Total Users</p>
-                <p className="text-3xl font-bold text-gray-900">{users.length}</p>
-              </div>
-              <Users className="w-8 h-8 text-blue-500" />
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-white rounded-xl p-6 shadow-lg border border-gray-200"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-600 text-sm font-medium">Subscribers</p>
-                <p className="text-3xl font-bold text-green-600">{subscribedUsers.length}</p>
-              </div>
-              <UserPlus className="w-8 h-8 text-green-500" />
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="bg-white rounded-xl p-6 shadow-lg border border-gray-200"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-600 text-sm font-medium">Monthly Revenue</p>
-                <p className="text-3xl font-bold text-yellow-600">${totalRevenue.toFixed(2)}</p>
-              </div>
-              <Calendar className="w-8 h-8 text-yellow-500" />
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="bg-white rounded-xl p-6 shadow-lg border border-gray-200"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-600 text-sm font-medium">Conversion Rate</p>
-                <p className="text-3xl font-bold text-purple-600">
-                  {users.length > 0 ? Math.round((subscribedUsers.length / users.length) * 100) : 0}%
-                </p>
-              </div>
-              <Settings className="w-8 h-8 text-purple-500" />
-            </div>
-          </motion.div>
-        </div>
-
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Tabs */}
-        <div className="mb-6">
-          <div className="border-b border-gray-200">
-            <nav className="-mb-px flex space-x-8">
-              <button
-                onClick={() => setActiveTab('users')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'users'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                User Management
-              </button>
-              {admin?.is_super_admin && (
-                <button
-                  onClick={() => setActiveTab('admins')}
-                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                    activeTab === 'admins'
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  Admin Management
-                </button>
-              )}
-            </nav>
-          </div>
+        <div className="flex space-x-1 bg-white/10 p-1 rounded-lg mb-8">
+          <button
+            onClick={() => setActiveTab('users')}
+            className={`flex-1 flex items-center justify-center px-4 py-2 rounded-md transition-colors ${
+              activeTab === 'users'
+                ? 'bg-white text-gray-900'
+                : 'text-white hover:bg-white/20'
+            }`}
+          >
+            <Users className="w-5 h-5 mr-2" />
+            User Management
+          </button>
+          <button
+            onClick={() => setActiveTab('admins')}
+            className={`flex-1 flex items-center justify-center px-4 py-2 rounded-md transition-colors ${
+              activeTab === 'admins'
+                ? 'bg-white text-gray-900'
+                : 'text-white hover:bg-white/20'
+            }`}
+          >
+            <Settings className="w-5 h-5 mr-2" />
+            Admin Management
+          </button>
         </div>
 
-        {/* User Management Tab */}
-        {activeTab === 'users' && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="bg-white rounded-xl shadow-lg border border-gray-200"
-          >
-            {/* Search */}
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-gray-900">User Management</h2>
-                <div className="max-w-md">
-                  <Input
-                    placeholder="Search users..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    icon={<Search className="w-4 h-4" />}
-                  />
-                </div>
-              </div>
-            </div>
+        {/* Search and Actions */}
+        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <Input
+              type="text"
+              placeholder={`Search ${activeTab}...`}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 bg-white/10 border-white/30 text-white placeholder-gray-300"
+            />
+          </div>
+          {activeTab === 'users' && (
+            <Button
+              onClick={() => setShowAddSubscription(true)}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              <UserPlus className="w-4 h-4 mr-2" />
+              Add Subscription
+            </Button>
+          )}
+          {activeTab === 'admins' && admin?.is_super_admin && (
+            <Button
+              onClick={() => setShowAddAdmin(true)}
+              className="bg-purple-600 hover:bg-purple-700"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Admin
+            </Button>
+          )}
+        </div>
 
-            {/* Users List */}
-            <div className="p-6">
-              {isLoading ? (
-                <div className="flex justify-center py-12">
-                  <LoadingSpinner size="lg" />
-                </div>
-              ) : (
-                <div className="space-y-4">
+        {/* Users Tab */}
+        {activeTab === 'users' && (
+          <div className="bg-white/10 backdrop-blur-lg rounded-lg overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-white/20">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-200 uppercase tracking-wider">
+                      User
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-200 uppercase tracking-wider">
+                      Email Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-200 uppercase tracking-wider">
+                      Subscription
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-200 uppercase tracking-wider">
+                      Joined
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-200 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/10">
                   {filteredUsers.map((user) => (
-                    <div key={user.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-3">
-                            <div className="flex-shrink-0">
-                              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                                <span className="text-white font-semibold text-sm">
-                                  {user.email.charAt(0).toUpperCase()}
-                                </span>
-                              </div>
-                            </div>
-                            <div>
-                              <h3 className="text-lg font-medium text-gray-900">
-                                {user.display_name || user.email.split('@')[0]}
-                              </h3>
-                              <p className="text-gray-600 flex items-center">
-                                <Mail className="w-4 h-4 mr-1" />
-                                {user.email}
-                              </p>
-                            </div>
+                    <tr key={user.id} className="hover:bg-white/5">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div>
+                          <div className="text-sm font-medium text-white">
+                            {user.display_name || 'No name'}
                           </div>
-                          
-                          <div className="mt-2 flex items-center space-x-4 text-sm text-gray-500">
-                            <span>Joined {new Date(user.created_at).toLocaleDateString()}</span>
-                            {user.subscription ? (
-                              <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
-                                {user.subscription.plan_type} - {user.subscription.status}
-                              </span>
-                            ) : (
-                              <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs font-medium">
-                                No subscription
-                              </span>
+                          <div className="text-sm text-gray-300">{user.email}</div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {user.email_verified ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            <CheckCircle className="w-3 h-3 mr-1" />
+                            Verified
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                            <AlertCircle className="w-3 h-3 mr-1" />
+                            Unverified
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {user.subscription ? (
+                          <div>
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              user.subscription.status === 'active'
+                                ? 'bg-green-100 text-green-800'
+                                : user.subscription.status === 'trialing'
+                                ? 'bg-blue-100 text-blue-800'
+                                : 'bg-red-100 text-red-800'
+                            }`}>
+                              <CreditCard className="w-3 h-3 mr-1" />
+                              {user.subscription.plan_type} - {user.subscription.status}
+                            </span>
+                            {user.subscription.current_period_end && (
+                              <div className="text-xs text-gray-400 mt-1">
+                                Expires: {new Date(user.subscription.current_period_end).toLocaleDateString()}
+                              </div>
                             )}
                           </div>
-                        </div>
-
-                        <div className="flex items-center space-x-2">
-                          {user.subscription?.status === 'active' ? (
+                        ) : (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                            No subscription
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                        {new Date(user.created_at).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <div className="flex space-x-2">
+                          {!user.subscription ? (
                             <Button
+                              onClick={() => {
+                                setSelectedUser(user);
+                                setShowAddSubscription(true);
+                              }}
                               size="sm"
-                              variant="outline"
-                              onClick={() => removeSubscription(user.id)}
-                              disabled={actionLoading === `remove-${user.id}`}
-                              className="text-red-600 border-red-300 hover:bg-red-50"
+                              className="bg-green-600 hover:bg-green-700"
                             >
-                              {actionLoading === `remove-${user.id}` ? (
-                                <LoadingSpinner size="sm" className="mr-2" />
-                              ) : (
-                                <UserMinus className="w-4 h-4 mr-2" />
-                              )}
-                              Remove Sub
+                              <UserPlus className="w-3 h-3 mr-1" />
+                              Add Sub
                             </Button>
                           ) : (
-                            <div className="flex space-x-2">
-                              <Button
-                                size="sm"
-                                onClick={() => addSubscription(user.id, 'monthly')}
-                                disabled={actionLoading === `add-${user.id}`}
-                                className="bg-blue-600 hover:bg-blue-700"
-                              >
-                                {actionLoading === `add-${user.id}` ? (
-                                  <LoadingSpinner size="sm" className="mr-2" />
-                                ) : (
-                                  <Plus className="w-4 h-4 mr-2" />
-                                )}
-                                Monthly
-                              </Button>
-                              <Button
-                                size="sm"
-                                onClick={() => addSubscription(user.id, 'yearly')}
-                                disabled={actionLoading === `add-${user.id}`}
-                                className="bg-green-600 hover:bg-green-700"
-                              >
-                                <Plus className="w-4 h-4 mr-2" />
-                                Yearly
-                              </Button>
-                            </div>
+                            <Button
+                              onClick={() => removeSubscription(user.id)}
+                              size="sm"
+                              variant="secondary"
+                              className="bg-red-600 hover:bg-red-700 text-white"
+                            >
+                              <UserMinus className="w-3 h-3 mr-1" />
+                              Remove Sub
+                            </Button>
                           )}
                         </div>
-                      </div>
-                    </div>
+                      </td>
+                    </tr>
                   ))}
+                </tbody>
+              </table>
+              {filteredUsers.length === 0 && (
+                <div className="text-center py-8 text-gray-400">
+                  No users found matching your search.
                 </div>
               )}
             </div>
-          </motion.div>
+          </div>
         )}
 
-        {/* Admin Management Tab */}
-        {activeTab === 'admins' && admin?.is_super_admin && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="bg-white rounded-xl shadow-lg border border-gray-200"
-          >
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-gray-900">Admin Management</h2>
-                <Button
-                  onClick={() => setShowAddAdmin(true)}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Admin
-                </Button>
-              </div>
+        {/* Admins Tab */}
+        {activeTab === 'admins' && (
+          <div className="bg-white/10 backdrop-blur-lg rounded-lg overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-white/20">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-200 uppercase tracking-wider">
+                      Admin
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-200 uppercase tracking-wider">
+                      Role
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-200 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-200 uppercase tracking-wider">
+                      Last Login
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-200 uppercase tracking-wider">
+                      Created
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/10">
+                  {filteredAdmins.map((adminUser) => (
+                    <tr key={adminUser.id} className="hover:bg-white/5">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div>
+                          <div className="text-sm font-medium text-white">
+                            {adminUser.full_name || 'No name'}
+                          </div>
+                          <div className="text-sm text-gray-300">{adminUser.email}</div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {adminUser.is_super_admin ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                            Super Admin
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            Admin
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {adminUser.is_active ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            <CheckCircle className="w-3 h-3 mr-1" />
+                            Active
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                            <XCircle className="w-3 h-3 mr-1" />
+                            Inactive
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                        {adminUser.last_login 
+                          ? new Date(adminUser.last_login).toLocaleDateString()
+                          : 'Never'
+                        }
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                        {new Date(adminUser.created_at).toLocaleDateString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {filteredAdmins.length === 0 && (
+                <div className="text-center py-8 text-gray-400">
+                  No admins found matching your search.
+                </div>
+              )}
             </div>
-
-            {/* Add Admin Form */}
-            {showAddAdmin && (
-              <div className="p-6 border-b border-gray-200 bg-gray-50">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Create New Admin</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Input
-                    label="Email"
-                    value={newAdminForm.email}
-                    onChange={(e) => setNewAdminForm(prev => ({ ...prev, email: e.target.value }))}
-                    placeholder="admin@askstan.io"
-                  />
-                  <Input
-                    label="Full Name"
-                    value={newAdminForm.full_name}
-                    onChange={(e) => setNewAdminForm(prev => ({ ...prev, full_name: e.target.value }))}
-                    placeholder="John Doe"
-                  />
-                  <Input
-                    label="Password"
-                    type="password"
-                    value={newAdminForm.password}
-                    onChange={(e) => setNewAdminForm(prev => ({ ...prev, password: e.target.value }))}
-                    placeholder="Secure password"
-                  />
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="is_super_admin"
-                      checked={newAdminForm.is_super_admin}
-                      onChange={(e) => setNewAdminForm(prev => ({ ...prev, is_super_admin: e.target.checked }))}
-                      className="rounded border-gray-300"
-                    />
-                    <label htmlFor="is_super_admin" className="text-sm font-medium text-gray-700">
-                      Super Admin (Can manage other admins)
-                    </label>
-                  </div>
-                </div>
-                <div className="mt-4 flex space-x-3">
-                  <Button
-                    onClick={createAdmin}
-                    disabled={actionLoading === 'create-admin'}
-                    className="bg-green-600 hover:bg-green-700"
-                  >
-                    {actionLoading === 'create-admin' ? (
-                      <LoadingSpinner size="sm" className="mr-2" />
-                    ) : null}
-                    Create Admin
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowAddAdmin(false)}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            <div className="p-6">
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <div className="flex items-start">
-                  <AlertCircle className="w-5 h-5 text-yellow-600 mr-3 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <h4 className="text-yellow-800 font-medium">Super Admin Access</h4>
-                    <p className="text-yellow-700 text-sm mt-1">
-                      As a super admin, you can create new admin accounts and manage existing ones. 
-                      Regular admins can only manage user subscriptions.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
+          </div>
         )}
-      </div>
+      </main>
+
+      {/* Add Subscription Modal */}
+      {showAddSubscription && (
+        <AddSubscriptionModal
+          user={selectedUser}
+          onClose={() => {
+            setShowAddSubscription(false);
+            setSelectedUser(null);
+          }}
+          onAddSubscription={addSubscription}
+        />
+      )}
+
+      {/* Add Admin Modal */}
+      {showAddAdmin && admin?.is_super_admin && (
+        <AddAdminModal
+          onClose={() => setShowAddAdmin(false)}
+          onAddAdmin={addAdmin}
+        />
+      )}
+    </div>
+  );
+};
+
+// Add Subscription Modal Component
+interface AddSubscriptionModalProps {
+  user: UserWithSubscription | null;
+  onClose: () => void;
+  onAddSubscription: (userId: string, planType: 'monthly' | 'yearly') => void;
+}
+
+const AddSubscriptionModal: React.FC<AddSubscriptionModalProps> = ({
+  user,
+  onClose,
+  onAddSubscription,
+}) => {
+  const [planType, setPlanType] = useState<'monthly' | 'yearly'>('monthly');
+  const [selectedUserId, setSelectedUserId] = useState('');
+  const [users, setUsers] = useState<UserWithSubscription[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!user) {
+      // Load users without subscriptions for selection
+      const loadUsersWithoutSub = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('user_profiles')
+            .select(`
+              *,
+              subscriptions:subscriptions(*)
+            `)
+            .order('created_at', { ascending: false });
+
+          if (error) throw error;
+
+          const usersWithoutSub = data.filter(u => !u.subscriptions || u.subscriptions.length === 0);
+          setUsers(usersWithoutSub.map(u => ({ ...u, subscription: null })));
+        } catch (error) {
+          console.error('Error loading users:', error);
+        }
+      };
+      loadUsersWithoutSub();
+    }
+  }, [user]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const targetUserId = user?.id || selectedUserId;
+      if (!targetUserId) throw new Error('No user selected');
+
+      await onAddSubscription(targetUserId, planType);
+    } catch (error) {
+      console.error('Error adding subscription:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-white rounded-lg p-6 w-full max-w-md"
+      >
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Add Subscription
+        </h3>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {!user && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Select User
+              </label>
+              <select
+                value={selectedUserId}
+                onChange={(e) => setSelectedUserId(e.target.value)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2"
+                required
+              >
+                <option value="">Choose a user...</option>
+                {users.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.display_name || u.email} ({u.email})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {user && (
+            <div className="p-3 bg-gray-50 rounded-md">
+              <p className="text-sm text-gray-600">Adding subscription for:</p>
+              <p className="font-medium">{user.display_name || user.email}</p>
+              <p className="text-sm text-gray-500">{user.email}</p>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Plan Type
+            </label>
+            <select
+              value={planType}
+              onChange={(e) => setPlanType(e.target.value as 'monthly' | 'yearly')}
+              className="w-full border border-gray-300 rounded-md px-3 py-2"
+            >
+              <option value="monthly">Monthly ($4.99/month)</option>
+              <option value="yearly">Yearly ($49.99/year)</option>
+            </select>
+          </div>
+
+          <div className="flex space-x-3 pt-4">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={onClose}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={loading || (!user && !selectedUserId)}
+              className="flex-1 bg-green-600 hover:bg-green-700"
+            >
+              {loading ? <LoadingSpinner size="sm" /> : 'Add Subscription'}
+            </Button>
+          </div>
+        </form>
+      </motion.div>
+    </div>
+  );
+};
+
+// Add Admin Modal Component
+interface AddAdminModalProps {
+  onClose: () => void;
+  onAddAdmin: (email: string, password: string, fullName: string, isSuperAdmin: boolean) => void;
+}
+
+const AddAdminModal: React.FC<AddAdminModalProps> = ({
+  onClose,
+  onAddAdmin,
+}) => {
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    fullName: '',
+    isSuperAdmin: false,
+  });
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      await onAddAdmin(
+        formData.email,
+        formData.password,
+        formData.fullName,
+        formData.isSuperAdmin
+      );
+    } catch (error) {
+      console.error('Error adding admin:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-white rounded-lg p-6 w-full max-w-md"
+      >
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Add New Admin
+        </h3>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Input
+            type="email"
+            label="Email"
+            value={formData.email}
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            required
+          />
+
+          <Input
+            type="password"
+            label="Password"
+            value={formData.password}
+            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+            required
+            minLength={6}
+          />
+
+          <Input
+            type="text"
+            label="Full Name"
+            value={formData.fullName}
+            onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+            required
+          />
+
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="isSuperAdmin"
+              checked={formData.isSuperAdmin}
+              onChange={(e) => setFormData({ ...formData, isSuperAdmin: e.target.checked })}
+              className="mr-2"
+            />
+            <label htmlFor="isSuperAdmin" className="text-sm font-medium text-gray-700">
+              Make Super Admin (can create other admins)
+            </label>
+          </div>
+
+          <div className="flex space-x-3 pt-4">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={onClose}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={loading}
+              className="flex-1 bg-purple-600 hover:bg-purple-700"
+            >
+              {loading ? <LoadingSpinner size="sm" /> : 'Create Admin'}
+            </Button>
+          </div>
+        </form>
+      </motion.div>
     </div>
   );
 };

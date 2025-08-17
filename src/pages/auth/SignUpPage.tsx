@@ -1,4 +1,4 @@
-// src/pages/auth/SignUpPage.tsx - Updated with Legal Links
+// src/pages/auth/SignUpPage.tsx - Fixed with Simplified Error Handling
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -65,184 +65,220 @@ export const SignUpPage: React.FC = () => {
     if (!validateForm()) return;
 
     setIsLoading(true);
+    setErrors({}); // Clear any previous errors
+    
     try {
       await signUp(formData.email, formData.password, formData.fullName);
       // Navigation will be handled by the auth context/protected routes
     } catch (error: any) {
       console.error('Sign up error:', error);
       setErrors({ 
-        submit: error.message || 'Failed to create account. Please try again.' 
+        submit: error.message || 'Failed to create account. Please try again.'
       });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    // Clear errors when user starts typing
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
+  const handleInputChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData(prev => ({ ...prev, [field]: e.target.value }));
+    // Clear field-specific error when user starts typing
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: '' }));
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center p-4">
       <motion.div
-        initial={{ opacity: 0, y: 30 }}
+        initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8 }}
-        className="max-w-md w-full space-y-8"
+        transition={{ duration: 0.6 }}
+        className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md"
       >
         {/* Header */}
-        <div className="text-center">
-          <Link to="/" className="inline-block mb-8">
-            <h1 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-yellow-500">
-              AskStan!
-            </h1>
-          </Link>
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">Create Your Account</h2>
-          <p className="text-gray-600">Start your 3-day free trial today</p>
+        <div className="text-center mb-8">
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+            className="w-16 h-16 bg-gradient-to-r from-blue-500 to-yellow-500 rounded-full flex items-center justify-center mx-auto mb-4"
+          >
+            <User className="w-8 h-8 text-white" />
+          </motion.div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Account</h1>
+          <p className="text-gray-600">Join AskStan! and boost your social media presence</p>
         </div>
 
         {/* Form */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="bg-white rounded-2xl shadow-xl p-8 border border-gray-200"
-        >
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Full Name Input */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.3 }}
+          >
             <Input
-              label="Full Name"
-              name="fullName"
               type="text"
+              label="Full Name"
               value={formData.fullName}
-              onChange={handleChange}
+              onChange={handleInputChange('fullName')}
               error={errors.fullName}
               icon={<User className="w-5 h-5" />}
               placeholder="Enter your full name"
               required
             />
+          </motion.div>
 
+          {/* Email Input */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.4 }}
+          >
             <Input
-              label="Email Address"
-              name="email"
               type="email"
+              label="Email Address"
               value={formData.email}
-              onChange={handleChange}
+              onChange={handleInputChange('email')}
               error={errors.email}
               icon={<Mail className="w-5 h-5" />}
               placeholder="Enter your email"
               required
             />
+          </motion.div>
 
+          {/* Password Input */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.5 }}
+          >
             <Input
-              label="Password"
-              name="password"
               type="password"
+              label="Password"
               value={formData.password}
-              onChange={handleChange}
+              onChange={handleInputChange('password')}
               error={errors.password}
               icon={<Lock className="w-5 h-5" />}
-              placeholder="Create a password (min. 6 characters)"
+              placeholder="Create a strong password"
               required
             />
+          </motion.div>
 
+          {/* Confirm Password Input */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.6 }}
+          >
             <Input
-              label="Confirm Password"
-              name="confirmPassword"
               type="password"
+              label="Confirm Password"
               value={formData.confirmPassword}
-              onChange={handleChange}
+              onChange={handleInputChange('confirmPassword')}
               error={errors.confirmPassword}
               icon={<Lock className="w-5 h-5" />}
               placeholder="Confirm your password"
               required
             />
+          </motion.div>
 
-            {/* Terms and Privacy Acceptance */}
-            <div className="space-y-2">
-              <div className="flex items-start">
-                <div className="flex items-center h-5">
-                  <input
-                    id="terms"
-                    name="terms"
-                    type="checkbox"
-                    checked={acceptTerms}
-                    onChange={(e) => {
-                      setAcceptTerms(e.target.checked);
-                      if (errors.terms) {
-                        setErrors(prev => ({ ...prev, terms: '' }));
-                      }
-                    }}
-                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
-                  />
-                </div>
-                <div className="ml-3 text-sm">
-                  <label htmlFor="terms" className="text-gray-600">
-                    I agree to the{' '}
-                    <Link 
-                      to="/terms" 
-                      target="_blank"
-                      className="text-blue-600 hover:text-blue-500 underline font-medium"
-                    >
-                      Terms of Service
-                    </Link>{' '}
-                    and{' '}
-                    <Link 
-                      to="/privacy" 
-                      target="_blank"
-                      className="text-blue-600 hover:text-blue-500 underline font-medium"
-                    >
-                      Privacy Policy
-                    </Link>
-                  </label>
-                </div>
-              </div>
-              {errors.terms && <p className="text-sm text-red-600 ml-7">{errors.terms}</p>}
-            </div>
+          {/* Terms and Conditions */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.7 }}
+            className="flex items-start space-x-3"
+          >
+            <input
+              type="checkbox"
+              id="acceptTerms"
+              checked={acceptTerms}
+              onChange={(e) => {
+                setAcceptTerms(e.target.checked);
+                if (errors.terms) {
+                  setErrors(prev => ({ ...prev, terms: '' }));
+                }
+              }}
+              className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              required
+            />
+            <label htmlFor="acceptTerms" className="text-sm text-gray-600">
+              I agree to the{' '}
+              <Link
+                to="/terms"
+                className="text-blue-600 hover:text-blue-800 underline"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Terms of Service
+              </Link>{' '}
+              and{' '}
+              <Link
+                to="/privacy"
+                className="text-blue-600 hover:text-blue-800 underline"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Privacy Policy
+              </Link>
+            </label>
+          </motion.div>
 
-            {errors.submit && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                <p className="text-sm text-red-600">{errors.submit}</p>
-              </div>
-            )}
+          {errors.terms && (
+            <p className="text-red-600 text-sm">{errors.terms}</p>
+          )}
 
+          {/* Submit Error */}
+          {errors.submit && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="p-3 bg-red-50 border border-red-200 rounded-lg"
+            >
+              <p className="text-red-600 text-sm">{errors.submit}</p>
+            </motion.div>
+          )}
+
+          {/* Submit Button */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.8 }}
+          >
             <Button
               type="submit"
-              size="lg"
-              isLoading={isLoading}
-              className="w-full"
+              loading={isLoading}
+              disabled={isLoading}
+              className="w-full bg-gradient-to-r from-blue-500 to-yellow-500 hover:from-blue-600 hover:to-yellow-600 text-white font-semibold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
             >
-              Start 3-Day Free Trial
-              <ArrowRight className="ml-2 w-5 h-5" />
+              {isLoading ? 'Creating Account...' : (
+                <>
+                  Create Account
+                  <ArrowRight className="w-5 h-5 ml-2" />
+                </>
+              )}
             </Button>
+          </motion.div>
+        </form>
 
-            {/* Trial Benefits */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h4 className="text-blue-900 font-medium text-sm mb-2">What's included in your free trial:</h4>
-              <ul className="text-blue-800 text-xs space-y-1">
-                <li>• Full access to AI social media coach</li>
-                <li>• Unlimited content creation and optimization</li>
-                <li>• Profile optimization strategies</li>
-                <li>• No credit card required</li>
-              </ul>
-            </div>
-          </form>
-
-          <div className="mt-6 text-center">
-            <p className="text-gray-600">
-              Already have an account?{' '}
-              <Link
-                to="/signin"
-                className="font-semibold text-blue-600 hover:text-blue-500 transition-colors"
-              >
-                Sign in here
-              </Link>
-            </p>
-          </div>
+        {/* Sign In Link */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.9 }}
+          className="mt-8 text-center"
+        >
+          <p className="text-gray-600">
+            Already have an account?{' '}
+            <Link
+              to="/signin"
+              className="text-blue-600 hover:text-blue-800 font-semibold transition-colors"
+            >
+              Sign in here
+            </Link>
+          </p>
         </motion.div>
       </motion.div>
     </div>

@@ -1,4 +1,4 @@
-// src/pages/auth/SignInPage.tsx - Fixed with Proper Redirect Logic
+// src/pages/auth/SignInPage.tsx - Fixed with Simplified Redirect Logic
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -15,20 +15,14 @@ export const SignInPage: React.FC = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   
-  const { signIn, user, subscriptionStatus } = useAuth();
+  const { signIn, user, subscriptionStatus, initialized } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   // Handle navigation after successful authentication
   useEffect(() => {
-    if (user) {
+    if (user && initialized) {
       console.log('User authenticated, checking subscription status:', subscriptionStatus);
-      
-      // Wait a moment for subscription status to load if it's not available yet
-      if (subscriptionStatus === null) {
-        console.log('Subscription status still loading, waiting...');
-        return;
-      }
       
       // Check if user has an active subscription
       const hasActiveSubscription = subscriptionStatus?.status === 'active';
@@ -52,7 +46,7 @@ export const SignInPage: React.FC = () => {
         navigate('/plans', { replace: true });
       }
     }
-  }, [user, subscriptionStatus, navigate, location.state?.from?.pathname]);
+  }, [user, subscriptionStatus, initialized, navigate, location.state?.from?.pathname]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -77,118 +71,153 @@ export const SignInPage: React.FC = () => {
     if (!validateForm()) return;
 
     setIsLoading(true);
+    setErrors({}); // Clear any previous errors
+    
     try {
       await signIn(formData.email, formData.password);
       // Navigation will be handled by the useEffect above
     } catch (error: any) {
       console.error('Sign in error:', error);
       setErrors({ 
-        submit: error.message || 'Failed to sign in. Please check your credentials.' 
+        submit: error.message || 'Failed to sign in. Please check your credentials.'
       });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    // Clear errors when user starts typing
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
+  const handleInputChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData(prev => ({ ...prev, [field]: e.target.value }));
+    // Clear field-specific error when user starts typing
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: '' }));
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center p-4">
       <motion.div
-        initial={{ opacity: 0, y: 30 }}
+        initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8 }}
-        className="max-w-md w-full space-y-8"
+        transition={{ duration: 0.6 }}
+        className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md"
       >
         {/* Header */}
-        <div className="text-center">
-          <Link to="/" className="inline-block mb-8">
-            <h1 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-yellow-500">
-              AskStan!
-            </h1>
-          </Link>
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h2>
-          <p className="text-gray-600">Sign in to your account</p>
+        <div className="text-center mb-8">
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+            className="w-16 h-16 bg-gradient-to-r from-blue-500 to-yellow-500 rounded-full flex items-center justify-center mx-auto mb-4"
+          >
+            <LogIn className="w-8 h-8 text-white" />
+          </motion.div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h1>
+          <p className="text-gray-600">Sign in to continue your social media journey</p>
         </div>
 
         {/* Form */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="bg-white rounded-2xl shadow-xl p-8 border border-gray-200"
-        >
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Email Input */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.3 }}
+          >
             <Input
-              label="Email Address"
-              name="email"
               type="email"
+              label="Email Address"
               value={formData.email}
-              onChange={handleChange}
+              onChange={handleInputChange('email')}
               error={errors.email}
               icon={<Mail className="w-5 h-5" />}
               placeholder="Enter your email"
               required
             />
+          </motion.div>
 
+          {/* Password Input */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.4 }}
+          >
             <Input
-              label="Password"
-              name="password"
               type="password"
+              label="Password"
               value={formData.password}
-              onChange={handleChange}
+              onChange={handleInputChange('password')}
               error={errors.password}
               icon={<Lock className="w-5 h-5" />}
               placeholder="Enter your password"
               required
             />
+          </motion.div>
 
-            {errors.submit && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                <p className="text-sm text-red-600">{errors.submit}</p>
-              </div>
-            )}
+          {/* Forgot Password Link */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            className="flex justify-end"
+          >
+            <Link
+              to="/forgot-password"
+              className="text-sm text-blue-600 hover:text-blue-800 transition-colors"
+            >
+              Forgot your password?
+            </Link>
+          </motion.div>
 
+          {/* Submit Error */}
+          {errors.submit && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="p-3 bg-red-50 border border-red-200 rounded-lg"
+            >
+              <p className="text-red-600 text-sm">{errors.submit}</p>
+            </motion.div>
+          )}
+
+          {/* Submit Button */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
+          >
             <Button
               type="submit"
-              size="lg"
-              isLoading={isLoading}
-              className="w-full"
+              loading={isLoading}
+              disabled={isLoading}
+              className="w-full bg-gradient-to-r from-blue-500 to-yellow-500 hover:from-blue-600 hover:to-yellow-600 text-white font-semibold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
             >
-              <LogIn className="mr-2 w-5 h-5" />
-              Sign In
+              {isLoading ? 'Signing In...' : (
+                <>
+                  Sign In
+                  <LogIn className="w-5 h-5 ml-2" />
+                </>
+              )}
             </Button>
-          </form>
+          </motion.div>
+        </form>
 
-          <div className="mt-6">
-            <div className="text-center">
-              <Link
-                to="/forgot-password"
-                className="text-sm text-blue-600 hover:text-blue-500 font-medium"
-              >
-                Forgot your password?
-              </Link>
-            </div>
-          </div>
-
-          <div className="mt-6 text-center">
-            <p className="text-gray-600">
-              Don't have an account?{' '}
-              <Link
-                to="/signup"
-                className="font-semibold text-blue-600 hover:text-blue-500 transition-colors"
-              >
-                Sign up here
-              </Link>
-            </p>
-          </div>
+        {/* Sign Up Link */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.7 }}
+          className="mt-8 text-center"
+        >
+          <p className="text-gray-600">
+            Don't have an account?{' '}
+            <Link
+              to="/signup"
+              className="text-blue-600 hover:text-blue-800 font-semibold transition-colors"
+            >
+              Sign up here
+            </Link>
+          </p>
         </motion.div>
       </motion.div>
     </div>
