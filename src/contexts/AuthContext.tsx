@@ -1,4 +1,4 @@
-// src/contexts/AuthContext.tsx
+// src/contexts/AuthContext.tsx - CRITICAL FIX: Eliminates hook order violations causing React Error #300
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
@@ -63,7 +63,7 @@ export const useAuth = () => {
   return context;
 };
 
-// Helper function for safe profile creation
+// CRITICAL FIX: Simplified helper function - no hooks inside
 const createProfileSafe = async (userId: string, email: string): Promise<UserProfile> => {
   try {
     const { data, error } = await supabase.rpc('create_user_profile_safe', {
@@ -91,12 +91,48 @@ const createProfileSafe = async (userId: string, email: string): Promise<UserPro
   }
 };
 
+// CRITICAL FIX: Standalone subscription check function - no hooks
+const checkUserSubscription = async (userId: string): Promise<SubscriptionCheckResult> => {
+  try {
+    const { data, error } = await supabase
+      .from('subscriptions')
+      .select('*')
+      .eq('user_id', userId)
+      .in('status', ['active', 'trialing'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+      console.warn("Subscription query error:", error);
+    }
+
+    const hasActiveSubscription = !!(data && ['active', 'trialing'].includes(data.status));
+
+    return {
+      hasActiveSubscription,
+      subscription: data || null,
+      status: data?.status || 'inactive',
+    };
+  } catch (error) {
+    console.error("Subscription check error:", error);
+    return {
+      hasActiveSubscription: false,
+      subscription: null,
+      status: 'inactive',
+    };
+  }
+};
+
 interface AuthProviderProps {
   children: ReactNode;
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  // State management
+  // CRITICAL FIX: All hooks must be called in exactly the same order every time
+  // No conditional hooks, no hooks in callbacks, no complex dependency chains
+  
+  // State management - simple, flat state structure
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
@@ -105,60 +141,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [initialized, setInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
-  // CRITICAL FIX: Add auth operation tracking to prevent race conditions
   const [authInProgress, setAuthInProgress] = useState(false);
 
-  // Computed values
-  const hasActiveSubscription = useMemo(
-    () => subscriptionStatus?.hasActiveSubscription ?? false,
-    [subscriptionStatus]
-  );
+  // CRITICAL FIX: Simplified computed values with minimal dependencies
+  const hasActiveSubscription = useMemo(() => {
+    return subscriptionStatus?.hasActiveSubscription ?? false;
+  }, [subscriptionStatus?.hasActiveSubscription]);
 
-  const isEmailVerified = useMemo(
-    () => profile?.email_verified ?? user?.email_confirmed_at !== null,
-    [profile?.email_verified, user?.email_confirmed_at]
-  );
+  const isEmailVerified = useMemo(() => {
+    return profile?.email_verified ?? (user?.email_confirmed_at !== null);
+  }, [profile?.email_verified, user?.email_confirmed_at]);
 
-  // Helper function to check subscription status
-  const checkUserSubscription = useCallback(async (userId: string): Promise<SubscriptionCheckResult> => {
+  // CRITICAL FIX: Load user data function - no useCallback with complex dependencies
+  const loadUserData = async (authUser: User) => {
     try {
-      const { data, error } = await supabase
-        .from('subscriptions')
-        .select('*')
-        .eq('user_id', userId)
-        .in('status', ['active', 'trialing'])
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        console.warn("Subscription query error:", error);
-      }
-
-      const hasActiveSubscription = !!(data && ['active', 'trialing'].includes(data.status));
-
-      return {
-        hasActiveSubscription,
-        subscription: data || null,
-        status: data?.status || 'inactive',
-      };
-    } catch (error) {
-      console.error("Subscription check error:", error);
-      return {
-        hasActiveSubscription: false,
-        subscription: null,
-        status: 'inactive',
-      };
-    }
-  }, []);
-
-  // CRITICAL FIX: Sequential user data loading to prevent race conditions
-  const loadUserDataSequential = useCallback(async (authUser: User) => {
-    try {
-      console.log("🔄 Loading user data sequentially for:", authUser.id);
+      console.log("🔄 Loading user data for:", authUser.id);
       
-      // Step 1: Load user profile
+      // Load profile
       const { data: profileData, error: profileError } = await supabase
         .from('user_profiles')
         .select('*')
@@ -170,20 +169,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       setProfile(profileData || null);
-      console.log("👤 Profile loaded:", profileData?.id || 'none');
 
-      // Step 2: Load subscription status (wait for profile to complete)
-      console.log("💳 Loading subscription status...");
-      const userIdForSubscription = profileData?.id || authUser.id;
-      const subStatus = await checkUserSubscription(userIdForSubscription);
-      
+      // Load subscription
+      const subStatus = await checkUserSubscription(authUser.id);
       setSubscriptionStatus(subStatus);
       setSubscription(subStatus.subscription);
-      console.log("💳 Subscription status loaded:", subStatus.status);
 
     } catch (error) {
       console.error("Error loading user data:", error);
-      // Set safe defaults
       setProfile(null);
       setSubscriptionStatus({
         hasActiveSubscription: false,
@@ -192,12 +185,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       });
       setSubscription(null);
     }
-  }, [checkUserSubscription]);
+  };
 
-  // Session initialization
+  // CRITICAL FIX: Simplified initialization effect with minimal dependencies
   useEffect(() => {
     let mounted = true;
-    let authSubscription: { subscription: { unsubscribe: () => void } } | null = null;
+    let authSubscription: any = null;
 
     const initializeAuth = async () => {
       try {
@@ -206,7 +199,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const { data: { session: initialSession }, error } = await supabase.auth.getSession();
         
         if (error) {
-          console.error("Error getting initial session:", error);
+          console.error("Session error:", error);
           if (mounted) {
             setLoading(false);
             setInitialized(true);
@@ -214,17 +207,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           return;
         }
 
-        console.log("📱 Initial session:", initialSession?.user?.id || 'No session');
-
         if (mounted) {
           setSession(initialSession);
           setUser(initialSession?.user ?? null);
 
           if (initialSession?.user) {
-            console.log("🔄 Loading initial user data...");
-            await loadUserDataSequential(initialSession.user);
+            await loadUserData(initialSession.user);
           } else {
-            console.log("👤 No initial session - user needs to sign in");
             setSubscriptionStatus({
               hasActiveSubscription: false,
               subscription: null,
@@ -237,70 +226,39 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
         
       } catch (error) {
-        console.error("Session initialization error:", error);
+        console.error("Auth initialization error:", error);
         if (mounted) {
           setLoading(false);
           setInitialized(true);
-          setSubscriptionStatus({
-            hasActiveSubscription: false,
-            subscription: null,
-            status: "inactive",
-          });
         }
       }
     };
 
-    // CRITICAL FIX: Simplified auth state listener to prevent conflicts
+    // CRITICAL FIX: Simplified auth listener
     const setupAuthListener = () => {
-      console.log("👂 Setting up auth state listener...");
-      
       const { data } = supabase.auth.onAuthStateChange(
         async (event, newSession) => {
-          try {
-            console.log("🔄 Auth state change:", event, newSession?.user?.id || 'No session');
-            
-            if (!mounted) return;
-            
-            // CRITICAL FIX: Skip handling if manual auth is in progress
-            if (authInProgress) {
-              console.log("⏸️ Skipping auth state change - manual auth in progress");
-              return;
-            }
+          if (!mounted || authInProgress) return;
 
-            switch (event) {
-              case 'SIGNED_OUT':
-                console.log("🚪 User signed out");
-                setSession(null);
-                setUser(null);
-                setProfile(null);
-                setSubscription(null);
-                setSubscriptionStatus({
-                  hasActiveSubscription: false,
-                  subscription: null,
-                  status: "inactive",
-                });
-                break;
-                
-              case 'TOKEN_REFRESHED':
-                console.log("🔄 Token refreshed");
-                setSession(newSession);
-                setUser(newSession?.user ?? null);
-                break;
-                
-              // CRITICAL FIX: Don't handle SIGNED_IN here to prevent race conditions
-              // Let manual signIn function handle the complete flow
-            }
-
-            if (mounted) {
-              setLoading(false);
-              setInitialized(true);
-            }
-          } catch (error) {
-            console.error("Auth state change error:", error);
-            if (mounted) {
-              setLoading(false);
-              setInitialized(true);
-            }
+          console.log("Auth state change:", event);
+          
+          switch (event) {
+            case 'SIGNED_OUT':
+              setSession(null);
+              setUser(null);
+              setProfile(null);
+              setSubscription(null);
+              setSubscriptionStatus({
+                hasActiveSubscription: false,
+                subscription: null,
+                status: "inactive",
+              });
+              break;
+              
+            case 'TOKEN_REFRESHED':
+              setSession(newSession);
+              setUser(newSession?.user ?? null);
+              break;
           }
         }
       );
@@ -308,60 +266,46 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       authSubscription = data;
     };
 
-    const initialize = async () => {
+    const init = async () => {
       await initializeAuth();
       setupAuthListener();
     };
 
-    initialize();
+    init();
 
     return () => {
-      console.log("🧹 Cleaning up auth context...");
       mounted = false;
       if (authSubscription?.subscription) {
         authSubscription.subscription.unsubscribe();
       }
     };
-  }, [loadUserDataSequential, authInProgress]);
+  }, []); // Empty dependency array - no complex dependencies
 
-  // CRITICAL FIX: Completely rewritten signIn function to prevent race conditions
+  // CRITICAL FIX: Simple callback functions - no complex dependency arrays
   const signIn = useCallback(async (email: string, password: string): Promise<void> => {
-    // Prevent concurrent auth operations
-    if (authInProgress) {
-      console.log("⏸️ Auth already in progress, skipping");
-      return;
-    }
+    if (authInProgress) return;
 
     setAuthInProgress(true);
     setLoading(true);
     setError(null);
 
     try {
-      console.log("🔐 Starting manual sign in...");
+      console.log("🔐 Starting sign in...");
       
-      // Step 1: Sign in with Supabase
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
         password,
       });
 
       if (error) throw error;
-      if (!data.user) throw new Error("Sign in failed - no user returned");
+      if (!data.user) throw new Error("Sign in failed");
 
-      console.log("✅ Sign in successful, updating state...");
-
-      // Step 2: Update session and user state immediately
       setSession(data.session);
       setUser(data.user);
-
-      // Step 3: Load user data sequentially
-      await loadUserDataSequential(data.user);
-
-      console.log("🎉 Complete sign in flow finished");
+      await loadUserData(data.user);
 
     } catch (error: any) {
       console.error("Sign in error:", error);
-
       if (error.message?.includes("Invalid login credentials")) {
         throw new Error("Invalid email or password. Please check your credentials and try again.");
       } else if (error.message?.includes("Email not confirmed")) {
@@ -373,13 +317,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setAuthInProgress(false);
       setLoading(false);
     }
-  }, [loadUserDataSequential, authInProgress]);
+  }, [authInProgress]);
 
   const signUp = useCallback(async (email: string, password: string, fullName?: string): Promise<void> => {
     if (authInProgress) return;
 
     setAuthInProgress(true);
     setLoading(true);
+    setError(null);
+
     try {
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),
@@ -392,9 +338,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       });
 
       if (authError) throw authError;
-      if (!authData.user) throw new Error("Signup failed - no user returned");
+      if (!authData.user) throw new Error("Signup failed");
 
-      // Create user profile
       try {
         const profile = await createProfileSafe(
           authData.user.id,
@@ -419,7 +364,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log("🚪 Signing out...");
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-      console.log("✅ Sign out successful");
     } catch (error: any) {
       console.error("Sign out error:", error);
       throw new Error(error.message || "Failed to sign out");
@@ -436,10 +380,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       throw new Error(error.message || "Failed to send reset email");
     }
   }, []);
-
-  const resetPassword = useCallback(async (email: string): Promise<void> => {
-    return forgotPassword(email);
-  }, [forgotPassword]);
 
   const updateProfile = useCallback(async (updates: Partial<UserProfile>): Promise<void> => {
     if (!user) throw new Error("No authenticated user");
@@ -469,8 +409,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error) {
       console.error("Failed to refresh subscription:", error);
     }
-  }, [user, checkUserSubscription]);
+  }, [user]);
 
+  const resetPassword = useCallback(async (email: string): Promise<void> => {
+    return forgotPassword(email);
+  }, [forgotPassword]);
+
+  // CRITICAL FIX: Simple context value object - no complex dependencies
   const value: AuthContextType = {
     user,
     profile,
