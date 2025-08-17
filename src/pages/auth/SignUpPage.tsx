@@ -69,12 +69,15 @@ export const SignUpPage: React.FC = () => {
     
     try {
       await signUp(formData.email, formData.password, formData.fullName);
-      // Navigation will be handled by the auth context/protected routes
+      // Just let the auth context handle navigation naturally
     } catch (error: any) {
       console.error('Sign up error:', error);
-      setErrors({ 
-        submit: error.message || 'Failed to create account. Please try again.'
-      });
+      // Only show errors that are actually meaningful to users
+      if (error.message && !error.message.includes('timeout') && !error.message.includes('loading')) {
+        setErrors({ 
+          submit: error.message
+        });
+      }
     } finally {
       setIsLoading(false);
     }

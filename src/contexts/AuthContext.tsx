@@ -311,10 +311,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // SIMPLIFIED: Auth functions without timeout logic
   const signUp = useCallback(async (email: string, password: string, fullName?: string): Promise<void> => {
     setLoading(true);
-    setError(null);
     try {
-      console.log("📝 Starting signup process");
-
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),
         password,
@@ -328,8 +325,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (authError) throw authError;
       if (!authData.user) throw new Error("Signup failed - no user returned");
 
-      console.log("✅ Auth user created:", authData.user.id);
-
       // Create user profile
       try {
         const profile = await createProfileSafe(
@@ -337,7 +332,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           email.trim().toLowerCase()
         );
         setProfile(profile);
-        console.log("✅ Profile created successfully");
       } catch (profileError) {
         console.warn("Profile creation warning:", profileError);
         // Continue with signup even if profile creation fails
@@ -345,7 +339,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     } catch (error: any) {
       console.error("Signup error:", error);
-      setError(error.message || "Failed to create account");
       throw new Error(error.message || "Failed to create account. Please try again.");
     } finally {
       setLoading(false);
@@ -354,22 +347,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const signIn = useCallback(async (email: string, password: string): Promise<void> => {
     setLoading(true);
-    setError(null);
     try {
-      console.log("🔑 Starting sign in process");
-
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
         password,
       });
 
       if (error) throw error;
-
-      console.log("✅ Sign in successful:", data.user?.id);
       // Auth state change handler will handle the rest
     } catch (error: any) {
       console.error("Sign in error:", error);
-      setError(error.message || "Failed to sign in");
 
       if (error.message?.includes("Invalid login credentials")) {
         throw new Error("Invalid email or password. Please check your credentials and try again.");

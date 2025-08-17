@@ -75,12 +75,15 @@ export const SignInPage: React.FC = () => {
     
     try {
       await signIn(formData.email, formData.password);
-      // Navigation will be handled by the useEffect above
+      // Just let the auth context handle navigation naturally
     } catch (error: any) {
       console.error('Sign in error:', error);
-      setErrors({ 
-        submit: error.message || 'Failed to sign in. Please check your credentials.'
-      });
+      // Only show errors that are actually meaningful to users
+      if (error.message && !error.message.includes('timeout') && !error.message.includes('loading')) {
+        setErrors({ 
+          submit: error.message
+        });
+      }
     } finally {
       setIsLoading(false);
     }
