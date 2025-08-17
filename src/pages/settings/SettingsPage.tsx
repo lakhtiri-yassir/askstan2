@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { User, CreditCard, Bell, Shield, LogOut } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
-import { subscriptionService } from '../lib/subscriptionService';
+import { useAuth } from '../../contexts/AuthContext';
+import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
+import { subscriptionService } from '../../lib/subscriptionService';
 
 export const SettingsPage: React.FC = () => {
   const { user, profile, subscription, signOut, updateProfile } = useAuth();

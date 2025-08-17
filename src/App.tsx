@@ -1,4 +1,4 @@
-// src/App.tsx - Fixed routing for admin dashboard at /admin
+// src/App.tsx - Fixed routing with minimal error boundary
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
@@ -7,7 +7,6 @@ import { Header } from './components/layout/Header';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
 import { AdminProtectedRoute } from './components/layout/AdminProtectedRoute';
 import { LoadingSpinner } from './components/ui/LoadingSpinner';
-import { ErrorBoundary } from './components/ui/ErrorBoundary';
 
 // Lazy load pages for better performance
 const LandingPage = lazy(() => import('./pages/LandingPage').then(module => ({ default: module.LandingPage })));
@@ -20,7 +19,7 @@ const ResetPasswordPage = lazy(() => import('./pages/auth/ResetPasswordPage').th
 const PlansPage = lazy(() => import('./pages/subscription/PlansPage').then(module => ({ default: module.PlansPage })));
 const CheckoutSuccessPage = lazy(() => import('./pages/checkout/CheckoutSuccessPage').then(module => ({ default: module.CheckoutSuccessPage })));
 const DashboardPage = lazy(() => import('./pages/dashboard/DashboardPage').then(module => ({ default: module.DashboardPage })));
-const SettingsPage = lazy(() => import('./pages/SettingsPage').then(module => ({ default: module.SettingsPage })));
+const SettingsPage = lazy(() => import('./pages/settings/SettingsPage').then(module => ({ default: module.SettingsPage })));
 
 // Legal pages
 const TermsOfServicePage = lazy(() => import('./pages/legal/TermsOfServicePage').then(module => ({ default: module.TermsOfServicePage })));
@@ -42,81 +41,88 @@ const PageLoader = () => (
 
 function App() {
   return (
-    <ErrorBoundary>
-      <AdminAuthProvider>
-        <AuthProvider>
-          <Router>
-            <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50">
-              {/* Only show Header for non-admin routes */}
+    <AdminAuthProvider>
+      <AuthProvider>
+        <Router>
+          <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50">
+            {/* Only show Header for non-admin routes */}
+            <Routes>
+              <Route path="/admin/*" element={null} />
+              <Route path="*" element={<Header />} />
+            </Routes>
+            
+            <Suspense fallback={<PageLoader />}>
               <Routes>
-                <Route path="/admin/*" element={null} />
-                <Route path="*" element={<Header />} />
+                {/* Public Routes */}
+                <Route path="/" element={<LandingPage />} />
+                <Route path="/signup" element={<SignUpPage />} />
+                <Route path="/signin" element={<SignInPage />} />
+                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                <Route path="/reset-password" element={<ResetPasswordPage />} />
+                
+                {/* Legal Pages */}
+                <Route path="/terms" element={<TermsOfServicePage />} />
+                <Route path="/privacy" element={<PrivacyPolicyPage />} />
+                
+                {/* Semi-Protected Routes (require auth but not subscription) */}
+                <Route 
+                  path="/plans" 
+                  element={
+                    <ProtectedRoute>
+                      <PlansPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/checkout-success" 
+                  element={
+                    <ProtectedRoute>
+                      <CheckoutSuccessPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                
+                {/* Fully Protected Routes (require auth + subscription) */}
+                <Route 
+                  path="/dashboard" 
+                  element={
+                    <ProtectedRoute requireSubscription>
+                      <DashboardPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/settings" 
+                  element={
+                    <ProtectedRoute requireSubscription>
+                      <SettingsPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                
+                {/* Admin Routes */}
+                <Route path="/admin/login" element={<AdminLoginPage />} />
+                <Route 
+                  path="/admin" 
+                  element={
+                    <AdminProtectedRoute>
+                      <AdminDashboard />
+                    </AdminProtectedRoute>
+                  } 
+                />
+                
+                {/* Fallback Route */}
+                <Route path="*" element={<LandingPage />} />
               </Routes>
-              
-              <Suspense fallback={<PageLoader />}>
-                <Routes>
-                  {/* Public Routes */}
-                  <Route path="/" element={<LandingPage />} />
-                  <Route path="/signup" element={<SignUpPage />} />
-                  <Route path="/signin" element={<SignInPage />} />
-                  <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-                  <Route path="/reset-password" element={<ResetPasswordPage />} />
-                  
-                  {/* Legal Pages */}
-                  <Route path="/terms" element={<TermsOfServicePage />} />
-                  <Route path="/privacy" element={<PrivacyPolicyPage />} />
-                  
-                  {/* Semi-Protected Routes (require auth but not subscription) */}
-                  <Route 
-                    path="/plans" 
-                    element={
-                      <ProtectedRoute>
-                        <PlansPage />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/checkout-success" 
-                    element={
-                      <ProtectedRoute>
-                        <CheckoutSuccessPage />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  
-                  {/* Fully Protected Routes (require auth + subscription) */}
-                  <Route 
-                    path="/dashboard" 
-                    element={
-                      <ProtectedRoute requireSubscription>
-                        <DashboardPage />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/settings" 
-                    element={
-                      <ProtectedRoute requireSubscription>
-                        <SettingsPage />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  
-                  {/* Admin Routes */}
-                  <Route path="/admin/login" element={<AdminLoginPage />} />
-                  <Route 
-                    path="/admin" 
-                    element={
-                      <AdminProtectedRoute>
-                        <AdminDashboard />
-                      </AdminProtectedRoute>
-                    } 
-                  />
-                  
-                  {/* Fallback Route */}
-                  <Route path="*" element={<LandingPage />} />
-                </Routes>
-              </Suspense>
+            </Suspense>
+          </div>
+        </Router>
+      </AuthProvider>
+    </AdminAuthProvider>
+  );
+}
+
+export default App;>
             </div>
           </Router>
         </AuthProvider>
