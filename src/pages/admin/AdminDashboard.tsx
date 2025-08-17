@@ -1,4 +1,4 @@
-// src/pages/admin/AdminDashboard.tsx - Complete Admin Dashboard
+// src/pages/admin/AdminDashboard.tsx - Fixed with Main UI Style and Proper Data Loading
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
@@ -14,7 +14,10 @@ import {
   Trash2,
   AlertCircle,
   CheckCircle,
-  XCircle
+  XCircle,
+  BarChart3,
+  DollarSign,
+  Shield
 } from 'lucide-react';
 import { useAdminAuth } from '../../contexts/AdminAuthContext';
 import { Button } from '../../components/ui/Button';
@@ -54,11 +57,23 @@ interface AdminUser {
   last_login: string | null;
 }
 
+interface Stats {
+  total_users: number;
+  active_subscriptions: number;
+  monthly_subscriptions: number;
+  yearly_subscriptions: number;
+  cancelled_subscriptions: number;
+  trial_subscriptions: number;
+  revenue_this_month: number;
+  new_users_this_month: number;
+}
+
 export const AdminDashboard: React.FC = () => {
   const { admin, signOut } = useAdminAuth();
-  const [activeTab, setActiveTab] = useState<'users' | 'admins'>('users');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'admins'>('overview');
   const [users, setUsers] = useState<UserWithSubscription[]>([]);
   const [admins, setAdmins] = useState<AdminUser[]>([]);
+  const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddAdmin, setShowAddAdmin] = useState(false);
@@ -69,28 +84,51 @@ export const AdminDashboard: React.FC = () => {
     message: string;
   } | null>(null);
 
-  // Load users with subscriptions
+  // Load users with subscriptions - FIXED to get actual data
   const loadUsers = async () => {
     try {
+      console.log('📊 Loading users with subscriptions...');
+      
+      // Get all users first
       const { data: usersData, error: usersError } = await supabase
         .from('user_profiles')
-        .select(`
-          *,
-          subscriptions:subscriptions(*)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
-      if (usersError) throw usersError;
+      if (usersError) {
+        console.error('Users error:', usersError);
+        throw usersError;
+      }
 
-      const formattedUsers: UserWithSubscription[] = usersData.map(user => ({
-        ...user,
-        subscription: user.subscriptions?.[0] || null
-      }));
+      console.log('👥 Found users:', usersData?.length || 0);
 
+      // Get all subscriptions
+      const { data: subscriptionsData, error: subsError } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (subsError) {
+        console.error('Subscriptions error:', subsError);
+        // Don't throw, just continue without subscriptions
+      }
+
+      console.log('💳 Found subscriptions:', subscriptionsData?.length || 0);
+
+      // Combine users with their subscriptions
+      const formattedUsers: UserWithSubscription[] = (usersData || []).map(user => {
+        const userSubscription = subscriptionsData?.find(sub => sub.user_id === user.id && sub.status === 'active') || null;
+        return {
+          ...user,
+          subscription: userSubscription
+        };
+      });
+
+      console.log('✅ Formatted users:', formattedUsers.length);
       setUsers(formattedUsers);
     } catch (error: any) {
       console.error('Error loading users:', error);
-      showNotification('error', 'Failed to load users');
+      showNotification('error', 'Failed to load users: ' + error.message);
     }
   };
 
@@ -112,11 +150,32 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
+  // Load statistics
+  const loadStats = async () => {
+    try {
+      const sessionToken = localStorage.getItem('admin_session_token');
+      if (!sessionToken) throw new Error('No admin session');
+
+      const { data, error } = await supabase.rpc('admin_get_subscription_stats', {
+        session_token: sessionToken
+      });
+
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+        setStats(data[0]);
+      }
+    } catch (error: any) {
+      console.error('Error loading stats:', error);
+      showNotification('error', 'Failed to load statistics');
+    }
+  };
+
   // Initial data load
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
-      await Promise.all([loadUsers(), loadAdmins()]);
+      await Promise.all([loadUsers(), loadAdmins(), loadStats()]);
       setLoading(false);
     };
 
@@ -146,6 +205,7 @@ export const AdminDashboard: React.FC = () => {
 
       showNotification('success', 'Subscription added successfully');
       await loadUsers();
+      await loadStats();
       setShowAddSubscription(false);
       setSelectedUser(null);
     } catch (error: any) {
@@ -169,6 +229,7 @@ export const AdminDashboard: React.FC = () => {
 
       showNotification('success', 'Subscription removed successfully');
       await loadUsers();
+      await loadStats();
     } catch (error: any) {
       console.error('Error removing subscription:', error);
       showNotification('error', error.message || 'Failed to remove subscription');
@@ -214,17 +275,17 @@ export const AdminDashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-blue-900 to-gray-800">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-yellow-50">
         <div className="text-center">
-          <LoadingSpinner size="lg" className="text-white" />
-          <p className="mt-4 text-white font-medium">Loading admin dashboard...</p>
+          <LoadingSpinner size="lg" />
+          <p className="mt-4 text-gray-600 font-medium">Loading admin dashboard...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-800">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50">
       {/* Notification */}
       {notification && (
         <motion.div
@@ -249,15 +310,16 @@ export const AdminDashboard: React.FC = () => {
       )}
 
       {/* Header */}
-      <header className="bg-white/10 backdrop-blur-lg border-b border-white/20">
+      <header className="bg-white/90 backdrop-blur-lg shadow-lg border-b border-gray-200 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div>
-              <h1 className="text-2xl font-bold text-white">Admin Dashboard</h1>
-              <p className="text-blue-200">
+              <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
+              <p className="text-gray-600">
                 Welcome back, {admin?.full_name || admin?.email}
                 {admin?.is_super_admin && (
-                  <span className="ml-2 px-2 py-1 bg-yellow-500 text-yellow-900 text-xs rounded-full">
+                  <span className="ml-2 px-2 py-1 bg-gradient-to-r from-blue-500 to-yellow-500 text-white text-xs rounded-full">
+                    <Shield className="w-3 h-3 inline mr-1" />
                     Super Admin
                   </span>
                 )}
@@ -266,7 +328,7 @@ export const AdminDashboard: React.FC = () => {
             <Button
               onClick={signOut}
               variant="secondary"
-              className="text-white border-white/30 hover:bg-white/20"
+              className="text-gray-700 border-gray-300 hover:bg-gray-50"
             >
               <LogOut className="w-4 h-4 mr-2" />
               Sign Out
@@ -278,13 +340,24 @@ export const AdminDashboard: React.FC = () => {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Tabs */}
-        <div className="flex space-x-1 bg-white/10 p-1 rounded-lg mb-8">
+        <div className="flex space-x-1 bg-white/60 p-1 rounded-lg mb-8 shadow-sm">
+          <button
+            onClick={() => setActiveTab('overview')}
+            className={`flex-1 flex items-center justify-center px-4 py-2 rounded-md transition-colors ${
+              activeTab === 'overview'
+                ? 'bg-gradient-to-r from-blue-500 to-yellow-500 text-white shadow-md'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-white/80'
+            }`}
+          >
+            <BarChart3 className="w-5 h-5 mr-2" />
+            Overview
+          </button>
           <button
             onClick={() => setActiveTab('users')}
             className={`flex-1 flex items-center justify-center px-4 py-2 rounded-md transition-colors ${
               activeTab === 'users'
-                ? 'bg-white text-gray-900'
-                : 'text-white hover:bg-white/20'
+                ? 'bg-gradient-to-r from-blue-500 to-yellow-500 text-white shadow-md'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-white/80'
             }`}
           >
             <Users className="w-5 h-5 mr-2" />
@@ -294,8 +367,8 @@ export const AdminDashboard: React.FC = () => {
             onClick={() => setActiveTab('admins')}
             className={`flex-1 flex items-center justify-center px-4 py-2 rounded-md transition-colors ${
               activeTab === 'admins'
-                ? 'bg-white text-gray-900'
-                : 'text-white hover:bg-white/20'
+                ? 'bg-gradient-to-r from-blue-500 to-yellow-500 text-white shadow-md'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-white/80'
             }`}
           >
             <Settings className="w-5 h-5 mr-2" />
@@ -303,71 +376,146 @@ export const AdminDashboard: React.FC = () => {
           </button>
         </div>
 
-        {/* Search and Actions */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-6">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <Input
-              type="text"
-              placeholder={`Search ${activeTab}...`}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 bg-white/10 border-white/30 text-white placeholder-gray-300"
-            />
+        {/* Overview Tab */}
+        {activeTab === 'overview' && stats && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="bg-white/80 backdrop-blur-lg rounded-lg p-6 shadow-lg border border-gray-200"
+            >
+              <div className="flex items-center">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <Users className="w-6 h-6 text-blue-600" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm text-gray-600">Total Users</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.total_users}</p>
+                </div>
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="bg-white/80 backdrop-blur-lg rounded-lg p-6 shadow-lg border border-gray-200"
+            >
+              <div className="flex items-center">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <CreditCard className="w-6 h-6 text-green-600" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm text-gray-600">Active Subscriptions</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.active_subscriptions}</p>
+                </div>
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="bg-white/80 backdrop-blur-lg rounded-lg p-6 shadow-lg border border-gray-200"
+            >
+              <div className="flex items-center">
+                <div className="p-2 bg-yellow-100 rounded-lg">
+                  <DollarSign className="w-6 h-6 text-yellow-600" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm text-gray-600">Monthly Revenue</p>
+                  <p className="text-2xl font-bold text-gray-900">${stats.revenue_this_month}</p>
+                </div>
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="bg-white/80 backdrop-blur-lg rounded-lg p-6 shadow-lg border border-gray-200"
+            >
+              <div className="flex items-center">
+                <div className="p-2 bg-purple-100 rounded-lg">
+                  <UserPlus className="w-6 h-6 text-purple-600" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm text-gray-600">New Users This Month</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.new_users_this_month}</p>
+                </div>
+              </div>
+            </motion.div>
           </div>
-          {activeTab === 'users' && (
-            <Button
-              onClick={() => setShowAddSubscription(true)}
-              className="bg-green-600 hover:bg-green-700"
-            >
-              <UserPlus className="w-4 h-4 mr-2" />
-              Add Subscription
-            </Button>
-          )}
-          {activeTab === 'admins' && admin?.is_super_admin && (
-            <Button
-              onClick={() => setShowAddAdmin(true)}
-              className="bg-purple-600 hover:bg-purple-700"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add Admin
-            </Button>
-          )}
-        </div>
+        )}
+
+        {/* Search and Actions - Only show for users and admins tabs */}
+        {(activeTab === 'users' || activeTab === 'admins') && (
+          <div className="flex flex-col sm:flex-row gap-4 mb-6">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <Input
+                type="text"
+                placeholder={`Search ${activeTab}...`}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 bg-white/80 backdrop-blur-lg border-gray-300"
+              />
+            </div>
+            {activeTab === 'users' && (
+              <Button
+                onClick={() => setShowAddSubscription(true)}
+                className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white"
+              >
+                <UserPlus className="w-4 h-4 mr-2" />
+                Add Subscription
+              </Button>
+            )}
+            {activeTab === 'admins' && admin?.is_super_admin && (
+              <Button
+                onClick={() => setShowAddAdmin(true)}
+                className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Admin
+              </Button>
+            )}
+          </div>
+        )}
 
         {/* Users Tab */}
         {activeTab === 'users' && (
-          <div className="bg-white/10 backdrop-blur-lg rounded-lg overflow-hidden">
+          <div className="bg-white/80 backdrop-blur-lg rounded-lg overflow-hidden shadow-lg border border-gray-200">
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-white/20">
+                <thead className="bg-gray-50/80">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-200 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       User
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-200 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Email Status
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-200 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Subscription
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-200 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Joined
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-200 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/10">
+                <tbody className="divide-y divide-gray-200">
                   {filteredUsers.map((user) => (
-                    <tr key={user.id} className="hover:bg-white/5">
+                    <tr key={user.id} className="hover:bg-gray-50/50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
-                          <div className="text-sm font-medium text-white">
+                          <div className="text-sm font-medium text-gray-900">
                             {user.display_name || 'No name'}
                           </div>
-                          <div className="text-sm text-gray-300">{user.email}</div>
+                          <div className="text-sm text-gray-500">{user.email}</div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -397,7 +545,7 @@ export const AdminDashboard: React.FC = () => {
                               {user.subscription.plan_type} - {user.subscription.status}
                             </span>
                             {user.subscription.current_period_end && (
-                              <div className="text-xs text-gray-400 mt-1">
+                              <div className="text-xs text-gray-500 mt-1">
                                 Expires: {new Date(user.subscription.current_period_end).toLocaleDateString()}
                               </div>
                             )}
@@ -408,7 +556,7 @@ export const AdminDashboard: React.FC = () => {
                           </span>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {new Date(user.created_at).toLocaleDateString()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -420,7 +568,7 @@ export const AdminDashboard: React.FC = () => {
                                 setShowAddSubscription(true);
                               }}
                               size="sm"
-                              className="bg-green-600 hover:bg-green-700"
+                              className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white"
                             >
                               <UserPlus className="w-3 h-3 mr-1" />
                               Add Sub
@@ -429,8 +577,7 @@ export const AdminDashboard: React.FC = () => {
                             <Button
                               onClick={() => removeSubscription(user.id)}
                               size="sm"
-                              variant="secondary"
-                              className="bg-red-600 hover:bg-red-700 text-white"
+                              className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white"
                             >
                               <UserMinus className="w-3 h-3 mr-1" />
                               Remove Sub
@@ -443,7 +590,7 @@ export const AdminDashboard: React.FC = () => {
                 </tbody>
               </table>
               {filteredUsers.length === 0 && (
-                <div className="text-center py-8 text-gray-400">
+                <div className="text-center py-8 text-gray-500">
                   No users found matching your search.
                 </div>
               )}
@@ -453,42 +600,43 @@ export const AdminDashboard: React.FC = () => {
 
         {/* Admins Tab */}
         {activeTab === 'admins' && (
-          <div className="bg-white/10 backdrop-blur-lg rounded-lg overflow-hidden">
+          <div className="bg-white/80 backdrop-blur-lg rounded-lg overflow-hidden shadow-lg border border-gray-200">
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-white/20">
+                <thead className="bg-gray-50/80">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-200 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Admin
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-200 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Role
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-200 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-200 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Last Login
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-200 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Created
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/10">
+                <tbody className="divide-y divide-gray-200">
                   {filteredAdmins.map((adminUser) => (
-                    <tr key={adminUser.id} className="hover:bg-white/5">
+                    <tr key={adminUser.id} className="hover:bg-gray-50/50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
-                          <div className="text-sm font-medium text-white">
+                          <div className="text-sm font-medium text-gray-900">
                             {adminUser.full_name || 'No name'}
                           </div>
-                          <div className="text-sm text-gray-300">{adminUser.email}</div>
+                          <div className="text-sm text-gray-500">{adminUser.email}</div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {adminUser.is_super_admin ? (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gradient-to-r from-blue-100 to-yellow-100 text-blue-800">
+                            <Shield className="w-3 h-3 mr-1" />
                             Super Admin
                           </span>
                         ) : (
@@ -510,13 +658,13 @@ export const AdminDashboard: React.FC = () => {
                           </span>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {adminUser.last_login 
                           ? new Date(adminUser.last_login).toLocaleDateString()
                           : 'Never'
                         }
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {new Date(adminUser.created_at).toLocaleDateString()}
                       </td>
                     </tr>
@@ -524,7 +672,7 @@ export const AdminDashboard: React.FC = () => {
                 </tbody>
               </table>
               {filteredAdmins.length === 0 && (
-                <div className="text-center py-8 text-gray-400">
+                <div className="text-center py-8 text-gray-500">
                   No admins found matching your search.
                 </div>
               )}
@@ -578,17 +726,21 @@ const AddSubscriptionModal: React.FC<AddSubscriptionModalProps> = ({
       // Load users without subscriptions for selection
       const loadUsersWithoutSub = async () => {
         try {
-          const { data, error } = await supabase
+          const { data: usersData, error: usersError } = await supabase
             .from('user_profiles')
-            .select(`
-              *,
-              subscriptions:subscriptions(*)
-            `)
+            .select('*')
             .order('created_at', { ascending: false });
 
-          if (error) throw error;
+          if (usersError) throw usersError;
 
-          const usersWithoutSub = data.filter(u => !u.subscriptions || u.subscriptions.length === 0);
+          const { data: subscriptionsData } = await supabase
+            .from('subscriptions')
+            .select('user_id')
+            .eq('status', 'active');
+
+          const subscribedUserIds = new Set(subscriptionsData?.map(s => s.user_id) || []);
+          
+          const usersWithoutSub = (usersData || []).filter(u => !subscribedUserIds.has(u.id));
           setUsers(usersWithoutSub.map(u => ({ ...u, subscription: null })));
         } catch (error) {
           console.error('Error loading users:', error);
@@ -681,7 +833,7 @@ const AddSubscriptionModal: React.FC<AddSubscriptionModalProps> = ({
             <Button
               type="submit"
               disabled={loading || (!user && !selectedUserId)}
-              className="flex-1 bg-green-600 hover:bg-green-700"
+              className="flex-1 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white"
             >
               {loading ? <LoadingSpinner size="sm" /> : 'Add Subscription'}
             </Button>
@@ -790,7 +942,7 @@ const AddAdminModal: React.FC<AddAdminModalProps> = ({
             <Button
               type="submit"
               disabled={loading}
-              className="flex-1 bg-purple-600 hover:bg-purple-700"
+              className="flex-1 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white"
             >
               {loading ? <LoadingSpinner size="sm" /> : 'Create Admin'}
             </Button>

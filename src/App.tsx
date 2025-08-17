@@ -1,13 +1,13 @@
-// src/App.tsx
+// src/App.tsx - Fixed routing for admin dashboard at /admin
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { AdminAuthProvider } from './contexts/AdminAuthContext';
-import { ErrorBoundary } from './components/ErrorBoundary';
 import { Header } from './components/layout/Header';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
 import { AdminProtectedRoute } from './components/layout/AdminProtectedRoute';
 import { LoadingSpinner } from './components/ui/LoadingSpinner';
+import { ErrorBoundary } from './components/ui/ErrorBoundary';
 
 // Lazy load pages for better performance
 const LandingPage = lazy(() => import('./pages/LandingPage').then(module => ({ default: module.LandingPage })));
@@ -15,8 +15,10 @@ const SignUpPage = lazy(() => import('./pages/auth/SignUpPage').then(module => (
 const SignInPage = lazy(() => import('./pages/auth/SignInPage').then(module => ({ default: module.SignInPage })));
 const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPasswordPage').then(module => ({ default: module.ForgotPasswordPage })));
 const ResetPasswordPage = lazy(() => import('./pages/auth/ResetPasswordPage').then(module => ({ default: module.ResetPasswordPage })));
+
+// Protected pages
 const PlansPage = lazy(() => import('./pages/subscription/PlansPage').then(module => ({ default: module.PlansPage })));
-const CheckoutSuccessPage = lazy(() => import('./pages/CheckoutSuccessPage').then(module => ({ default: module.CheckoutSuccessPage })));
+const CheckoutSuccessPage = lazy(() => import('./pages/checkout/CheckoutSuccessPage').then(module => ({ default: module.CheckoutSuccessPage })));
 const DashboardPage = lazy(() => import('./pages/dashboard/DashboardPage').then(module => ({ default: module.DashboardPage })));
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then(module => ({ default: module.SettingsPage })));
 
@@ -30,7 +32,7 @@ const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard').then(mo
 
 // Loading fallback component
 const PageLoader = () => (
-  <div className="min-h-screen flex items-center justify-center bg-gray-50">
+  <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-yellow-50">
     <div className="text-center">
       <LoadingSpinner size="lg" />
       <p className="mt-4 text-gray-600 font-medium">Loading...</p>
@@ -44,7 +46,7 @@ function App() {
       <AdminAuthProvider>
         <AuthProvider>
           <Router>
-            <div className="min-h-screen bg-gray-50">
+            <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50">
               {/* Only show Header for non-admin routes */}
               <Routes>
                 <Route path="/admin/*" element={null} />
@@ -82,7 +84,7 @@ function App() {
                     } 
                   />
                   
-                  {/* Fully Protected Routes (require auth and subscription) */}
+                  {/* Fully Protected Routes (require auth + subscription) */}
                   <Route 
                     path="/dashboard" 
                     element={
@@ -103,7 +105,7 @@ function App() {
                   {/* Admin Routes */}
                   <Route path="/admin/login" element={<AdminLoginPage />} />
                   <Route 
-                    path="/admin/dashboard" 
+                    path="/admin" 
                     element={
                       <AdminProtectedRoute>
                         <AdminDashboard />
@@ -111,8 +113,8 @@ function App() {
                     } 
                   />
                   
-                  {/* Redirect unknown routes */}
-                  <Route path="*" element={<Navigate to="/" replace />} />
+                  {/* Fallback Route */}
+                  <Route path="*" element={<LandingPage />} />
                 </Routes>
               </Suspense>
             </div>

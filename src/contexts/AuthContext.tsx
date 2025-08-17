@@ -167,6 +167,37 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, []);
 
+  // Helper function to check subscription status
+  const checkUserSubscription = async (userId: string): Promise<SubscriptionCheckResult> => {
+    try {
+      const { data, error } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        throw error;
+      }
+
+      const hasActiveSubscription = !!data && data.status === 'active';
+      
+      return {
+        hasActiveSubscription,
+        subscription: data || null,
+        status: data?.status || 'inactive'
+      };
+    } catch (error) {
+      console.warn("Subscription check failed:", error);
+      return {
+        hasActiveSubscription: false,
+        subscription: null,
+        status: 'inactive'
+      };
+    }
+  };
+
   // SIMPLIFIED: Session initialization without timeout logic
   useEffect(() => {
     let mounted = true;
@@ -448,14 +479,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         .from('subscriptions')
         .select('*')
         .eq('user_id', userId)
-        .eq('status', 'active')
+        .in('status', ['active', 'trialing'])
+        .order('created_at', { ascending: false })
+        .limit(1)
         .single();
 
       if (error && error.code !== 'PGRST116') {
-        throw error;
+        console.warn("Subscription query error:", error);
       }
 
-      const hasActiveSubscription = !!data && data.status === 'active';
+      const hasActiveSubscription = !!data && ['active', 'trialing'].includes(data.status);
       
       return {
         hasActiveSubscription,
@@ -491,6 +524,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       refreshSubscription,
       hasActiveSubscription,
       isEmailVerified,
+      checkUserSubscription, // Export this function
     }),
     [
       user,
