@@ -1,4 +1,4 @@
-// src/pages/auth/SignUpPage.tsx - FIXED: Added missing default export
+// src/pages/auth/SignUpPage.tsx - FIXED: Ensures hooks are always called in same order
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -7,29 +7,47 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 
+interface FormData {
+  email: string;
+  password: string;
+  confirmPassword: string;
+  fullName: string;
+}
+
+interface FormErrors {
+  fullName?: string;
+  email?: string;
+  password?: string;
+  confirmPassword?: string;
+  terms?: string;
+  submit?: string;
+}
+
 export const SignUpPage: React.FC = () => {
-  const [formData, setFormData] = useState({
+  // CRITICAL FIX: All hooks must be called at the top level, in the same order every time
+  const navigate = useNavigate();
+  const { signUp, user } = useAuth();
+  
+  const [formData, setFormData] = useState<FormData>({
     email: '',
     password: '',
     confirmPassword: '',
     fullName: ''
   });
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  
+  const [errors, setErrors] = useState<FormErrors>({});
   const [isLoading, setIsLoading] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
-  
-  const { signUp, user } = useAuth();
-  const navigate = useNavigate();
 
-  // Redirect if already authenticated
+  // CRITICAL FIX: Handle user redirect without early returns
   useEffect(() => {
     if (user) {
       navigate('/plans', { replace: true });
     }
   }, [user, navigate]);
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
+  const validateForm = (): boolean => {
+    const newErrors: FormErrors = {};
 
     if (!formData.fullName.trim()) {
       newErrors.fullName = 'Full name is required';
@@ -62,14 +80,24 @@ export const SignUpPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // CRITICAL FIX: Prevent double submissions
+    if (isLoading) {
+      console.log("⏸️ Sign up already in progress");
+      return;
+    }
+
     if (!validateForm()) return;
 
     setIsLoading(true);
     setErrors({}); // Clear any previous errors
     
     try {
+      console.log("🔐 Starting sign up process...");
+      
       await signUp(formData.email, formData.password, formData.fullName);
-      // Just let the auth context handle navigation naturally
+      
+      console.log("✅ Sign up successful");
+      // Navigation will be handled by useEffect when user state updates
     } catch (error: any) {
       console.error('Sign up error:', error);
       // Only show errors that are actually meaningful to users
@@ -83,7 +111,7 @@ export const SignUpPage: React.FC = () => {
     }
   };
 
-  const handleInputChange = (field: keyof typeof formData) => (
+  const handleInputChange = (field: keyof FormData) => (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
     setFormData(prev => ({
@@ -100,6 +128,7 @@ export const SignUpPage: React.FC = () => {
     }
   };
 
+  // CRITICAL FIX: Always render the same component structure
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center p-4">
       <motion.div
@@ -133,9 +162,9 @@ export const SignUpPage: React.FC = () => {
               value={formData.fullName}
               onChange={handleInputChange('fullName')}
               error={errors.fullName}
-              disabled={isLoading}
               icon={User}
               autoComplete="name"
+              autoFocus
             />
           </motion.div>
 
@@ -151,7 +180,6 @@ export const SignUpPage: React.FC = () => {
               value={formData.email}
               onChange={handleInputChange('email')}
               error={errors.email}
-              disabled={isLoading}
               icon={Mail}
               autoComplete="email"
             />
@@ -165,11 +193,10 @@ export const SignUpPage: React.FC = () => {
           >
             <Input
               type="password"
-              placeholder="Create a password"
+              placeholder="Create a password (min. 6 characters)"
               value={formData.password}
               onChange={handleInputChange('password')}
               error={errors.password}
-              disabled={isLoading}
               icon={Lock}
               autoComplete="new-password"
             />
@@ -187,7 +214,6 @@ export const SignUpPage: React.FC = () => {
               value={formData.confirmPassword}
               onChange={handleInputChange('confirmPassword')}
               error={errors.confirmPassword}
-              disabled={isLoading}
               icon={Lock}
               autoComplete="new-password"
             />
@@ -195,53 +221,50 @@ export const SignUpPage: React.FC = () => {
 
           {/* Terms and Conditions */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.6 }}
+            className="flex items-start space-x-3"
           >
-            <label className="flex items-start space-x-3 text-sm text-gray-600">
-              <input
-                type="checkbox"
-                checked={acceptTerms}
-                onChange={(e) => setAcceptTerms(e.target.checked)}
-                disabled={isLoading}
-                className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
-              />
-              <span>
-                I agree to the{' '}
-                <Link
-                  to="/terms"
-                  className="text-blue-600 hover:text-blue-800 underline"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Terms of Service
-                </Link>{' '}
-                and{' '}
-                <Link
-                  to="/privacy"
-                  className="text-blue-600 hover:text-blue-800 underline"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Privacy Policy
-                </Link>
-              </span>
+            <input
+              type="checkbox"
+              id="acceptTerms"
+              checked={acceptTerms}
+              onChange={(e) => {
+                setAcceptTerms(e.target.checked);
+                if (errors.terms) {
+                  setErrors(prev => ({ ...prev, terms: undefined }));
+                }
+              }}
+              className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+            />
+            <label htmlFor="acceptTerms" className="text-sm text-gray-600">
+              I agree to the{' '}
+              <a href="/terms" className="text-blue-600 hover:text-blue-800 underline">
+                Terms of Service
+              </a>{' '}
+              and{' '}
+              <a href="/privacy" className="text-blue-600 hover:text-blue-800 underline">
+                Privacy Policy
+              </a>
             </label>
           </motion.div>
 
+          {/* Terms Error */}
           {errors.terms && (
-            <p className="text-red-600 text-sm">{errors.terms}</p>
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+              <p className="text-red-700 text-sm text-center">{errors.terms}</p>
+            </div>
           )}
 
           {/* Submit Error */}
           {errors.submit && (
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="p-3 bg-red-50 border border-red-200 rounded-lg"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-red-50 border border-red-200 rounded-lg p-3"
             >
-              <p className="text-red-600 text-sm">{errors.submit}</p>
+              <p className="text-red-700 text-sm text-center">{errors.submit}</p>
             </motion.div>
           )}
 
@@ -249,18 +272,18 @@ export const SignUpPage: React.FC = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.8 }}
+            transition={{ delay: 0.7 }}
           >
             <Button
               type="submit"
-              loading={isLoading}
-              disabled={isLoading}
-              className="w-full bg-gradient-to-r from-blue-500 to-yellow-500 hover:from-blue-600 hover:to-yellow-600 text-white font-semibold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
+              className="w-full"
+              isLoading={isLoading}
+              disabled={isLoading || !acceptTerms}
             >
               {isLoading ? 'Creating Account...' : (
                 <>
                   Create Account
-                  <ArrowRight className="w-5 h-5 ml-2" />
+                  <ArrowRight className="w-4 h-4 ml-2" />
                 </>
               )}
             </Button>
@@ -271,7 +294,7 @@ export const SignUpPage: React.FC = () => {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.9 }}
+          transition={{ delay: 0.8 }}
           className="mt-8 text-center"
         >
           <p className="text-gray-600">
@@ -289,5 +312,5 @@ export const SignUpPage: React.FC = () => {
   );
 };
 
-// CRITICAL FIX: Add default export to match lazy loading expectations
+// CRITICAL FIX: Export as default to match lazy loading expectations
 export default SignUpPage;

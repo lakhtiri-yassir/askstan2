@@ -1,5 +1,5 @@
-// src/pages/auth/SignInPage.tsx - FIXED: Added missing default export
-import React, { useState } from 'react';
+// src/pages/auth/SignInPage.tsx - FIXED: Ensures hooks are always called in same order
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Lock, ArrowRight } from 'lucide-react';
@@ -19,8 +19,9 @@ interface FormErrors {
 }
 
 export const SignInPage: React.FC = () => {
+  // CRITICAL FIX: All hooks must be called at the top level, in the same order every time
   const navigate = useNavigate();
-  const { signIn, loading } = useAuth();
+  const { signIn, loading, user } = useAuth();
   
   const [formData, setFormData] = useState<FormData>({
     email: '',
@@ -31,6 +32,13 @@ export const SignInPage: React.FC = () => {
   
   // CRITICAL FIX: Add local loading state to prevent double submissions
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // CRITICAL FIX: Handle user redirect without early returns
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [user, navigate]);
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
@@ -88,7 +96,7 @@ export const SignInPage: React.FC = () => {
       await signIn(formData.email, formData.password);
       
       console.log("✅ Sign in successful, redirecting...");
-      navigate('/dashboard', { replace: true });
+      // Navigation will be handled by useEffect when user state updates
     } catch (error: any) {
       console.error('Sign in failed:', error);
       setErrors({ submit: error.message });
@@ -100,6 +108,7 @@ export const SignInPage: React.FC = () => {
   // CRITICAL FIX: Combined loading state
   const isLoading = loading || isSubmitting;
 
+  // CRITICAL FIX: Always render the same component structure
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center p-4">
       <motion.div
@@ -133,9 +142,9 @@ export const SignInPage: React.FC = () => {
               value={formData.email}
               onChange={handleInputChange('email')}
               error={errors.email}
-              disabled={isLoading}
               icon={Mail}
               autoComplete="email"
+              autoFocus
             />
           </motion.div>
 
@@ -151,7 +160,6 @@ export const SignInPage: React.FC = () => {
               value={formData.password}
               onChange={handleInputChange('password')}
               error={errors.password}
-              disabled={isLoading}
               icon={Lock}
               autoComplete="current-password"
             />
@@ -160,11 +168,11 @@ export const SignInPage: React.FC = () => {
           {/* Submit Error */}
           {errors.submit && (
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="p-3 bg-red-50 border border-red-200 rounded-lg"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-red-50 border border-red-200 rounded-lg p-3"
             >
-              <p className="text-red-600 text-sm">{errors.submit}</p>
+              <p className="text-red-700 text-sm text-center">{errors.submit}</p>
             </motion.div>
           )}
 
@@ -176,14 +184,14 @@ export const SignInPage: React.FC = () => {
           >
             <Button
               type="submit"
-              loading={isLoading}
+              className="w-full"
+              isLoading={isLoading}
               disabled={isLoading}
-              className="w-full bg-gradient-to-r from-blue-500 to-yellow-500 hover:from-blue-600 hover:to-yellow-600 text-white font-semibold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
             >
-              {isLoading ? 'Signing In...' : (
+              {isLoading ? 'Signing in...' : (
                 <>
                   Sign In
-                  <ArrowRight className="w-5 h-5 ml-2" />
+                  <ArrowRight className="w-4 h-4 ml-2" />
                 </>
               )}
             </Button>
@@ -199,7 +207,7 @@ export const SignInPage: React.FC = () => {
         >
           <Link
             to="/forgot-password"
-            className="text-blue-600 hover:text-blue-800 text-sm transition-colors"
+            className="text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors"
           >
             Forgot your password?
           </Link>
@@ -227,5 +235,5 @@ export const SignInPage: React.FC = () => {
   );
 };
 
-// CRITICAL FIX: Add default export to match lazy loading expectations
+// CRITICAL FIX: Export as default to match lazy loading expectations
 export default SignInPage;
