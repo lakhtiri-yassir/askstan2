@@ -1,4 +1,4 @@
-// src/App.tsx - Fixed routing with minimal error boundary
+// src/App.tsx - Clean App with no error boundaries
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
@@ -64,7 +64,7 @@ function App() {
                 <Route path="/terms" element={<TermsOfServicePage />} />
                 <Route path="/privacy" element={<PrivacyPolicyPage />} />
                 
-                {/* Semi-Protected Routes (require auth but not subscription) */}
+                {/* Semi-Protected Routes */}
                 <Route 
                   path="/plans" 
                   element={
@@ -82,7 +82,7 @@ function App() {
                   } 
                 />
                 
-                {/* Fully Protected Routes (require auth + subscription) */}
+                {/* Fully Protected Routes */}
                 <Route 
                   path="/dashboard" 
                   element={
@@ -119,15 +119,6 @@ function App() {
         </Router>
       </AuthProvider>
     </AdminAuthProvider>
-  );
-}
-
-export default App;>
-            </div>
-          </Router>
-        </AuthProvider>
-      </AdminAuthProvider>
-    </ErrorBoundary>
   );
 }
 
