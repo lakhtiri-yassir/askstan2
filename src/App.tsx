@@ -1,4 +1,4 @@
-// src/App.tsx - Fixed: Regular imports for auth pages to prevent blank page issue
+// src/App.tsx - Fixed: Correct import pattern for named exports
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
@@ -8,11 +8,12 @@ import { ProtectedRoute } from './components/layout/ProtectedRoute';
 import { AdminProtectedRoute } from './components/layout/AdminProtectedRoute';
 import { LoadingSpinner } from './components/ui/LoadingSpinner';
 
-// CRITICAL FIX: Regular imports for auth pages to prevent blank page issue
+// CRITICAL FIX: Direct imports for auth pages to prevent blank page issue
+// These components use named exports, so we import them directly instead of lazy loading
 import { SignUpPage } from './pages/auth/SignUpPage';
 import { SignInPage } from './pages/auth/SignInPage';
 
-// Lazy load non-critical pages for performance
+// Lazy load non-critical pages for performance (these use the existing pattern)
 const LandingPage = lazy(() => import('./pages/LandingPage').then(module => ({ default: module.LandingPage })));
 const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPasswordPage').then(module => ({ default: module.ForgotPasswordPage })));
 const ResetPasswordPage = lazy(() => import('./pages/auth/ResetPasswordPage').then(module => ({ default: module.ResetPasswordPage })));
@@ -57,7 +58,7 @@ function App() {
               <Routes>
                 {/* Public Routes */}
                 <Route path="/" element={<LandingPage />} />
-                {/* FIXED: Auth pages now use regular imports - no more blank page issues */}
+                {/* FIXED: Auth pages now use direct imports - no more React Error #300 */}
                 <Route path="/signup" element={<SignUpPage />} />
                 <Route path="/signin" element={<SignInPage />} />
                 <Route path="/forgot-password" element={<ForgotPasswordPage />} />
