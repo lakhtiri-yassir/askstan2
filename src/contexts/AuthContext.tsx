@@ -175,7 +175,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const initializeAuth = async () => {
       try {
         console.log("🔐 Initializing auth...");
-        setError(null);
         
         // Get initial session - let Supabase handle timeouts
         const { data: { session: initialSession }, error } = await supabase.auth.getSession();
@@ -183,7 +182,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (error) {
           console.error("Error getting initial session:", error);
           if (mounted) {
-            setError("Failed to initialize authentication");
             setLoading(false);
             setInitialized(true);
           }
@@ -216,7 +214,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       } catch (error) {
         console.error("Session initialization error:", error);
         if (mounted) {
-          setError("Authentication initialization failed");
           setLoading(false);
           setInitialized(true);
           setSubscriptionStatus({
@@ -238,8 +235,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             console.log("🔄 Auth state change:", event, newSession?.user?.id || 'No session');
             
             if (!mounted) return;
-
-            setError(null);
 
             switch (event) {
               case 'SIGNED_IN':
@@ -276,13 +271,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 setUser(newSession?.user ?? null);
             }
 
+            // Always ensure loading is false and initialized is true after auth events
             if (mounted) {
               setLoading(false);
+              setInitialized(true);
             }
           } catch (error) {
             console.error("Auth state change error:", error);
             if (mounted) {
               setLoading(false);
+              setInitialized(true);
             }
           }
         }
