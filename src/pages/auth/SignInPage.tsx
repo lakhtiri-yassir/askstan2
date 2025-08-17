@@ -1,4 +1,4 @@
-// src/pages/auth/SignInPage.tsx
+// src/pages/auth/SignInPage.tsx - FIXED: Added missing default export
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -121,57 +121,40 @@ export const SignInPage: React.FC = () => {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Email Input */}
+          {/* Email Field */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            <Input
+              type="email"
+              placeholder="Enter your email"
+              value={formData.email}
+              onChange={handleInputChange('email')}
+              error={errors.email}
+              disabled={isLoading}
+              icon={Mail}
+              autoComplete="email"
+            />
+          </motion.div>
+
+          {/* Password Field */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.3 }}
           >
             <Input
-              type="email"
-              label="Email Address"
-              value={formData.email}
-              onChange={handleInputChange('email')}
-              error={errors.email}
-              icon={<Mail className="w-5 h-5" />}
-              placeholder="Enter your email"
-              required
-              disabled={isLoading}
-            />
-          </motion.div>
-
-          {/* Password Input */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.4 }}
-          >
-            <Input
               type="password"
-              label="Password"
+              placeholder="Enter your password"
               value={formData.password}
               onChange={handleInputChange('password')}
               error={errors.password}
-              icon={<Lock className="w-5 h-5" />}
-              placeholder="Enter your password"
-              required
               disabled={isLoading}
+              icon={Lock}
+              autoComplete="current-password"
             />
-          </motion.div>
-
-          {/* Forgot Password Link */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-            className="flex justify-end"
-          >
-            <Link
-              to="/forgot-password"
-              className="text-sm text-blue-600 hover:text-blue-800 transition-colors"
-            >
-              Forgot your password?
-            </Link>
           </motion.div>
 
           {/* Submit Error */}
@@ -189,7 +172,7 @@ export const SignInPage: React.FC = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
+            transition={{ delay: 0.4 }}
           >
             <Button
               type="submit"
@@ -207,20 +190,35 @@ export const SignInPage: React.FC = () => {
           </motion.div>
         </form>
 
+        {/* Forgot Password Link */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+          className="mt-6 text-center"
+        >
+          <Link
+            to="/forgot-password"
+            className="text-blue-600 hover:text-blue-800 text-sm transition-colors"
+          >
+            Forgot your password?
+          </Link>
+        </motion.div>
+
         {/* Sign Up Link */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.7 }}
-          className="text-center mt-8"
+          transition={{ delay: 0.6 }}
+          className="mt-8 text-center"
         >
           <p className="text-gray-600">
             Don't have an account?{' '}
             <Link
               to="/signup"
-              className="text-blue-600 hover:text-blue-800 font-medium transition-colors"
+              className="text-blue-600 hover:text-blue-800 font-semibold transition-colors"
             >
-              Sign up for free
+              Sign up here
             </Link>
           </p>
         </motion.div>
@@ -228,3 +226,6 @@ export const SignInPage: React.FC = () => {
     </div>
   );
 };
+
+// CRITICAL FIX: Add default export to match lazy loading expectations
+export default SignInPage;

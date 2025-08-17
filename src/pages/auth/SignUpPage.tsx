@@ -1,4 +1,4 @@
-// src/pages/auth/SignUpPage.tsx - Fixed with Simplified Error Handling
+// src/pages/auth/SignUpPage.tsx - FIXED: Added missing default export
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -83,11 +83,20 @@ export const SignUpPage: React.FC = () => {
     }
   };
 
-  const handleInputChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({ ...prev, [field]: e.target.value }));
+  const handleInputChange = (field: keyof typeof formData) => (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: e.target.value
+    }));
+    
     // Clear field-specific error when user starts typing
     if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
+      setErrors(prev => ({
+        ...prev,
+        [field]: undefined
+      }));
     }
   };
 
@@ -96,62 +105,77 @@ export const SignUpPage: React.FC = () => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
+        transition={{ duration: 0.5 }}
         className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md"
       >
         {/* Header */}
-        <div className="text-center mb-8">
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-            className="w-16 h-16 bg-gradient-to-r from-blue-500 to-yellow-500 rounded-full flex items-center justify-center mx-auto mb-4"
-          >
-            <User className="w-8 h-8 text-white" />
-          </motion.div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Account</h1>
-          <p className="text-gray-600">Join AskStan! and boost your social media presence</p>
-        </div>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.1 }}
+          className="text-center mb-8"
+        >
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Join AskStan!</h1>
+          <p className="text-gray-600">Create your account and start growing your social media presence</p>
+        </motion.div>
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Full Name Input */}
+          {/* Full Name Field */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            <Input
+              type="text"
+              placeholder="Enter your full name"
+              value={formData.fullName}
+              onChange={handleInputChange('fullName')}
+              error={errors.fullName}
+              disabled={isLoading}
+              icon={User}
+              autoComplete="name"
+            />
+          </motion.div>
+
+          {/* Email Field */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.3 }}
           >
             <Input
-              type="text"
-              label="Full Name"
-              value={formData.fullName}
-              onChange={handleInputChange('fullName')}
-              error={errors.fullName}
-              icon={<User className="w-5 h-5" />}
-              placeholder="Enter your full name"
-              required
+              type="email"
+              placeholder="Enter your email"
+              value={formData.email}
+              onChange={handleInputChange('email')}
+              error={errors.email}
+              disabled={isLoading}
+              icon={Mail}
+              autoComplete="email"
             />
           </motion.div>
 
-          {/* Email Input */}
+          {/* Password Field */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.4 }}
           >
             <Input
-              type="email"
-              label="Email Address"
-              value={formData.email}
-              onChange={handleInputChange('email')}
-              error={errors.email}
-              icon={<Mail className="w-5 h-5" />}
-              placeholder="Enter your email"
-              required
+              type="password"
+              placeholder="Create a password"
+              value={formData.password}
+              onChange={handleInputChange('password')}
+              error={errors.password}
+              disabled={isLoading}
+              icon={Lock}
+              autoComplete="new-password"
             />
           </motion.div>
 
-          {/* Password Input */}
+          {/* Confirm Password Field */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -159,73 +183,50 @@ export const SignUpPage: React.FC = () => {
           >
             <Input
               type="password"
-              label="Password"
-              value={formData.password}
-              onChange={handleInputChange('password')}
-              error={errors.password}
-              icon={<Lock className="w-5 h-5" />}
-              placeholder="Create a strong password"
-              required
-            />
-          </motion.div>
-
-          {/* Confirm Password Input */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.6 }}
-          >
-            <Input
-              type="password"
-              label="Confirm Password"
+              placeholder="Confirm your password"
               value={formData.confirmPassword}
               onChange={handleInputChange('confirmPassword')}
               error={errors.confirmPassword}
-              icon={<Lock className="w-5 h-5" />}
-              placeholder="Confirm your password"
-              required
+              disabled={isLoading}
+              icon={Lock}
+              autoComplete="new-password"
             />
           </motion.div>
 
           {/* Terms and Conditions */}
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.7 }}
-            className="flex items-start space-x-3"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
           >
-            <input
-              type="checkbox"
-              id="acceptTerms"
-              checked={acceptTerms}
-              onChange={(e) => {
-                setAcceptTerms(e.target.checked);
-                if (errors.terms) {
-                  setErrors(prev => ({ ...prev, terms: '' }));
-                }
-              }}
-              className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-              required
-            />
-            <label htmlFor="acceptTerms" className="text-sm text-gray-600">
-              I agree to the{' '}
-              <Link
-                to="/terms"
-                className="text-blue-600 hover:text-blue-800 underline"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Terms of Service
-              </Link>{' '}
-              and{' '}
-              <Link
-                to="/privacy"
-                className="text-blue-600 hover:text-blue-800 underline"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Privacy Policy
-              </Link>
+            <label className="flex items-start space-x-3 text-sm text-gray-600">
+              <input
+                type="checkbox"
+                checked={acceptTerms}
+                onChange={(e) => setAcceptTerms(e.target.checked)}
+                disabled={isLoading}
+                className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+              />
+              <span>
+                I agree to the{' '}
+                <Link
+                  to="/terms"
+                  className="text-blue-600 hover:text-blue-800 underline"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Terms of Service
+                </Link>{' '}
+                and{' '}
+                <Link
+                  to="/privacy"
+                  className="text-blue-600 hover:text-blue-800 underline"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Privacy Policy
+                </Link>
+              </span>
             </label>
           </motion.div>
 
@@ -287,3 +288,6 @@ export const SignUpPage: React.FC = () => {
     </div>
   );
 };
+
+// CRITICAL FIX: Add default export to match lazy loading expectations
+export default SignUpPage;
