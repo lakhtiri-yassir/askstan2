@@ -1,123 +1,123 @@
-// src/pages/auth/SignInPage.tsx - Fixed with Simplified Redirect Logic
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+// src/pages/auth/SignInPage.tsx
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Mail, Lock, LogIn } from 'lucide-react';
+import { Mail, Lock, ArrowRight } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 
+interface FormData {
+  email: string;
+  password: string;
+}
+
+interface FormErrors {
+  email?: string;
+  password?: string;
+  submit?: string;
+}
+
 export const SignInPage: React.FC = () => {
-  const [formData, setFormData] = useState({
-    email: '',
-    password: ''
-  });
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isLoading, setIsLoading] = useState(false);
-  
-  const { signIn, user, subscriptionStatus, initialized } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
+  const { signIn, loading } = useAuth();
+  
+  const [formData, setFormData] = useState<FormData>({
+    email: '',
+    password: '',
+  });
 
-  // Handle navigation after successful authentication
-  useEffect(() => {
-    if (user && initialized) {
-      console.log('User authenticated, checking subscription status:', subscriptionStatus);
-      
-      // Check if user has an active subscription
-      const hasActiveSubscription = subscriptionStatus?.status === 'active';
-      
-      console.log('Subscription check result:', {
-        hasActiveSubscription,
-        status: subscriptionStatus?.status,
-        redirecting: hasActiveSubscription ? 'to dashboard' : 'to plans'
-      });
-      
-      if (hasActiveSubscription) {
-        // User has subscription, redirect to dashboard
-        const from = location.state?.from?.pathname;
-        if (from && from !== '/plans' && from !== '/signin') {
-          navigate(from, { replace: true });
-        } else {
-          navigate('/dashboard', { replace: true });
-        }
-      } else {
-        // User doesn't have subscription, redirect to plans
-        navigate('/plans', { replace: true });
-      }
-    }
-  }, [user, subscriptionStatus, initialized, navigate, location.state?.from?.pathname]);
+  const [errors, setErrors] = useState<FormErrors>({});
+  
+  // CRITICAL FIX: Add local loading state to prevent double submissions
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
+  const validateForm = (): boolean => {
+    const newErrors: FormErrors = {};
 
-    if (!formData.email) {
+    if (!formData.email.trim()) {
       newErrors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email is invalid';
+      newErrors.email = 'Please enter a valid email address';
     }
 
     if (!formData.password) {
       newErrors.password = 'Password is required';
+    } else if (formData.password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters';
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
+  const handleInputChange = (field: keyof FormData) => (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: e.target.value
+    }));
+    
+    // Clear field-specific error when user starts typing
+    if (errors[field]) {
+      setErrors(prev => ({
+        ...prev,
+        [field]: undefined
+      }));
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // CRITICAL FIX: Prevent double submissions
+    if (isSubmitting || loading) {
+      console.log("⏸️ Sign in already in progress");
+      return;
+    }
+
     if (!validateForm()) return;
 
-    setIsLoading(true);
-    setErrors({}); // Clear any previous errors
-    
+    setIsSubmitting(true);
+    setErrors({ submit: undefined });
+
     try {
+      console.log("🔐 Starting sign in process...");
+      
       await signIn(formData.email, formData.password);
-      // Just let the auth context handle navigation naturally
+      
+      console.log("✅ Sign in successful, redirecting...");
+      navigate('/dashboard', { replace: true });
     } catch (error: any) {
-      console.error('Sign in error:', error);
-      // Only show errors that are actually meaningful to users
-      if (error.message && !error.message.includes('timeout') && !error.message.includes('loading')) {
-        setErrors({ 
-          submit: error.message
-        });
-      }
+      console.error('Sign in failed:', error);
+      setErrors({ submit: error.message });
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
-  const handleInputChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({ ...prev, [field]: e.target.value }));
-    // Clear field-specific error when user starts typing
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
-    }
-  };
+  // CRITICAL FIX: Combined loading state
+  const isLoading = loading || isSubmitting;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center p-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
+        transition={{ duration: 0.5 }}
         className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md"
       >
         {/* Header */}
-        <div className="text-center mb-8">
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-            className="w-16 h-16 bg-gradient-to-r from-blue-500 to-yellow-500 rounded-full flex items-center justify-center mx-auto mb-4"
-          >
-            <LogIn className="w-8 h-8 text-white" />
-          </motion.div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h1>
-          <p className="text-gray-600">Sign in to continue your social media journey</p>
-        </div>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.1 }}
+          className="text-center mb-8"
+        >
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back!</h1>
+          <p className="text-gray-600">Sign in to your AskStan! account</p>
+        </motion.div>
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -136,6 +136,7 @@ export const SignInPage: React.FC = () => {
               icon={<Mail className="w-5 h-5" />}
               placeholder="Enter your email"
               required
+              disabled={isLoading}
             />
           </motion.div>
 
@@ -154,6 +155,7 @@ export const SignInPage: React.FC = () => {
               icon={<Lock className="w-5 h-5" />}
               placeholder="Enter your password"
               required
+              disabled={isLoading}
             />
           </motion.div>
 
@@ -198,7 +200,7 @@ export const SignInPage: React.FC = () => {
               {isLoading ? 'Signing In...' : (
                 <>
                   Sign In
-                  <LogIn className="w-5 h-5 ml-2" />
+                  <ArrowRight className="w-5 h-5 ml-2" />
                 </>
               )}
             </Button>
@@ -210,15 +212,15 @@ export const SignInPage: React.FC = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.7 }}
-          className="mt-8 text-center"
+          className="text-center mt-8"
         >
           <p className="text-gray-600">
             Don't have an account?{' '}
             <Link
               to="/signup"
-              className="text-blue-600 hover:text-blue-800 font-semibold transition-colors"
+              className="text-blue-600 hover:text-blue-800 font-medium transition-colors"
             >
-              Sign up here
+              Sign up for free
             </Link>
           </p>
         </motion.div>

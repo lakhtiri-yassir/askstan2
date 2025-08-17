@@ -1,71 +1,75 @@
-// src/lib/subscriptionService.ts - Updated for New Pricing
+// src/lib/subscriptionService.ts
 import { supabase } from './supabase';
 
-export interface SubscriptionPlan {
-  id: 'monthly' | 'yearly';
-  name: string;
-  price: string;
-  originalPrice?: string;
-  interval: string;
-  priceId: string;
-  savings?: string;
-  popular?: boolean;
-  features: string[];
-}
+// CRITICAL FIX: Add request deduplication to prevent concurrent checkout requests
+const pendingCheckoutRequests = new Map<string, Promise<string>>();
 
 export const subscriptionService = {
   /**
-   * Get subscription plans configuration with updated pricing
+   * Get available plans configuration
    */
-  getPlansConfig(): { monthly: SubscriptionPlan; yearly: SubscriptionPlan } {
+  getPlansConfig() {
     return {
       monthly: {
-        id: 'monthly',
         name: 'Monthly Plan',
-        price: '$19.95',
-        interval: 'month',
+        price: 4.99,
         priceId: import.meta.env.VITE_STRIPE_PRICE_MONTHLY,
-        popular: false,
+        interval: 'month',
         features: [
           'AI-powered social media coaching',
-          'Write viral hooks and captions',
-          'Complete LinkedIn post creation',
-          'Newsletter content generation',
-          'Profile optimization strategies',
-          'Content repurposing for all platforms',
-          'Monetization guidance',
-          '24/7 AI chat support',
-          'Content analysis and optimization tips'
+          'Multi-platform support',
+          'Growth analytics dashboard',
+          '24/7 AI chat support'
         ]
       },
       yearly: {
-        id: 'yearly',
-        name: 'Annual Plan',
-        price: '$143.95',
-        originalPrice: '$239.40',
-        interval: 'year',
+        name: 'Yearly Plan',
+        price: 49.99,
         priceId: import.meta.env.VITE_STRIPE_PRICE_YEARLY,
-        savings: '40% OFF',
-        popular: true,
+        interval: 'year',
+        savings: '17% savings',
         features: [
-          'Everything in Monthly Plan',
+          'All monthly features',
           'Priority AI responses',
-          'Advanced analytics dashboard',
-          'Custom growth strategies',
-          'Exclusive monetization templates',
-          'Advanced content optimization',
-          'Priority customer support',
-          'Early access to new features',
-          'Save $95.45 per year'
+          'Advanced analytics',
+          'Custom growth strategies'
         ]
       }
     };
   },
 
   /**
-   * Create Stripe checkout session with trial period
+   * CRITICAL FIX: Create checkout session with request deduplication
    */
   async createCheckoutSession(
+    planType: 'monthly' | 'yearly',
+    userId: string,
+    userEmail: string
+  ): Promise<string> {
+    // CRITICAL FIX: Prevent concurrent checkout requests
+    const requestKey = `checkout-${userId}-${planType}`;
+    
+    if (pendingCheckoutRequests.has(requestKey)) {
+      console.log("🔄 Reusing existing checkout request");
+      return pendingCheckoutRequests.get(requestKey)!;
+    }
+
+    const checkoutPromise = this._createCheckoutSessionInternal(planType, userId, userEmail);
+    pendingCheckoutRequests.set(requestKey, checkoutPromise);
+
+    try {
+      const result = await checkoutPromise;
+      return result;
+    } finally {
+      // Clean up completed request
+      pendingCheckoutRequests.delete(requestKey);
+    }
+  },
+
+  /**
+   * Internal checkout session creation
+   */
+  async _createCheckoutSessionInternal(
     planType: 'monthly' | 'yearly',
     userId: string,
     userEmail: string
@@ -82,15 +86,11 @@ export const subscriptionService = {
 
       const { data, error } = await supabase.functions.invoke('create-checkout-session', {
         body: {
-          priceId: selectedPlan.priceId,
+          planType,
           userId,
           userEmail,
-          planType,
           successUrl: `${window.location.origin}/checkout-success?session_id={CHECKOUT_SESSION_ID}`,
           cancelUrl: `${window.location.origin}/plans`,
-          // 3-day trial configuration
-          trialPeriodDays: 3,
-          allowPromotionCodes: true
         }
       });
 
@@ -107,6 +107,28 @@ export const subscriptionService = {
       return data.url;
     } catch (error) {
       console.error('Subscription service error:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Create customer portal session
+   */
+  async createCustomerPortalSession(): Promise<string> {
+    try {
+      const { data, error } = await supabase.functions.invoke('create-portal-session');
+
+      if (error) {
+        throw new Error(error.message || 'Failed to create portal session');
+      }
+
+      if (!data?.url) {
+        throw new Error('No portal URL returned');
+      }
+
+      return data.url;
+    } catch (error) {
+      console.error('Portal session error:', error);
       throw error;
     }
   },
@@ -135,15 +157,15 @@ export const subscriptionService = {
   },
 
   /**
-   * Handle successful checkout
+   * Handle successful checkout with improved retry logic
    */
   async handleCheckoutSuccess(sessionId: string): Promise<any> {
     try {
       console.log('🔄 Processing checkout success for session:', sessionId);
 
-      // Poll for subscription creation with improved retry logic
+      // CRITICAL FIX: Reduced polling attempts and better error handling
       let attempts = 0;
-      const maxAttempts = 15; // Try for 30 seconds
+      const maxAttempts = 10; // Reduced from 15
       
       while (attempts < maxAttempts) {
         try {
@@ -160,12 +182,14 @@ export const subscriptionService = {
           }
 
           console.log(`⏳ Attempt ${attempts + 1}/${maxAttempts}: Subscription not yet created, retrying...`);
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+          // CRITICAL FIX: Shorter delay for better UX
+          await new Promise(resolve => setTimeout(resolve, 1500)); // Reduced from 2000ms
           attempts++;
         } catch (error) {
           console.warn(`Attempt ${attempts + 1} failed:`, error);
           attempts++;
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          await new Promise(resolve => setTimeout(resolve, 1500));
         }
       }
 
@@ -178,55 +202,17 @@ export const subscriptionService = {
   },
 
   /**
-   * Create customer portal session for subscription management
+   * Cancel subscription
    */
-  async createCustomerPortalSession(): Promise<string> {
+  async cancelSubscription(subscriptionId: string): Promise<void> {
     try {
-      const { data, error } = await supabase.functions.invoke('create-portal-session', {
-        body: {
-          returnUrl: `${window.location.origin}/settings`,
-        },
+      const { error } = await supabase.functions.invoke('cancel-subscription', {
+        body: { subscriptionId }
       });
 
       if (error) {
-        console.error('Portal session error:', error);
-        throw new Error(error.message || 'Failed to create portal session');
+        throw new Error(error.message || 'Failed to cancel subscription');
       }
-
-      if (!data?.url) {
-        throw new Error('No portal URL returned');
-      }
-
-      return data.url;
-    } catch (error) {
-      console.error('Customer portal error:', error);
-      throw error;
-    }
-  },
-
-  /**
-   * Cancel subscription
-   */
-  async cancelSubscription(): Promise<void> {
-    try {
-      const { data: user } = await supabase.auth.getUser();
-      if (!user.user) throw new Error('Not authenticated');
-
-      const subscription = await this.getUserSubscription(user.user.id);
-      if (!subscription) throw new Error('No active subscription found');
-
-      // Update subscription to cancel at period end
-      const { error } = await supabase
-        .from('subscriptions')
-        .update({ 
-          cancel_at_period_end: true,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', subscription.id);
-
-      if (error) throw error;
-
-      console.log('✅ Subscription set to cancel at period end');
     } catch (error) {
       console.error('Cancel subscription error:', error);
       throw error;
@@ -234,37 +220,24 @@ export const subscriptionService = {
   },
 
   /**
-   * Get pricing display info
+   * Check subscription status
    */
-  getPricingDisplay() {
-    return {
-      monthly: {
-        price: 19.95,
-        display: '$19.95/month',
-        yearlyEquivalent: 239.40,
-        trial: '3-day free trial'
-      },
-      yearly: {
-        price: 143.95,
-        display: '$143.95/year',
-        monthlyEquivalent: 11.99,
-        savings: 95.45,
-        savingsPercentage: 40,
-        trial: '3-day free trial + Save 40%'
-      }
-    };
-  },
-
-  /**
-   * Calculate savings for yearly plan
-   */
-  calculateYearlySavings() {
-    const pricing = this.getPricingDisplay();
-    return {
-      monthlyCost: pricing.monthly.yearlyEquivalent,
-      yearlyCost: pricing.yearly.price,
-      totalSavings: pricing.yearly.savings,
-      percentageSavings: pricing.yearly.savingsPercentage
-    };
+  async checkSubscriptionStatus(userId: string) {
+    try {
+      const subscription = await this.getUserSubscription(userId);
+      
+      return {
+        hasActiveSubscription: !!subscription,
+        subscription: subscription,
+        status: subscription?.status || 'inactive'
+      };
+    } catch (error) {
+      console.error('Subscription status check error:', error);
+      return {
+        hasActiveSubscription: false,
+        subscription: null,
+        status: 'inactive'
+      };
+    }
   }
 };
