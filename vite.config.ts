@@ -13,9 +13,18 @@ export default defineConfig({
     target: 'es2015',
     cssCodeSplit: true,
     outDir: 'dist',
-    sourcemap: true,
-    minify: false,
-    terserOptions: undefined,
+    sourcemap: false,
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true,
+        pure_funcs: ['console.log', 'console.info'],
+      },
+      mangle: {
+        safari10: true,
+      },
+    },
     rollupOptions: {
       output: {
         chunkFileNames: 'assets/[name]-[hash].js',

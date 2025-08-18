@@ -1,4 +1,4 @@
-// src/pages/dashboard/DashboardPage.tsx - Complete Version
+// src/pages/dashboard/DashboardPage.tsx - Updated with large AskStan banner
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { MessageSquare, Sparkles, Settings, AlertCircle, CheckCircle } from 'lucide-react';
@@ -84,211 +84,208 @@ export const DashboardPage: React.FC = () => {
         script.innerHTML = chatbotConfig.embedCode;
         
         // Find and execute any script tags
-        const scriptTags = script.querySelectorAll('script');
-        scriptTags.forEach((oldScript) => {
+        const scripts = script.querySelectorAll('script');
+        scripts.forEach(scriptTag => {
           const newScript = document.createElement('script');
-          
-          // Copy all attributes
-          Array.from(oldScript.attributes).forEach((attr) => {
-            newScript.setAttribute(attr.name, attr.value);
-          });
-          
-          // Copy script content
-          newScript.textContent = oldScript.textContent;
-          
-          // Add to document head
-          document.head.appendChild(newScript);
+          newScript.textContent = scriptTag.textContent;
+          if (scriptTag.src) {
+            newScript.src = scriptTag.src;
+          }
+          document.body.appendChild(newScript);
         });
 
-        // Set loaded state
+        // Add HTML content to chatbot container
+        const chatbotContainer = document.getElementById('chatbot-container');
+        if (chatbotContainer && script.innerHTML) {
+          const htmlContent = script.innerHTML.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
+          chatbotContainer.innerHTML = htmlContent;
+        }
+
         chatbotLoadedRef.current = true;
         setChatbotLoaded(true);
         
         console.log('✅ Chatbot loaded successfully');
-      } catch (error) {
+      } catch (error: any) {
         console.error('❌ Chatbot loading error:', error);
-        setChatbotError('Failed to load AI coach');
-        setChatbotLoaded(false);
+        setChatbotError(error.message || 'Failed to load chatbot');
       }
     };
 
-    // Load chatbot after a short delay to ensure page is ready
-    const timer = setTimeout(loadChatbot, 1000);
-    return () => clearTimeout(timer);
-  }, [user, profile, location.pathname]);
+    // Small delay to ensure DOM is ready
+    setTimeout(loadChatbot, 1000);
 
-  // Cleanup chatbot when leaving dashboard
-  useEffect(() => {
+    // Cleanup function
     return () => {
-      if (location.pathname !== '/dashboard') {
-        console.log('🧹 Cleaning up chatbot when leaving dashboard');
-        chatbotLoadedRef.current = false;
-        setChatbotLoaded(false);
-        setChatbotError(null);
+      const chatbotContainer = document.getElementById('chatbot-container');
+      if (chatbotContainer) {
+        chatbotContainer.innerHTML = '';
       }
     };
-  }, [location.pathname]);
+  }, [location.pathname, user, profile]);
 
   return (
     <DashboardErrorBoundary>
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 py-8 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          {/* Welcome Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="mb-8"
-          >
-            {/* Welcome Message */}
-            {!chatbotLoaded && !chatbotError && (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50">
+        {/* Dashboard Header */}
+        <div className="bg-white/90 backdrop-blur-lg shadow-lg border-b border-gray-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+              className="flex flex-col sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                  Welcome back, {displayName}! 👋
+                </h1>
+                <p className="text-gray-600">
+                  Your AI social media coach is ready to help you grow your presence
+                </p>
+              </div>
+              <div className="mt-4 sm:mt-0">
+                <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-green-100 to-blue-100 rounded-full">
+                  <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
+                  <span className="text-sm font-medium text-green-800">
+                    {subscriptionStatus?.status === 'active' ? 'Premium Active' : 'Account Active'}
+                  </span>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+
+        {/* Main Dashboard Content */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            {/* Left Sidebar - Quick Stats */}
+            <div className="lg:col-span-1">
               <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="bg-blue-50 border border-blue-200 rounded-2xl p-6 mb-6"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl p-6 border border-gray-200"
               >
-                <div className="flex items-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-4"></div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-blue-900">Setting up your AI coach...</h3>
-                    <p className="text-blue-700">Your personalized social media growth assistant is loading.</p>
+                <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
+                  <Sparkles className="w-6 h-6 text-yellow-500 mr-2" />
+                  Quick Actions
+                </h2>
+                
+                <div className="space-y-4">
+                  <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-4">
+                    <h3 className="font-semibold text-gray-900 mb-2">AI Content Coach</h3>
+                    <p className="text-sm text-gray-600 mb-3">
+                      Get personalized strategies for your social media growth
+                    </p>
+                    <div className="inline-flex items-center text-blue-600 text-sm font-medium">
+                      <MessageSquare className="w-4 h-4 mr-1" />
+                      Chat with Stan
+                    </div>
+                  </div>
+
+                  <div className="bg-gradient-to-r from-green-50 to-yellow-50 rounded-xl p-4">
+                    <h3 className="font-semibold text-gray-900 mb-2">Growth Analytics</h3>
+                    <p className="text-sm text-gray-600 mb-3">
+                      Track your progress and optimize your strategy
+                    </p>
+                    <div className="inline-flex items-center text-green-600 text-sm font-medium">
+                      <Settings className="w-4 h-4 mr-1" />
+                      View Analytics
+                    </div>
                   </div>
                 </div>
               </motion.div>
-            )}
+            </div>
+
+            {/* Main Chatbot Area */}
+            <div className="lg:col-span-2">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.1 }}
+                className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl border border-gray-200 overflow-hidden"
+                style={{ minHeight: '600px' }}
+              >
+                {/* Chatbot Header */}
+                <div className="bg-gradient-to-r from-blue-500 to-yellow-500 px-6 py-4">
+                  <div className="flex items-center">
+                    <div className="w-3 h-3 bg-green-400 rounded-full mr-2 animate-pulse"></div>
+                    <h2 className="text-white font-bold text-lg">AskStan! AI Coach</h2>
+                  </div>
+                </div>
+
+                {/* Chatbot Container with Large Banner */}
+                <div 
+                  id="chatbot-container" 
+                  className="relative w-full h-full flex flex-col items-center justify-center p-8"
+                  style={{ minHeight: '500px' }}
+                >
+                  {/* Large AskStan Banner */}
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.8, delay: 0.3 }}
+                    className="flex flex-col items-center justify-center text-center"
+                  >
+                    <img
+                      src={askstanBanner}
+                      alt="AskStan! AI Social Media Coach"
+                      className="w-80 h-80 md:w-96 md:h-96 lg:w-[28rem] lg:h-[28rem] xl:w-[32rem] xl:h-[32rem] object-contain mb-6"
+                      style={{ maxWidth: '90%', maxHeight: '400px' }}
+                    />
+                    
+                    <div className="max-w-md">
+                      <h3 className="text-2xl font-bold text-gray-900 mb-3">
+                        Your AI Coach is Ready!
+                      </h3>
+                      <p className="text-gray-600 mb-4">
+                        Start a conversation with Stan to get personalized social media strategies, 
+                        content ideas, and growth tips tailored just for you.
+                      </p>
+                      
+                      {chatbotError && (
+                        <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                          <p className="text-red-700 text-sm">{chatbotError}</p>
+                        </div>
+                      )}
+                      
+                      {!chatbotLoaded && !chatbotError && (
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                          <p className="text-blue-700 text-sm">Loading your AI coach...</p>
+                        </div>
+                      )}
+                      
+                      <div className="text-xs text-gray-500">
+                        Powered by Advanced AI Technology
+                      </div>
+                    </div>
+                  </motion.div>
+                </div>
+              </motion.div>
+            </div>
+          </div>
+
+          {/* Bottom Stats Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+            className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8"
+          >
+            <div className="bg-white/80 backdrop-blur-lg rounded-xl shadow-lg p-6 text-center border border-gray-200">
+              <div className="text-3xl font-bold text-blue-600 mb-2">24/7</div>
+              <div className="text-gray-600">AI Support Available</div>
+            </div>
             
-            <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                    Welcome back, <span className="text-blue-600">{displayName}</span>!
-                  </h1>
-                  <p className="text-gray-600">
-                    Your AI social media coach is ready to help you grow your online presence.
-                  </p>
-                </div>
-                <div className="hidden md:flex items-center space-x-4">
-                  <div className="text-center">
-                    <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-xl mb-2">
-                      <Sparkles className="w-6 h-6 text-blue-600" />
-                    </div>
-                    <p className="text-xs text-gray-600 font-medium">AI Powered</p>
-                  </div>
-                  <div className="text-center">
-                    <div className="inline-flex items-center justify-center w-12 h-12 bg-green-100 rounded-xl mb-2">
-                      <MessageSquare className="w-6 h-6 text-green-600" />
-                    </div>
-                    <p className="text-xs text-gray-600 font-medium">24/7 Support</p>
-                  </div>
-                </div>
-              </div>
+            <div className="bg-white/80 backdrop-blur-lg rounded-xl shadow-lg p-6 text-center border border-gray-200">
+              <div className="text-3xl font-bold text-green-600 mb-2">∞</div>
+              <div className="text-gray-600">Unlimited Conversations</div>
             </div>
-          </motion.div>
-
-          {/* Main Dashboard Content - Full Width Chatbot */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            className="w-full"
-          >
-            <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-200 h-[700px] flex flex-col">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-gray-900">AI Social Media Coach</h2>
-                <div className="flex items-center space-x-2">
-                  <div className={`w-2 h-2 rounded-full ${chatbotLoaded ? 'bg-green-500' : chatbotError ? 'bg-red-500' : 'bg-yellow-500'}`}></div>
-                  <span className="text-xs text-gray-500">
-                    {chatbotError ? 'Error' : chatbotLoaded ? 'Connected' : 'Connecting...'}
-                  </span>
-                </div>
-              </div>
-              
-              <div className="flex-1 flex items-center justify-center">
-                {chatbotError ? (
-                  <div className="text-center">
-                    <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">AI Coach Unavailable</h3>
-                    <p className="text-gray-600 mb-4">{chatbotError}</p>
-                    <button
-                      onClick={() => window.location.reload()}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-                    >
-                      Retry Connection
-                    </button>
-                  </div>
-                ) : chatbotLoaded ? (
-                  <div className="text-center">
-                    <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">AI Coach Connected!</h3>
-                    <p className="text-gray-600">
-                      Your AI social media coach is ready. Look for the chat widget to start your conversation.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="text-center">
-                    <div className="mb-6">
-                      <img
-                        src={askstanBanner}
-                        alt="AskStan! AI Social Media Coach"
-                        className="w-48 h-48 md:w-64 md:h-64 lg:w-80 lg:h-80 object-contain mx-auto animate-pulse"
-                      />
-                    </div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Connecting to AI Coach...</h3>
-                    <p className="text-gray-600">
-                      Setting up your personalized social media growth assistant.
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Status Information */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.4 }}
-            className="mt-8"
-          >
-            <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Account Status</h3>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Subscription</span>
-                  <span className="flex items-center">
-                    <div className={`w-2 h-2 ${subscriptionStatus?.status === 'active' ? 'bg-green-500' : 'bg-yellow-500'} rounded-full mr-2`}></div>
-                    <span className={`font-medium ${subscriptionStatus?.status === 'active' ? 'text-green-600' : 'text-yellow-600'}`}>
-                      {subscriptionStatus?.status ? subscriptionStatus.status.charAt(0).toUpperCase() + subscriptionStatus.status.slice(1) : 'Loading...'}
-                    </span>
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">AI Coach</span>
-                  <span className="flex items-center">
-                    <div className={`w-2 h-2 ${chatbotLoaded ? 'bg-green-500' : chatbotError ? 'bg-red-500' : 'bg-yellow-500'} rounded-full mr-2`}></div>
-                    <span className={`font-medium ${chatbotLoaded ? 'text-green-600' : chatbotError ? 'text-red-600' : 'text-yellow-600'}`}>
-                      {chatbotError ? 'Error' : chatbotLoaded ? 'Ready' : 'Loading...'}
-                    </span>
-                  </span>
-                </div>
-              </div>
-              
-              {/* Debug info in development */}
-              {process.env.NODE_ENV === 'development' && (
-                <details className="mt-3 text-xs">
-                  <summary className="cursor-pointer text-gray-500 hover:text-gray-700">
-                    Debug Info (Dev Only)
-                  </summary>
-                  <div className="mt-2 p-2 bg-gray-50 rounded text-xs font-mono">
-                    <div>User ID: {user?.id}</div>
-                    <div>Profile ID: {profile?.id}</div>
-                    <div>Subscription ID: {subscriptionStatus?.id}</div>
-                    <div>Chatbot State: {chatbotError ? 'Error' : chatbotLoaded ? 'Loaded' : 'Loading'}</div>
-                    <div>Current Path: {location.pathname}</div>
-                    {chatbotError && <div className="text-red-600">Error: {chatbotError}</div>}
-                  </div>
-                </details>
-              )}
+            
+            <div className="bg-white/80 backdrop-blur-lg rounded-xl shadow-lg p-6 text-center border border-gray-200">
+              <div className="text-3xl font-bold text-purple-600 mb-2">🚀</div>
+              <div className="text-gray-600">Growth Accelerated</div>
             </div>
           </motion.div>
         </div>
@@ -296,3 +293,5 @@ export const DashboardPage: React.FC = () => {
     </DashboardErrorBoundary>
   );
 };
+
+export default DashboardPage;

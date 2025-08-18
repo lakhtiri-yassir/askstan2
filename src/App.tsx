@@ -1,8 +1,8 @@
-// src/App.tsx - FINAL FIX: Back to lazy loading now that default exports exist
+// src/App.tsx - FIXED: Admin routing redirects to correct dashboard
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
-import { AdminAuthProvider } from './contexts/AdminAuthContext';
+import { AdminAuthProvider } from './contexts/AdminAuthProvider';
 import { Header } from './components/layout/Header';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
 import { AdminProtectedRoute } from './components/layout/AdminProtectedRoute';
@@ -10,8 +10,8 @@ import { LoadingSpinner } from './components/ui/LoadingSpinner';
 
 // Lazy load pages for better performance - ALL NOW HAVE PROPER DEFAULT EXPORTS
 const LandingPage = lazy(() => import('./pages/LandingPage').then(module => ({ default: module.LandingPage })));
-const SignUpPage = lazy(() => import('./pages/auth/SignUpPage').then(module => ({ default: module.SignUpPage })));
-const SignInPage = lazy(() => import('./pages/auth/SignInPage').then(module => ({ default: module.SignInPage })));
+const SignUpPage = lazy(() => import('./pages/auth/SignUpPage'));
+const SignInPage = lazy(() => import('./pages/auth/SignInPage'));
 const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPasswordPage').then(module => ({ default: module.ForgotPasswordPage })));
 const ResetPasswordPage = lazy(() => import('./pages/auth/ResetPasswordPage').then(module => ({ default: module.ResetPasswordPage })));
 
@@ -26,7 +26,7 @@ const TermsOfServicePage = lazy(() => import('./pages/legal/TermsOfServicePage')
 const PrivacyPolicyPage = lazy(() => import('./pages/legal/PrivacyPolicyPage').then(module => ({ default: module.PrivacyPolicyPage })));
 
 // Admin pages
-const AdminLoginPage = lazy(() => import('./pages/admin/AdminLoginPage').then(module => ({ default: module.AdminLoginPage })));
+const AdminLoginPage = lazy(() => import('./pages/admin/AdminLoginPage'));
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard').then(module => ({ default: module.AdminDashboard })));
 
 // Loading fallback component
@@ -101,7 +101,7 @@ function App() {
                   } 
                 />
                 
-                {/* Admin Routes */}
+                {/* Admin Routes - FIXED: Proper routing */}
                 <Route path="/admin/login" element={<AdminLoginPage />} />
                 <Route 
                   path="/admin" 
@@ -111,6 +111,7 @@ function App() {
                     </AdminProtectedRoute>
                   } 
                 />
+                {/* REMOVED: /admin/dashboard route - now redirects to /admin */}
                 
                 {/* Fallback Route */}
                 <Route path="*" element={<LandingPage />} />

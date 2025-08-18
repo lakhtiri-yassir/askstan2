@@ -1,4 +1,4 @@
-// src/pages/LandingPage.tsx
+// src/pages/LandingPage.tsx - Updated with colorful gradient AskStan text
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -69,7 +69,7 @@ export const LandingPage: React.FC = () => {
               className="text-center lg:text-left"
             >
               <h1 className="text-5xl md:text-6xl font-black text-gray-900 mb-6 leading-tight">
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-yellow-500">
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-500 via-purple-600 via-pink-500 to-orange-400">
                   AskStan!
                 </span>
                 <br />
@@ -139,7 +139,7 @@ export const LandingPage: React.FC = () => {
             className="text-center mb-16"
           >
             <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-              What <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-yellow-500">AskStan!</span> Can Do
+              What <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-500 via-purple-600 via-pink-500 to-orange-400">AskStan!</span> Can Do
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
               Your personal AI coach for social media growth, content creation, and audience monetization
@@ -173,7 +173,7 @@ export const LandingPage: React.FC = () => {
 
       {/* Pricing Section */}
       <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-gray-50 to-blue-50">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-5xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -184,51 +184,44 @@ export const LandingPage: React.FC = () => {
             <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
               Simple, Transparent Pricing
             </h2>
-            <p className="text-xl text-gray-600">
-              Start with a 3-day free trial, then choose the plan that works for you
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              Choose the plan that works best for your growth goals. Start with a free trial and cancel anytime.
             </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-2 gap-8">
+          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
             {/* Monthly Plan */}
             <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8 }}
               viewport={{ once: true }}
-              className="bg-white rounded-2xl p-8 shadow-xl border border-gray-200 relative"
+              className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100 relative"
             >
               <div className="text-center mb-8">
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">Monthly Plan</h3>
-                <div className="text-5xl font-black text-gray-900 mb-2">
-                  $19<span className="text-2xl text-gray-500">.95</span>
+                <h3 className="text-2xl font-bold text-gray-900 mb-4">Monthly Plan</h3>
+                <div className="text-4xl font-black text-gray-900 mb-2">
+                  $4.99<span className="text-lg font-medium text-gray-600">/month</span>
                 </div>
-                <p className="text-gray-600">per month</p>
-                <div className="mt-4 bg-blue-50 text-blue-700 px-4 py-2 rounded-lg text-sm font-medium">
-                  3-Day Free Trial
-                </div>
+                <p className="text-gray-600">Perfect for getting started</p>
               </div>
 
               <ul className="space-y-4 mb-8">
                 <li className="flex items-center">
                   <Check className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
-                  <span className="text-gray-700">AI-powered social media coaching</span>
+                  <span>AI-powered social media coaching</span>
                 </li>
                 <li className="flex items-center">
                   <Check className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
-                  <span className="text-gray-700">Content creation for all platforms</span>
+                  <span>Multi-platform support</span>
                 </li>
                 <li className="flex items-center">
                   <Check className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
-                  <span className="text-gray-700">Profile optimization strategies</span>
+                  <span>Growth analytics dashboard</span>
                 </li>
                 <li className="flex items-center">
                   <Check className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
-                  <span className="text-gray-700">Monetization guidance</span>
-                </li>
-                <li className="flex items-center">
-                  <Check className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
-                  <span className="text-gray-700">24/7 AI chat support</span>
+                  <span>24/7 AI chat support</span>
                 </li>
               </ul>
 
@@ -239,27 +232,26 @@ export const LandingPage: React.FC = () => {
               </Link>
             </motion.div>
 
-            {/* Annual Plan */}
+            {/* Yearly Plan */}
             <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
+              initial={{ opacity: 0, x: 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8 }}
               viewport={{ once: true }}
-              className="bg-gradient-to-br from-blue-600 to-yellow-500 rounded-2xl p-8 shadow-xl text-white relative overflow-hidden"
+              className="bg-gradient-to-br from-blue-600 to-yellow-500 rounded-2xl shadow-xl p-8 text-white relative"
             >
-              <div className="absolute top-4 right-4 bg-yellow-400 text-blue-900 px-3 py-1 rounded-full text-sm font-bold">
-                40% OFF
+              <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                <span className="bg-yellow-400 text-blue-900 px-4 py-1 rounded-full text-sm font-bold">
+                  BEST VALUE
+                </span>
               </div>
 
               <div className="text-center mb-8">
-                <h3 className="text-2xl font-bold mb-2">Annual Plan</h3>
-                <div className="text-5xl font-black mb-2">
-                  $143<span className="text-2xl opacity-80">.95</span>
+                <h3 className="text-2xl font-bold mb-4">Yearly Plan</h3>
+                <div className="text-4xl font-black mb-2">
+                  $49.99<span className="text-lg font-medium text-blue-100">/year</span>
                 </div>
-                <p className="opacity-90">per year</p>
-                <div className="mt-4 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg text-sm font-medium">
-                  3-Day Free Trial + Save 40%
-                </div>
+                <p className="text-blue-100">Save 17% with annual billing</p>
               </div>
 
               <ul className="space-y-4 mb-8">
