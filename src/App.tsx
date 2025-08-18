@@ -10,8 +10,8 @@ import { LoadingSpinner } from './components/ui/LoadingSpinner';
 
 // Lazy load pages for better performance - ALL NOW HAVE PROPER DEFAULT EXPORTS
 const LandingPage = lazy(() => import('./pages/LandingPage').then(module => ({ default: module.LandingPage })));
-const SignUpPage = lazy(() => import('./pages/auth/SignUpPage'));
-const SignInPage = lazy(() => import('./pages/auth/SignInPage'));
+const SignUpPage = lazy(() => import('./pages/auth/SignUpPage').then(module => ({ default: module.SignUpPage })));
+const SignInPage = lazy(() => import('./pages/auth/SignInPage').then(module => ({ default: module.SignInPage })));
 const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPasswordPage').then(module => ({ default: module.ForgotPasswordPage })));
 const ResetPasswordPage = lazy(() => import('./pages/auth/ResetPasswordPage').then(module => ({ default: module.ResetPasswordPage })));
 
