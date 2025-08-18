@@ -1,4 +1,4 @@
-// src/components/layout/Header.tsx - Fixed with Logo and Proper Navigation
+// src/components/layout/Header.tsx - FIXED: All hooks called before early returns
 import React, { useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -9,18 +9,11 @@ import { shouldLoadChatbot, removeChatbot } from '../../config/chatbot';
 import askstanLogo from '../../img/askstanlogo.png';
 
 export const Header: React.FC = () => {
+  // CRITICAL FIX: ALL HOOKS MUST BE CALLED FIRST - BEFORE ANY CONDITIONAL LOGIC
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const { user, signOut, subscriptionStatus } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-
-  const isAuthPage = ['/signin', '/signup', '/forgot-password', '/reset-password'].includes(location.pathname);
-  const isLegalPage = ['/terms', '/privacy'].includes(location.pathname);
-  
-  // Hide header on auth pages and legal pages
-  if (isAuthPage || isLegalPage) {
-    return null;
-  }
 
   // Handle chatbot loading/removal based on current page
   useEffect(() => {
@@ -32,6 +25,15 @@ export const Header: React.FC = () => {
       removeChatbot();
     }
   }, [location.pathname]);
+
+  // CONDITIONAL LOGIC AFTER ALL HOOKS ARE CALLED
+  const isAuthPage = ['/signin', '/signup', '/forgot-password', '/reset-password'].includes(location.pathname);
+  const isLegalPage = ['/terms', '/privacy'].includes(location.pathname);
+  
+  // NOW it's safe to return early - all hooks have been called
+  if (isAuthPage || isLegalPage) {
+    return null;
+  }
 
   const handleSignOut = async () => {
     try {
