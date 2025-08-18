@@ -2,7 +2,7 @@
 
 A modern SaaS platform that helps users grow their social media presence with AI-powered coaching and strategies.
 
-## 🌟 Features :
+## 🌟 Features 
 
 - **Complete Authentication System**: Sign up, sign in, email confirmation, password reset
 - **Subscription Plans**: Monthly ($4.99) and Yearly ($49.99) plans with Stripe integration
