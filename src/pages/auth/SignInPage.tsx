@@ -1,4 +1,4 @@
-// src/pages/auth/SignInPage.tsx - FIXED: Ensures hooks are always called in same order
+// src/pages/auth/SignInPage.tsx - FIXED: Icons passed as JSX elements
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -142,7 +142,7 @@ export const SignInPage: React.FC = () => {
               value={formData.email}
               onChange={handleInputChange('email')}
               error={errors.email}
-              icon={Mail}
+              icon={<Mail />}
               autoComplete="email"
               autoFocus
             />
@@ -160,7 +160,7 @@ export const SignInPage: React.FC = () => {
               value={formData.password}
               onChange={handleInputChange('password')}
               error={errors.password}
-              icon={Lock}
+              icon={<Lock />}
               autoComplete="current-password"
             />
           </motion.div>
