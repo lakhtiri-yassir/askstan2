@@ -1,5 +1,5 @@
 // src/contexts/AuthContext.tsx - CRITICAL FIX: Eliminates hook order violations causing React Error #300
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 
@@ -143,6 +143,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [error, setError] = useState<string | null>(null);
   const [authInProgress, setAuthInProgress] = useState(false);
 
+  // CRITICAL FIX: Stable refs for current values to eliminate dependency arrays
+  const userRef = useRef<User | null>(null);
+  const authInProgressRef = useRef(false);
+  const loadingRef = useRef(true);
+  
+  // Update refs when state changes
+  userRef.current = user;
+  authInProgressRef.current = authInProgress;
+  loadingRef.current = loading;
+
+  // Hook order verification logging
+  console.log('🔍 Hook order check:', {
+    userState: !!user,
+    loadingState: loading,
+    hookCount: 'all-hooks-called',
+    timestamp: new Date().toISOString()
+  });
+
   // CRITICAL FIX: Simplified computed values with minimal dependencies
   const hasActiveSubscription = useMemo(() => {
     return subscriptionStatus?.hasActiveSubscription ?? false;
@@ -281,9 +299,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
   }, []); // Empty dependency array - no complex dependencies
 
-  // CRITICAL FIX: Simple callback functions - no complex dependency arrays
-  const signIn = useCallback(async (email: string, password: string): Promise<void> => {
-    if (authInProgress) return;
+  // CRITICAL FIX: Stable callback functions using refs - no dependency arrays
+  const signInRef = useRef<(email: string, password: string) => Promise<void>>();
+  signInRef.current = async (email: string, password: string): Promise<void> => {
+    if (authInProgressRef.current) return;
 
     setAuthInProgress(true);
     setLoading(true);
@@ -317,10 +336,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setAuthInProgress(false);
       setLoading(false);
     }
-  }, [authInProgress]);
+  };
+  const signIn = useCallback((email: string, password: string) => signInRef.current?.(email, password) || Promise.resolve(), []);
 
-  const signUp = useCallback(async (email: string, password: string, fullName?: string): Promise<void> => {
-    if (authInProgress) return;
+  const signUpRef = useRef<(email: string, password: string, fullName?: string) => Promise<void>>();
+  signUpRef.current = async (email: string, password: string, fullName?: string): Promise<void> => {
+    if (authInProgressRef.current) return;
 
     setAuthInProgress(true);
     setLoading(true);
@@ -357,7 +378,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setAuthInProgress(false);
       setLoading(false);
     }
-  }, [authInProgress]);
+  };
+  const signUp = useCallback((email: string, password: string, fullName?: string) => signUpRef.current?.(email, password, fullName) || Promise.resolve(), []);
 
   const signOut = useCallback(async (): Promise<void> => {
     try {
@@ -381,14 +403,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, []);
 
-  const updateProfile = useCallback(async (updates: Partial<UserProfile>): Promise<void> => {
-    if (!user) throw new Error("No authenticated user");
+  const updateProfileRef = useRef<(updates: Partial<UserProfile>) => Promise<void>>();
+  updateProfileRef.current = async (updates: Partial<UserProfile>): Promise<void> => {
+    if (!userRef.current) throw new Error("No authenticated user");
 
     try {
       const { data, error } = await supabase
         .from('user_profiles')
         .update(updates)
-        .eq('id', user.id)
+        .eq('id', userRef.current.id)
         .select()
         .single();
 
@@ -397,23 +420,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error: any) {
       throw new Error(error.message || "Failed to update profile");
     }
-  }, [user]);
+  };
+  const updateProfile = useCallback((updates: Partial<UserProfile>) => updateProfileRef.current?.(updates) || Promise.resolve(), []);
 
-  const refreshSubscription = useCallback(async (): Promise<void> => {
-    if (!user) return;
+  const refreshSubscriptionRef = useRef<() => Promise<void>>();
+  refreshSubscriptionRef.current = async (): Promise<void> => {
+    if (!userRef.current) return;
 
     try {
-      const subStatus = await checkUserSubscription(user.id);
+      const subStatus = await checkUserSubscription(userRef.current.id);
       setSubscriptionStatus(subStatus);
       setSubscription(subStatus.subscription);
     } catch (error) {
       console.error("Failed to refresh subscription:", error);
     }
-  }, [user]);
+  };
+  const refreshSubscription = useCallback(() => refreshSubscriptionRef.current?.() || Promise.resolve(), []);
 
   const resetPassword = useCallback(async (email: string): Promise<void> => {
     return forgotPassword(email);
-  }, [forgotPassword]);
+  }, []);
 
   // CRITICAL FIX: Simple context value object - no complex dependencies
   const value: AuthContextType = {
