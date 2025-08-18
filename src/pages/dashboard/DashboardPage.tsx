@@ -1,4 +1,4 @@
-// src/pages/dashboard/DashboardPage.tsx - Updated with large AskStan banner
+// src/pages/dashboard/DashboardPage.tsx - Restored Original Layout with Banner in Chatbot
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { MessageSquare, Sparkles, Settings, AlertCircle, CheckCircle } from 'lucide-react';
@@ -126,152 +126,110 @@ export const DashboardPage: React.FC = () => {
   return (
     <DashboardErrorBoundary>
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50">
-        {/* Dashboard Header */}
-        <div className="bg-white/90 backdrop-blur-lg shadow-lg border-b border-gray-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              className="flex flex-col sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                  Welcome back, {displayName}! 👋
-                </h1>
-                <p className="text-gray-600">
-                  Your AI social media coach is ready to help you grow your presence
-                </p>
-              </div>
-              <div className="mt-4 sm:mt-0">
-                <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-green-100 to-blue-100 rounded-full">
-                  <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
-                  <span className="text-sm font-medium text-green-800">
-                    {subscriptionStatus?.status === 'active' ? 'Premium Active' : 'Account Active'}
-                  </span>
-                </div>
-              </div>
-            </motion.div>
+        {/* Welcome Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="bg-white/90 backdrop-blur-lg shadow-lg border-b border-gray-200 py-8"
+        >
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">
+              Welcome back, {displayName}! 👋
+            </h1>
+            <p className="text-xl text-gray-600 mb-6">
+              Your AI social media coach is ready to help you grow your presence
+            </p>
+            
+            <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-green-100 to-blue-100 rounded-full">
+              <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
+              <span className="text-sm font-medium text-green-800">
+                {subscriptionStatus?.status === 'active' ? 'Premium Active' : 'Account Active'}
+              </span>
+            </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Main Dashboard Content */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            
-            {/* Left Sidebar - Quick Stats */}
-            <div className="lg:col-span-1">
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-                className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl p-6 border border-gray-200"
-              >
-                <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
-                  <Sparkles className="w-6 h-6 text-yellow-500 mr-2" />
-                  Quick Actions
-                </h2>
-                
-                <div className="space-y-4">
-                  <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-4">
-                    <h3 className="font-semibold text-gray-900 mb-2">AI Content Coach</h3>
-                    <p className="text-sm text-gray-600 mb-3">
-                      Get personalized strategies for your social media growth
-                    </p>
-                    <div className="inline-flex items-center text-blue-600 text-sm font-medium">
-                      <MessageSquare className="w-4 h-4 mr-1" />
-                      Chat with Stan
-                    </div>
-                  </div>
-
-                  <div className="bg-gradient-to-r from-green-50 to-yellow-50 rounded-xl p-4">
-                    <h3 className="font-semibold text-gray-900 mb-2">Growth Analytics</h3>
-                    <p className="text-sm text-gray-600 mb-3">
-                      Track your progress and optimize your strategy
-                    </p>
-                    <div className="inline-flex items-center text-green-600 text-sm font-medium">
-                      <Settings className="w-4 h-4 mr-1" />
-                      View Analytics
-                    </div>
-                  </div>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* AI Coach Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl border border-gray-200 overflow-hidden mb-8"
+          >
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-500 to-yellow-500 px-6 py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className="w-3 h-3 bg-green-400 rounded-full mr-3 animate-pulse"></div>
+                  <h2 className="text-white font-bold text-xl flex items-center">
+                    <MessageSquare className="w-6 h-6 mr-2" />
+                    AskStan! AI Coach
+                  </h2>
                 </div>
-              </motion.div>
+                <div className="text-white/80 text-sm">
+                  24/7 Available
+                </div>
+              </div>
             </div>
 
-            {/* Main Chatbot Area */}
-            <div className="lg:col-span-2">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.1 }}
-                className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl border border-gray-200 overflow-hidden"
-                style={{ minHeight: '600px' }}
-              >
-                {/* Chatbot Header */}
-                <div className="bg-gradient-to-r from-blue-500 to-yellow-500 px-6 py-4">
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 bg-green-400 rounded-full mr-2 animate-pulse"></div>
-                    <h2 className="text-white font-bold text-lg">AskStan! AI Coach</h2>
-                  </div>
-                </div>
-
-                {/* Chatbot Container with Large Banner */}
-                <div 
-                  id="chatbot-container" 
-                  className="relative w-full h-full flex flex-col items-center justify-center p-8"
-                  style={{ minHeight: '500px' }}
+            {/* Chatbot Container with Large Banner */}
+            <div 
+              id="chatbot-container" 
+              className="relative w-full bg-white"
+              style={{ minHeight: '500px' }}
+            >
+              {/* Large AskStan Banner as Default Content */}
+              <div className="flex flex-col items-center justify-center text-center p-8 h-full min-h-[500px]">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.8, delay: 0.3 }}
                 >
-                  {/* Large AskStan Banner */}
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.8, delay: 0.3 }}
-                    className="flex flex-col items-center justify-center text-center"
-                  >
-                    <img
-                      src={askstanBanner}
-                      alt="AskStan! AI Social Media Coach"
-                      className="w-80 h-80 md:w-96 md:h-96 lg:w-[28rem] lg:h-[28rem] xl:w-[32rem] xl:h-[32rem] object-contain mb-6"
-                      style={{ maxWidth: '90%', maxHeight: '400px' }}
-                    />
+                  <img
+                    src={askstanBanner}
+                    alt="AskStan! AI Social Media Coach"
+                    className="w-72 h-72 md:w-80 md:h-80 lg:w-96 lg:h-96 object-contain mb-6 mx-auto"
+                  />
+                  
+                  <div className="max-w-md mx-auto">
+                    <h3 className="text-2xl font-bold text-gray-900 mb-3">
+                      Your AI Coach is Ready!
+                    </h3>
+                    <p className="text-gray-600 mb-4">
+                      Start a conversation with Stan to get personalized social media strategies, 
+                      content ideas, and growth tips tailored just for you.
+                    </p>
                     
-                    <div className="max-w-md">
-                      <h3 className="text-2xl font-bold text-gray-900 mb-3">
-                        Your AI Coach is Ready!
-                      </h3>
-                      <p className="text-gray-600 mb-4">
-                        Start a conversation with Stan to get personalized social media strategies, 
-                        content ideas, and growth tips tailored just for you.
-                      </p>
-                      
-                      {chatbotError && (
-                        <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
-                          <p className="text-red-700 text-sm">{chatbotError}</p>
-                        </div>
-                      )}
-                      
-                      {!chatbotLoaded && !chatbotError && (
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-                          <p className="text-blue-700 text-sm">Loading your AI coach...</p>
-                        </div>
-                      )}
-                      
-                      <div className="text-xs text-gray-500">
-                        Powered by Advanced AI Technology
+                    {chatbotError && (
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                        <p className="text-red-700 text-sm">{chatbotError}</p>
                       </div>
+                    )}
+                    
+                    {!chatbotLoaded && !chatbotError && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                        <p className="text-blue-700 text-sm">Loading your AI coach...</p>
+                      </div>
+                    )}
+                    
+                    <div className="text-xs text-gray-500">
+                      Powered by Advanced AI Technology
                     </div>
-                  </motion.div>
-                </div>
-              </motion.div>
+                  </div>
+                </motion.div>
+              </div>
             </div>
-          </div>
+          </motion.div>
 
-          {/* Bottom Stats Section */}
+          {/* Quick Stats */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.4 }}
-            className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8"
+            className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"
           >
             <div className="bg-white/80 backdrop-blur-lg rounded-xl shadow-lg p-6 text-center border border-gray-200">
               <div className="text-3xl font-bold text-blue-600 mb-2">24/7</div>
@@ -286,6 +244,53 @@ export const DashboardPage: React.FC = () => {
             <div className="bg-white/80 backdrop-blur-lg rounded-xl shadow-lg p-6 text-center border border-gray-200">
               <div className="text-3xl font-bold text-purple-600 mb-2">🚀</div>
               <div className="text-gray-600">Growth Accelerated</div>
+            </div>
+          </motion.div>
+
+          {/* Features Overview */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.6 }}
+            className="bg-white/80 backdrop-blur-lg rounded-xl shadow-lg p-6 border border-gray-200"
+          >
+            <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+              <Sparkles className="w-6 h-6 text-yellow-500 mr-2" />
+              What You Can Do
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-start space-x-3">
+                <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                <div>
+                  <h4 className="font-semibold text-gray-900">Content Strategy</h4>
+                  <p className="text-sm text-gray-600">Get personalized content plans for all platforms</p>
+                </div>
+              </div>
+              
+              <div className="flex items-start space-x-3">
+                <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
+                <div>
+                  <h4 className="font-semibold text-gray-900">Growth Analytics</h4>
+                  <p className="text-sm text-gray-600">Track and optimize your social media performance</p>
+                </div>
+              </div>
+              
+              <div className="flex items-start space-x-3">
+                <div className="w-2 h-2 bg-purple-500 rounded-full mt-2"></div>
+                <div>
+                  <h4 className="font-semibold text-gray-900">Content Creation</h4>
+                  <p className="text-sm text-gray-600">Generate engaging posts and captions</p>
+                </div>
+              </div>
+              
+              <div className="flex items-start space-x-3">
+                <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2"></div>
+                <div>
+                  <h4 className="font-semibold text-gray-900">Audience Insights</h4>
+                  <p className="text-sm text-gray-600">Understand and grow your target audience</p>
+                </div>
+              </div>
             </div>
           </motion.div>
         </div>

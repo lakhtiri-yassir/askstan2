@@ -120,11 +120,10 @@ export const AdminDashboard: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      // Load all data in parallel
-      await Promise.all([
-        loadUsers(),
-        loadAdmins(),
-      ]);
+      // Load users and stats together
+      const userData = await loadUsers();
+      await loadAdmins();
+      // Stats are calculated in loadUsers, no need for separate call
     } catch (error) {
       console.error('Error loading data:', error);
       showNotification('error', 'Failed to load dashboard data');
@@ -221,7 +220,50 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  // Settings handlers
+  // User management functions
+  const handleEditUser = (userId: string) => {
+    // TODO: Implement edit user functionality
+    showNotification('info', 'Edit user functionality coming soon');
+  };
+
+  const handleDeleteUser = async (userId: string, userEmail: string) => {
+    if (!confirm(`Are you sure you want to delete user: ${userEmail}?`)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      // Delete user's subscription first (if exists)
+      const { error: subscriptionError } = await supabase
+        .from('subscriptions')
+        .delete()
+        .eq('user_id', userId);
+
+      if (subscriptionError) {
+        console.warn('Error deleting subscription:', subscriptionError);
+      }
+
+      // Delete user profile
+      const { error: profileError } = await supabase
+        .from('user_profiles')
+        .delete()
+        .eq('id', userId);
+
+      if (profileError) throw profileError;
+
+      showNotification('success', `User ${userEmail} deleted successfully`);
+      
+      // Reload data
+      await loadData();
+      
+    } catch (error: any) {
+      console.error('Error deleting user:', error);
+      showNotification('error', error.message || 'Failed to delete user');
+    } finally {
+      setLoading(false);
+    }
+  };
   const handleSettingsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSettingsLoading(true);
@@ -676,10 +718,18 @@ export const AdminDashboard: React.FC = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex space-x-2">
-                            <button className="text-blue-600 hover:text-blue-900">
+                            <button 
+                              onClick={() => handleEditUser(user.id)}
+                              className="text-blue-600 hover:text-blue-900 p-1 rounded"
+                              title="Edit User"
+                            >
                               <Edit className="w-4 h-4" />
                             </button>
-                            <button className="text-red-600 hover:text-red-900">
+                            <button 
+                              onClick={() => handleDeleteUser(user.id, user.email)}
+                              className="text-red-600 hover:text-red-900 p-1 rounded"
+                              title="Delete User"
+                            >
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
