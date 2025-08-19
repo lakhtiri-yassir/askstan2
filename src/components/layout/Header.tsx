@@ -1,4 +1,4 @@
-// src/components/layout/Header.tsx - FIXED: All hooks called before early returns
+// src/components/layout/Header.tsx - FIXED: Consistent subscription status checking
 import React, { useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -11,7 +11,10 @@ import askstanLogo from '../../img/askstanlogo.png';
 export const Header: React.FC = () => {
   // CRITICAL FIX: ALL HOOKS MUST BE CALLED FIRST - BEFORE ANY CONDITIONAL LOGIC
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
-  const { user, signOut, subscriptionStatus } = useAuth();
+  
+  // CRITICAL FIX: Use hasActiveSubscription from AuthContext instead of custom logic
+  // This ensures consistency with ProtectedRoute logic
+  const { user, signOut, hasActiveSubscription } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -46,7 +49,10 @@ export const Header: React.FC = () => {
     }
   };
 
-  const hasActiveSubscription = subscriptionStatus?.status === 'active';
+  // CRITICAL FIX: Use the same subscription logic as ProtectedRoute
+  // This was the root cause - Header was using subscriptionStatus?.status === 'active'
+  // while ProtectedRoute was using hasActiveSubscription (which includes 'trialing')
+  // Now both use the same logic from AuthContext
 
   return (
     <motion.header
@@ -173,7 +179,7 @@ export const Header: React.FC = () => {
                     }}
                     variant="outline"
                     size="sm"
-                    className="w-full justify-center"
+                    className="flex items-center w-full"
                   >
                     <LogOut className="w-4 h-4 mr-2" />
                     Sign Out

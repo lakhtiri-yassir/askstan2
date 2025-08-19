@@ -1,6 +1,6 @@
-// src/pages/auth/SignInPage.tsx - FIXED: Removed problematic redirect
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+// src/pages/auth/SignInPage.tsx - COMPLETE FIX: Proper post-signin routing
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Lock, ArrowRight } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -19,7 +19,9 @@ interface FormErrors {
 }
 
 export const SignInPage: React.FC = () => {
-  const { signIn, loading } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { signIn, loading, user, hasActiveSubscription, initialized } = useAuth();
   
   const [formData, setFormData] = useState<FormData>({
     email: '',
@@ -29,13 +31,26 @@ export const SignInPage: React.FC = () => {
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // CRITICAL FIX: Removed the problematic useEffect that was immediately redirecting ALL users to /dashboard
-  // This was causing the routing issue where subscribed users were redirected to /plans
-  // Now the natural flow will work:
-  // 1. User signs in
-  // 2. AuthContext loads user data and subscription status
-  // 3. ProtectedRoute components handle appropriate redirects based on subscription status
-  // 4. Users with subscriptions go to /dashboard, users without go to /plans
+  // CRITICAL FIX: Proper post-signin routing logic
+  useEffect(() => {
+    // Only redirect if we have a user AND auth is fully initialized
+    if (user && initialized) {
+      // Check if there's a redirect location from ProtectedRoute
+      const from = (location.state as any)?.from?.pathname;
+      
+      if (from && from !== '/signin') {
+        // User was redirected here from a protected route - go back there
+        navigate(from, { replace: true });
+      } else {
+        // Normal sign-in flow - route based on subscription status
+        if (hasActiveSubscription) {
+          navigate('/dashboard', { replace: true });
+        } else {
+          navigate('/plans', { replace: true });
+        }
+      }
+    }
+  }, [user, hasActiveSubscription, initialized, navigate, location.state]);
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
@@ -92,10 +107,8 @@ export const SignInPage: React.FC = () => {
       
       await signIn(formData.email, formData.password);
       
-      console.log("✅ Sign in successful - letting routing system handle redirect");
-      // CRITICAL FIX: No manual navigation here - let the app routing system handle redirects
-      // The ProtectedRoute components will automatically redirect users to the appropriate page
-      // based on their subscription status
+      console.log("✅ Sign in successful - routing will be handled by useEffect");
+      // Navigation will be handled by the useEffect above when user state updates
       
     } catch (error: any) {
       console.error('Sign in failed:', error);
