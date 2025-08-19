@@ -1,6 +1,6 @@
-// src/pages/auth/SignInPage.tsx - FIXED: Icons passed as JSX elements
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+// src/pages/auth/SignInPage.tsx - FIXED: Removed problematic redirect
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Lock, ArrowRight } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -19,9 +19,7 @@ interface FormErrors {
 }
 
 export const SignInPage: React.FC = () => {
-  // CRITICAL FIX: All hooks must be called at the top level, in the same order every time
-  const navigate = useNavigate();
-  const { signIn, loading, user } = useAuth();
+  const { signIn, loading } = useAuth();
   
   const [formData, setFormData] = useState<FormData>({
     email: '',
@@ -29,16 +27,15 @@ export const SignInPage: React.FC = () => {
   });
 
   const [errors, setErrors] = useState<FormErrors>({});
-  
-  // CRITICAL FIX: Add local loading state to prevent double submissions
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // CRITICAL FIX: Handle user redirect without early returns
-  useEffect(() => {
-    if (user) {
-      navigate('/dashboard', { replace: true });
-    }
-  }, [user, navigate]);
+  // CRITICAL FIX: Removed the problematic useEffect that was immediately redirecting ALL users to /dashboard
+  // This was causing the routing issue where subscribed users were redirected to /plans
+  // Now the natural flow will work:
+  // 1. User signs in
+  // 2. AuthContext loads user data and subscription status
+  // 3. ProtectedRoute components handle appropriate redirects based on subscription status
+  // 4. Users with subscriptions go to /dashboard, users without go to /plans
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
@@ -79,7 +76,7 @@ export const SignInPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // CRITICAL FIX: Prevent double submissions
+    // Prevent double submissions
     if (isSubmitting || loading) {
       console.log("⏸️ Sign in already in progress");
       return;
@@ -95,8 +92,11 @@ export const SignInPage: React.FC = () => {
       
       await signIn(formData.email, formData.password);
       
-      console.log("✅ Sign in successful, redirecting...");
-      // Navigation will be handled by useEffect when user state updates
+      console.log("✅ Sign in successful - letting routing system handle redirect");
+      // CRITICAL FIX: No manual navigation here - let the app routing system handle redirects
+      // The ProtectedRoute components will automatically redirect users to the appropriate page
+      // based on their subscription status
+      
     } catch (error: any) {
       console.error('Sign in failed:', error);
       setErrors({ submit: error.message });
@@ -105,10 +105,8 @@ export const SignInPage: React.FC = () => {
     }
   };
 
-  // CRITICAL FIX: Combined loading state
   const isLoading = loading || isSubmitting;
 
-  // CRITICAL FIX: Always render the same component structure
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center p-4">
       <motion.div
@@ -128,112 +126,85 @@ export const SignInPage: React.FC = () => {
           <p className="text-gray-600">Sign in to your AskStan! account</p>
         </motion.div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Sign In Form */}
+        <motion.form
+          onSubmit={handleSubmit}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="space-y-6"
+        >
           {/* Email Field */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <Input
-              type="email"
-              placeholder="Enter your email"
-              value={formData.email}
-              onChange={handleInputChange('email')}
-              error={errors.email}
-              icon={<Mail />}
-              autoComplete="email"
-              autoFocus
-            />
-          </motion.div>
+          <Input
+            type="email"
+            label="Email Address"
+            placeholder="Enter your email"
+            value={formData.email}
+            onChange={handleInputChange('email')}
+            error={errors.email}
+            icon={<Mail className="w-5 h-5" />}
+            disabled={isLoading}
+            required
+          />
 
           {/* Password Field */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.3 }}
-          >
-            <Input
-              type="password"
-              placeholder="Enter your password"
-              value={formData.password}
-              onChange={handleInputChange('password')}
-              error={errors.password}
-              icon={<Lock />}
-              autoComplete="current-password"
-            />
-          </motion.div>
+          <Input
+            type="password"
+            label="Password"
+            placeholder="Enter your password"
+            value={formData.password}
+            onChange={handleInputChange('password')}
+            error={errors.password}
+            icon={<Lock className="w-5 h-5" />}
+            disabled={isLoading}
+            required
+          />
 
           {/* Submit Error */}
           {errors.submit && (
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-red-50 border border-red-200 rounded-lg p-3"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-4 bg-red-50 border border-red-200 rounded-lg"
             >
-              <p className="text-red-700 text-sm text-center">{errors.submit}</p>
+              <p className="text-red-600 text-sm">{errors.submit}</p>
             </motion.div>
           )}
 
           {/* Submit Button */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
+          <Button
+            type="submit"
+            loading={isLoading}
+            className="w-full bg-gradient-to-r from-blue-500 to-yellow-500 hover:from-blue-600 hover:to-yellow-600 text-white font-semibold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
+            disabled={isLoading}
           >
-            <Button
-              type="submit"
-              className="w-full"
-              isLoading={isLoading}
-              disabled={isLoading}
-            >
-              {isLoading ? 'Signing in...' : (
-                <>
-                  Sign In
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </>
-              )}
-            </Button>
-          </motion.div>
-        </form>
+            {isLoading ? 'Signing In...' : 'Sign In'}
+            {!isLoading && <ArrowRight className="w-5 h-5 ml-2" />}
+          </Button>
 
-        {/* Forgot Password Link */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="mt-6 text-center"
-        >
-          <Link
-            to="/forgot-password"
-            className="text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors"
-          >
-            Forgot your password?
-          </Link>
-        </motion.div>
-
-        {/* Sign Up Link */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.6 }}
-          className="mt-8 text-center"
-        >
-          <p className="text-gray-600">
-            Don't have an account?{' '}
+          {/* Footer Links */}
+          <div className="text-center space-y-4">
             <Link
-              to="/signup"
-              className="text-blue-600 hover:text-blue-800 font-semibold transition-colors"
+              to="/forgot-password"
+              className="text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors"
             >
-              Sign up here
+              Forgot your password?
             </Link>
-          </p>
-        </motion.div>
+            
+            <div className="border-t pt-4">
+              <p className="text-gray-600 text-sm">
+                Don't have an account?{' '}
+                <Link
+                  to="/signup"
+                  className="text-blue-600 hover:text-blue-800 font-medium transition-colors"
+                >
+                  Sign up here
+                </Link>
+              </p>
+            </div>
+          </div>
+        </motion.form>
       </motion.div>
     </div>
   );
 };
-
-// CRITICAL FIX: Export as default to match lazy loading expectations
-export default SignInPage;
