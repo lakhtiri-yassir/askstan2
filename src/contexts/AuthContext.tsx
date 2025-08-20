@@ -54,14 +54,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
-  const [debugInfo, setDebugInfo] = useState<string[]>(['🚀 Starting auth...']); // NEW: Debug log
+  const [debugLog, setDebugLog] = useState<string[]>(['🚀 Starting auth...']); // FIXED: Renamed from debugInfo
 
   // Simple subscription check
   const hasActiveSubscription = subscription?.status === 'active' || subscription?.status === 'trialing';
 
   // Helper function to add debug messages
   const addDebug = (message: string) => {
-    setDebugInfo(prev => [...prev.slice(-4), `${new Date().toLocaleTimeString()}: ${message}`]); // Keep last 5 messages
+    setDebugLog(prev => [...prev.slice(-4), `${new Date().toLocaleTimeString()}: ${message}`]); // Keep last 5 messages
   };
 
   // Load user data function with enhanced debug panel logging
@@ -306,19 +306,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           
           <div style={{ marginBottom: '8px', borderBottom: '1px solid #333', paddingBottom: '8px' }}>
             <div style={{ color: '#ffff00' }}>CURRENT STATE:</div>
-            <div>User: {debugPanelInfo.userEmail}</div>
-            <div>Subscription: {debugPanelInfo.subscriptionStatus}</div>
-            <div>Active: <span style={{ color: debugPanelInfo.hasActiveSubscription ? '#00ff00' : '#ff0000' }}>
-              {debugPanelInfo.hasActiveSubscription.toString()}
+            <div>User: {currentDebugState.userEmail}</div>
+            <div>Subscription: {currentDebugState.subscriptionStatus}</div>
+            <div>Active: <span style={{ color: currentDebugState.hasActiveSubscription ? '#00ff00' : '#ff0000' }}>
+              {currentDebugState.hasActiveSubscription.toString()}
             </span></div>
-            <div>Loading: <span style={{ color: debugPanelInfo.loading ? '#ffff00' : '#00ff00' }}>
-              {debugPanelInfo.loading.toString()}
+            <div>Loading: <span style={{ color: currentDebugState.loading ? '#ffff00' : '#00ff00' }}>
+              {currentDebugState.loading.toString()}
             </span></div>
           </div>
           
           <div>
             <div style={{ color: '#ffff00', marginBottom: '4px' }}>RECENT ACTIVITY:</div>
-            {debugPanelInfo.debugLog.map((log, i) => (
+            {currentDebugState.debugLog.map((log, i) => (
               <div key={i} style={{ 
                 fontSize: '10px', 
                 marginBottom: '2px',
