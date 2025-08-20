@@ -54,14 +54,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
+  const [debugInfo, setDebugInfo] = useState<string[]>(['🚀 Starting auth...']); // NEW: Debug log
 
   // Simple subscription check
   const hasActiveSubscription = subscription?.status === 'active' || subscription?.status === 'trialing';
 
-  // Load user data function with better error handling
+  // Helper function to add debug messages
+  const addDebug = (message: string) => {
+    setDebugInfo(prev => [...prev.slice(-4), `${new Date().toLocaleTimeString()}: ${message}`]); // Keep last 5 messages
+  };
+
+  // Load user data function with enhanced debug panel logging
   const loadUserData = async (authUser: User) => {
     try {
-      console.log('🔄 Loading data for:', authUser.email);
+      addDebug(`🔄 Loading data for: ${authUser.email}`);
       
       // Load profile with error handling
       const { data: profileData, error: profileError } = await supabase
@@ -71,7 +77,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         .single();
 
       if (profileError) {
-        console.warn('⚠️ Profile error:', profileError);
+        addDebug(`⚠️ Profile error: ${profileError.message}`);
+      } else {
+        addDebug(`✅ Profile loaded: ${!!profileData}`);
       }
 
       // Load subscription with better query
@@ -79,37 +87,40 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         .from('subscriptions')
         .select('*')
         .eq('user_id', authUser.id)
-        .in('status', ['active', 'trialing', 'past_due']) // Include all potentially active statuses
+        .in('status', ['active', 'trialing', 'past_due'])
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
 
       if (subscriptionError) {
-        console.warn('⚠️ Subscription error:', subscriptionError);
+        addDebug(`⚠️ Subscription error: ${subscriptionError.message}`);
+      }
+
+      // Check ALL subscriptions for debugging
+      const { data: allSubs, error: allSubsError } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('user_id', authUser.id);
+      
+      if (allSubsError) {
+        addDebug(`❌ All subs query error: ${allSubsError.message}`);
+      } else {
+        addDebug(`🔍 Found ${allSubs?.length || 0} total subscriptions`);
+        if (allSubs && allSubs.length > 0) {
+          allSubs.forEach((sub, i) => {
+            addDebug(`Sub ${i + 1}: ${sub.status} (${sub.plan_type})`);
+          });
+        }
       }
 
       // Update states
       setProfile(profileData || null);
       setSubscription(subscriptionData || null);
       
-      console.log('✅ Data loaded:', {
-        userId: authUser.id.slice(0, 8),
-        profile: !!profileData,
-        subscription: !!subscriptionData,
-        subscriptionStatus: subscriptionData?.status || 'none',
-        subscriptionId: subscriptionData?.id?.slice(0, 8) || 'none'
-      });
-
-      // Also try loading ANY subscription for this user for debugging
-      const { data: allSubs, error: allSubsError } = await supabase
-        .from('subscriptions')
-        .select('*')
-        .eq('user_id', authUser.id);
-      
-      console.log('🔍 All subscriptions for user:', allSubs?.length || 0, allSubs);
+      addDebug(`✅ Final state: Profile=${!!profileData}, Sub=${subscriptionData?.status || 'none'}`);
 
     } catch (error) {
-      console.error('❌ Critical error loading user data:', error);
+      addDebug(`❌ Critical error: ${error.message}`);
       setProfile(null);
       setSubscription(null);
     }
@@ -162,10 +173,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       async (event, session) => {
         if (!mounted) return;
 
-        console.log('Auth state changed:', event);
+        addDebug(`🔄 Auth change: ${event}`);
 
         switch (event) {
           case 'SIGNED_OUT':
+            addDebug('👋 User signed out');
             setUser(null);
             setProfile(null);
             setSubscription(null);
@@ -173,6 +185,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             
           case 'SIGNED_IN':
             if (session?.user) {
+              addDebug(`🔑 User signed in: ${session.user.email}`);
               setUser(session.user);
               await loadUserData(session.user);
             }
@@ -180,6 +193,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             
           case 'TOKEN_REFRESHED':
             if (session?.user && (!user || user.id !== session.user.id)) {
+              addDebug(`🔄 Token refreshed: ${session.user.email}`);
               setUser(session.user);
               await loadUserData(session.user);
             }
@@ -207,7 +221,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const signOut = async (): Promise<void> => {
     try {
-      console.log('Signing out...');
+      addDebug('👋 Starting sign out...');
       
       // Clear state immediately
       setUser(null);
@@ -217,10 +231,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // Sign out from Supabase
       await supabase.auth.signOut();
       
+      addDebug('✅ Signed out, redirecting...');
+      
       // Redirect
       window.location.href = '/';
     } catch (error) {
-      console.error('Sign out error:', error);
+      addDebug(`❌ Sign out error: ${error.message}`);
       window.location.href = '/';
     }
   };
@@ -267,25 +283,53 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       signUp,
       refreshSubscription,
     }}>
-      {/* Debug panel - remove after fixing */}
+      {/* Enhanced debug panel with full log */}
       {true && (
         <div style={{
           position: 'fixed',
           top: '10px',
           right: '10px',
-          background: 'rgba(0,0,0,0.8)',
+          background: 'rgba(0,0,0,0.9)',
           color: 'white',
-          padding: '10px',
-          borderRadius: '5px',
-          fontSize: '12px',
+          padding: '12px',
+          borderRadius: '8px',
+          fontSize: '11px',
           zIndex: 9999,
-          fontFamily: 'monospace'
+          fontFamily: 'monospace',
+          maxWidth: '350px',
+          maxHeight: '400px',
+          overflow: 'auto'
         }}>
-          <div>🔍 AUTH DEBUG</div>
-          <div>User: {debugInfo.userEmail}</div>
-          <div>Subscription: {debugInfo.subscriptionStatus}</div>
-          <div>Active: {debugInfo.hasActiveSubscription.toString()}</div>
-          <div>Loading: {debugInfo.loading.toString()}</div>
+          <div style={{ color: '#00ff00', fontWeight: 'bold', marginBottom: '8px' }}>
+            🔍 AUTH DEBUG PANEL
+          </div>
+          
+          <div style={{ marginBottom: '8px', borderBottom: '1px solid #333', paddingBottom: '8px' }}>
+            <div style={{ color: '#ffff00' }}>CURRENT STATE:</div>
+            <div>User: {debugPanelInfo.userEmail}</div>
+            <div>Subscription: {debugPanelInfo.subscriptionStatus}</div>
+            <div>Active: <span style={{ color: debugPanelInfo.hasActiveSubscription ? '#00ff00' : '#ff0000' }}>
+              {debugPanelInfo.hasActiveSubscription.toString()}
+            </span></div>
+            <div>Loading: <span style={{ color: debugPanelInfo.loading ? '#ffff00' : '#00ff00' }}>
+              {debugPanelInfo.loading.toString()}
+            </span></div>
+          </div>
+          
+          <div>
+            <div style={{ color: '#ffff00', marginBottom: '4px' }}>RECENT ACTIVITY:</div>
+            {debugPanelInfo.debugLog.map((log, i) => (
+              <div key={i} style={{ 
+                fontSize: '10px', 
+                marginBottom: '2px',
+                color: log.includes('❌') ? '#ff0000' : 
+                      log.includes('✅') ? '#00ff00' : 
+                      log.includes('⚠️') ? '#ffaa00' : '#cccccc'
+              }}>
+                {log}
+              </div>
+            ))}
+          </div>
         </div>
       )}
       {children}
