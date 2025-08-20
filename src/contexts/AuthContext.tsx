@@ -268,7 +268,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       refreshSubscription,
     }}>
       {/* Debug panel - remove after fixing */}
-      {process.env.NODE_ENV === 'development' && (
+      {true && (
         <div style={{
           position: 'fixed',
           top: '10px',
