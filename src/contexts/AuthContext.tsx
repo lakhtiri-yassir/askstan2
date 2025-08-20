@@ -1,4 +1,4 @@
-// src/contexts/AuthContext.tsx - FIXED: Proper initialization order
+// src/contexts/AuthContext.tsx - SIMPLIFIED: Clean debug panel
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
@@ -54,22 +54,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
-  const [debugLog, setDebugLog] = useState<string[]>(['🚀 Starting auth...']); // FIXED: Renamed from debugInfo
+  const [debugLog, setDebugLog] = useState<string[]>(['🚀 Starting auth...']);
 
   // Simple subscription check
   const hasActiveSubscription = subscription?.status === 'active' || subscription?.status === 'trialing';
 
   // Helper function to add debug messages
   const addDebug = (message: string) => {
-    setDebugLog(prev => [...prev.slice(-4), `${new Date().toLocaleTimeString()}: ${message}`]); // Keep last 5 messages
+    setDebugLog(prev => [...prev.slice(-4), `${new Date().toLocaleTimeString()}: ${message}`]);
   };
 
-  // Load user data function with enhanced debug panel logging
+  // Load user data function with enhanced debug
   const loadUserData = async (authUser: User) => {
     try {
       addDebug(`🔄 Loading data for: ${authUser.email}`);
       
-      // Load profile with error handling
+      // Load profile
       const { data: profileData, error: profileError } = await supabase
         .from('user_profiles')
         .select('*')
@@ -82,7 +82,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         addDebug(`✅ Profile loaded: ${!!profileData}`);
       }
 
-      // Load subscription with better query
+      // Load subscription
       const { data: subscriptionData, error: subscriptionError } = await supabase
         .from('subscriptions')
         .select('*')
@@ -103,9 +103,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         .eq('user_id', authUser.id);
       
       if (allSubsError) {
-        addDebug(`❌ All subs query error: ${allSubsError.message}`);
+        addDebug(`❌ All subs error: ${allSubsError.message}`);
       } else {
-        addDebug(`🔍 Found ${allSubs?.length || 0} total subscriptions`);
+        addDebug(`🔍 Found ${allSubs?.length || 0} total subs`);
         if (allSubs && allSubs.length > 0) {
           allSubs.forEach((sub, i) => {
             addDebug(`Sub ${i + 1}: ${sub.status} (${sub.plan_type})`);
@@ -117,7 +117,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setProfile(profileData || null);
       setSubscription(subscriptionData || null);
       
-      addDebug(`✅ Final state: Profile=${!!profileData}, Sub=${subscriptionData?.status || 'none'}`);
+      addDebug(`✅ Final: Profile=${!!profileData}, Sub=${subscriptionData?.status || 'none'}`);
 
     } catch (error) {
       addDebug(`❌ Critical error: ${error.message}`);
@@ -126,46 +126,43 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Initialize auth - FIXED ORDER
+  // Initialize auth
   useEffect(() => {
     let mounted = true;
 
     const initialize = async () => {
       try {
-        // Get current session
+        addDebug('🔍 Getting session...');
+        
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
-          console.error('Session error:', error);
+          addDebug(`❌ Session error: ${error.message}`);
         }
 
         if (mounted) {
           if (session?.user) {
-            console.log('👤 Found user in session:', session.user.email);
+            addDebug(`👤 Found user: ${session.user.email}`);
             setUser(session.user);
-            // Load user data and wait for completion
             await loadUserData(session.user);
           } else {
-            console.log('🚫 No user in session');
+            addDebug('🚫 No user in session');
             setUser(null);
             setProfile(null);
             setSubscription(null);
           }
           
-          // CRITICAL: Always set loading to false after data loading completes
-          console.log('✅ Setting loading to false');
+          addDebug('✅ Setting loading to false');
           setLoading(false);
         }
-              } catch (error) {
-        console.error('❌ Auth initialization error:', error);
+      } catch (error) {
+        addDebug(`❌ Init error: ${error.message}`);
         if (mounted) {
-          console.log('✅ Setting loading to false due to error');
-          setLoading(false); // Set loading false even on error
+          setLoading(false);
         }
       }
     };
 
-    // Start initialization
     initialize();
 
     // Listen for auth state changes
@@ -206,7 +203,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       mounted = false;
       authSub.unsubscribe();
     };
-  }, []); // Empty dependency array - only run once
+  }, []);
 
   const signIn = async (email: string, password: string): Promise<void> => {
     const { error } = await supabase.auth.signInWithPassword({
@@ -223,17 +220,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       addDebug('👋 Starting sign out...');
       
-      // Clear state immediately
       setUser(null);
       setProfile(null);
       setSubscription(null);
       
-      // Sign out from Supabase
       await supabase.auth.signOut();
       
       addDebug('✅ Signed out, redirecting...');
-      
-      // Redirect
       window.location.href = '/';
     } catch (error) {
       addDebug(`❌ Sign out error: ${error.message}`);
@@ -261,16 +254,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Debug current state - visible in UI
-  const debugInfo = {
-    user: !!user,
-    userEmail: user?.email || 'none',
-    hasSubscription: !!subscription,
-    subscriptionStatus: subscription?.status || 'none',
-    hasActiveSubscription,
-    loading
-  };
-
   return (
     <AuthContext.Provider value={{
       user,
@@ -283,55 +266,53 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       signUp,
       refreshSubscription,
     }}>
-      {/* Enhanced debug panel with full log */}
-      {true && (
-        <div style={{
-          position: 'fixed',
-          top: '10px',
-          right: '10px',
-          background: 'rgba(0,0,0,0.9)',
-          color: 'white',
-          padding: '12px',
-          borderRadius: '8px',
-          fontSize: '11px',
-          zIndex: 9999,
-          fontFamily: 'monospace',
-          maxWidth: '350px',
-          maxHeight: '400px',
-          overflow: 'auto'
-        }}>
-          <div style={{ color: '#00ff00', fontWeight: 'bold', marginBottom: '8px' }}>
-            🔍 AUTH DEBUG PANEL
-          </div>
-          
-          <div style={{ marginBottom: '8px', borderBottom: '1px solid #333', paddingBottom: '8px' }}>
-            <div style={{ color: '#ffff00' }}>CURRENT STATE:</div>
-            <div>User: {currentDebugState.userEmail}</div>
-            <div>Subscription: {currentDebugState.subscriptionStatus}</div>
-            <div>Active: <span style={{ color: currentDebugState.hasActiveSubscription ? '#00ff00' : '#ff0000' }}>
-              {currentDebugState.hasActiveSubscription.toString()}
-            </span></div>
-            <div>Loading: <span style={{ color: currentDebugState.loading ? '#ffff00' : '#00ff00' }}>
-              {currentDebugState.loading.toString()}
-            </span></div>
-          </div>
-          
-          <div>
-            <div style={{ color: '#ffff00', marginBottom: '4px' }}>RECENT ACTIVITY:</div>
-            {currentDebugState.debugLog.map((log, i) => (
-              <div key={i} style={{ 
-                fontSize: '10px', 
-                marginBottom: '2px',
-                color: log.includes('❌') ? '#ff0000' : 
-                      log.includes('✅') ? '#00ff00' : 
-                      log.includes('⚠️') ? '#ffaa00' : '#cccccc'
-              }}>
-                {log}
-              </div>
-            ))}
-          </div>
+      {/* DEBUG PANEL - Shows everything we need */}
+      <div style={{
+        position: 'fixed',
+        top: '10px',
+        right: '10px',
+        background: 'rgba(0,0,0,0.9)',
+        color: 'white',
+        padding: '12px',
+        borderRadius: '8px',
+        fontSize: '11px',
+        zIndex: 9999,
+        fontFamily: 'monospace',
+        maxWidth: '350px',
+        maxHeight: '400px',
+        overflow: 'auto'
+      }}>
+        <div style={{ color: '#00ff00', fontWeight: 'bold', marginBottom: '8px' }}>
+          🔍 AUTH DEBUG
         </div>
-      )}
+        
+        <div style={{ marginBottom: '8px', borderBottom: '1px solid #333', paddingBottom: '8px' }}>
+          <div style={{ color: '#ffff00' }}>CURRENT STATE:</div>
+          <div>User: {user?.email || 'none'}</div>
+          <div>Subscription: {subscription?.status || 'none'}</div>
+          <div>Active: <span style={{ color: hasActiveSubscription ? '#00ff00' : '#ff0000' }}>
+            {hasActiveSubscription.toString()}
+          </span></div>
+          <div>Loading: <span style={{ color: loading ? '#ffff00' : '#00ff00' }}>
+            {loading.toString()}
+          </span></div>
+        </div>
+        
+        <div>
+          <div style={{ color: '#ffff00', marginBottom: '4px' }}>ACTIVITY LOG:</div>
+          {debugLog.map((log, i) => (
+            <div key={i} style={{ 
+              fontSize: '10px', 
+              marginBottom: '2px',
+              color: log.includes('❌') ? '#ff0000' : 
+                    log.includes('✅') ? '#00ff00' : 
+                    log.includes('⚠️') ? '#ffaa00' : '#cccccc'
+            }}>
+              {log}
+            </div>
+          ))}
+        </div>
+      </div>
       {children}
     </AuthContext.Provider>
   );
