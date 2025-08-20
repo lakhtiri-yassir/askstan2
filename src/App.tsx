@@ -1,4 +1,4 @@
-// src/App.tsx - FIXED: Proper lazy loading imports
+// src/App.tsx - EFFICIENT FIX: Clean lazy loading without complex fallback logic
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
@@ -8,52 +8,26 @@ import { ProtectedRoute } from './components/layout/ProtectedRoute';
 import { AdminProtectedRoute } from './components/layout/AdminProtectedRoute';
 import { LoadingSpinner } from './components/ui/LoadingSpinner';
 
-// FIXED: Proper lazy loading with correct default exports
-const LandingPage = lazy(() => import('./pages/LandingPage').then(module => ({ 
-  default: module.LandingPage || module.default 
-})));
-const SignUpPage = lazy(() => import('./pages/auth/SignUpPage').then(module => ({ 
-  default: module.SignUpPage || module.default 
-})));
-const SignInPage = lazy(() => import('./pages/auth/SignInPage').then(module => ({ 
-  default: module.SignInPage || module.default 
-})));
-const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPasswordPage').then(module => ({ 
-  default: module.ForgotPasswordPage || module.default 
-})));
-const ResetPasswordPage = lazy(() => import('./pages/auth/ResetPasswordPage').then(module => ({ 
-  default: module.ResetPasswordPage || module.default 
-})));
+// EFFICIENT FIX: Direct imports with proper destructuring for named exports
+const LandingPage = lazy(() => import('./pages/LandingPage').then(m => ({ default: m.LandingPage })));
+const SignUpPage = lazy(() => import('./pages/auth/SignUpPage'));  // Already has default export
+const SignInPage = lazy(() => import('./pages/auth/SignInPage'));  // Already has default export
+const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPasswordPage').then(m => ({ default: m.ForgotPasswordPage })));
+const ResetPasswordPage = lazy(() => import('./pages/auth/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })));
 
 // Protected pages
-const PlansPage = lazy(() => import('./pages/subscription/PlansPage').then(module => ({ 
-  default: module.PlansPage || module.default 
-})));
-const CheckoutSuccessPage = lazy(() => import('./pages/checkout/CheckoutSuccessPage').then(module => ({ 
-  default: module.CheckoutSuccessPage || module.default 
-})));
-const DashboardPage = lazy(() => import('./pages/dashboard/DashboardPage').then(module => ({ 
-  default: module.DashboardPage || module.default 
-})));
-const SettingsPage = lazy(() => import('./pages/settings/SettingsPage').then(module => ({ 
-  default: module.SettingsPage || module.default 
-})));
+const PlansPage = lazy(() => import('./pages/subscription/PlansPage').then(m => ({ default: m.PlansPage })));
+const CheckoutSuccessPage = lazy(() => import('./pages/checkout/CheckoutSuccessPage').then(m => ({ default: m.CheckoutSuccessPage })));
+const DashboardPage = lazy(() => import('./pages/dashboard/DashboardPage').then(m => ({ default: m.DashboardPage })));
+const SettingsPage = lazy(() => import('./pages/settings/SettingsPage').then(m => ({ default: m.SettingsPage })));
 
 // Legal pages
-const TermsOfServicePage = lazy(() => import('./pages/legal/TermsOfServicePage').then(module => ({ 
-  default: module.TermsOfServicePage || module.default 
-})));
-const PrivacyPolicyPage = lazy(() => import('./pages/legal/PrivacyPolicyPage').then(module => ({ 
-  default: module.PrivacyPolicyPage || module.default 
-})));
+const TermsOfServicePage = lazy(() => import('./pages/legal/TermsOfServicePage').then(m => ({ default: m.TermsOfServicePage })));
+const PrivacyPolicyPage = lazy(() => import('./pages/legal/PrivacyPolicyPage').then(m => ({ default: m.PrivacyPolicyPage })));
 
-// Admin pages - FIXED: Proper imports
-const AdminLoginPage = lazy(() => import('./pages/admin/AdminLoginPage').then(module => ({ 
-  default: module.AdminLoginPage || module.default 
-})));
-const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard').then(module => ({ 
-  default: module.AdminDashboard || module.default 
-})));
+// Admin pages
+const AdminLoginPage = lazy(() => import('./pages/admin/AdminLoginPage').then(m => ({ default: m.AdminLoginPage })));
+const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -126,7 +100,7 @@ function App() {
                   } 
                 />
                 
-                {/* Admin Routes - FIXED: Auto-redirect from /admin to /admin/login if not authenticated */}
+                {/* Admin Routes */}
                 <Route path="/admin/login" element={<AdminLoginPage />} />
                 <Route 
                   path="/admin" 
