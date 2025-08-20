@@ -1,4 +1,4 @@
-// src/contexts/AuthContext.tsx - FIXED: Proper initialization and loading states
+// src/contexts/AuthContext.tsx - DEFINITIVE FIX: Complete solution for loading states
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
@@ -57,56 +57,69 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [loading, setLoading] = useState(true);
   const [initialized, setInitialized] = useState(false);
 
-  // FIXED: Improved subscription logic
+  // Subscription logic
   const hasActiveSubscription = !!(subscription && ['active', 'trialing'].includes(subscription.status));
 
-  // FIXED: Improved user data loading with better error handling
-  const loadUserData = async (authUser: User) => {
+  // FIXED: Simplified user data loading that doesn't block initialization
+  const loadUserData = useCallback(async (authUser: User) => {
     try {
       console.log('🔄 Loading user data for:', authUser.email);
       
-      // Load profile
-      const { data: profileData, error: profileError } = await supabase
+      // Load profile (non-blocking)
+      const profilePromise = supabase
         .from('user_profiles')
         .select('*')
         .eq('id', authUser.id)
-        .single();
+        .single()
+        .then(({ data, error }) => {
+          if (error) {
+            console.warn('⚠️ Profile loading error:', error);
+            return null;
+          }
+          console.log('✅ Profile loaded');
+          return data;
+        });
 
-      if (profileError) {
-        console.warn('⚠️ Profile loading error:', profileError);
-      } else if (profileData) {
-        console.log('✅ Profile loaded');
-        setProfile(profileData);
-      }
-
-      // Load subscription
-      const { data: subscriptionData, error: subscriptionError } = await supabase
+      // Load subscription (non-blocking)
+      const subscriptionPromise = supabase
         .from('subscriptions')
         .select('*')
         .eq('user_id', authUser.id)
         .in('status', ['active', 'trialing', 'cancelled', 'expired'])
         .order('created_at', { ascending: false })
         .limit(1)
-        .maybeSingle(); // Use maybeSingle to handle no results gracefully
+        .maybeSingle()
+        .then(({ data, error }) => {
+          if (error) {
+            console.warn('⚠️ Subscription loading error:', error);
+            return null;
+          }
+          if (data) {
+            console.log('✅ Subscription loaded:', data.status);
+          } else {
+            console.log('ℹ️ No subscription found');
+          }
+          return data;
+        });
 
-      if (subscriptionError) {
-        console.warn('⚠️ Subscription loading error:', subscriptionError);
-      } else if (subscriptionData) {
-        console.log('✅ Subscription loaded:', subscriptionData.status);
-        setSubscription(subscriptionData);
-      } else {
-        console.log('ℹ️ No subscription found');
-        setSubscription(null);
-      }
+      // Execute both queries simultaneously
+      const [profileData, subscriptionData] = await Promise.all([
+        profilePromise,
+        subscriptionPromise
+      ]);
+
+      // Update states
+      setProfile(profileData);
+      setSubscription(subscriptionData);
+
     } catch (error) {
       console.error('❌ Error loading user data:', error);
-      // Don't throw - just set states to null and continue
       setProfile(null);
       setSubscription(null);
     }
-  };
+  }, []);
 
-  // FIXED: Better initialization logic
+  // FIXED: Proper initialization with dependency management
   useEffect(() => {
     let mounted = true;
 
@@ -124,12 +137,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           if (session?.user) {
             console.log('👤 User found in session');
             setUser(session.user);
-            await loadUserData(session.user);
+            // Load user data in background - don't wait for it
+            loadUserData(session.user);
           } else {
             console.log('🚫 No user in session');
           }
           
-          // CRITICAL FIX: Always set initialized and loading to false after processing
+          // CRITICAL FIX: Always mark as initialized and stop loading immediately
           setLoading(false);
           setInitialized(true);
           console.log('✅ Auth initialization complete');
@@ -145,7 +159,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     initAuth();
 
-    // FIXED: Better auth state change handling
+    // FIXED: Auth state change handler with proper state management
     const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!mounted) return;
@@ -160,14 +174,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         } else if (event === 'SIGNED_IN' && session?.user) {
           console.log('🔑 User signed in');
           setUser(session.user);
-          await loadUserData(session.user);
+          // Load user data in background - don't wait for it
+          loadUserData(session.user);
         }
         
-        // CRITICAL FIX: Ensure we're always initialized after auth changes
-        if (!initialized) {
-          setInitialized(true);
-          setLoading(false);
-        }
+        // CRITICAL FIX: Always ensure we're initialized and not loading after auth events
+        setInitialized(true);
+        setLoading(false);
       }
     );
 
@@ -175,7 +188,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       mounted = false;
       authSubscription.unsubscribe();
     };
-  }, []);
+  }, []); // FIXED: Empty dependency array to prevent stale closures
 
   const signIn = useCallback(async (email: string, password: string): Promise<void> => {
     console.log('🔐 Signing in...');
@@ -215,9 +228,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (!user) return;
     console.log('🔄 Refreshing subscription...');
     await loadUserData(user);
-  }, [user]);
+  }, [user, loadUserData]);
 
-  // FIXED: Add logging to understand state changes
+  // Debug logging
   useEffect(() => {
     console.log('📊 Auth state:', {
       user: !!user,

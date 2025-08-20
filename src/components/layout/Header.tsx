@@ -1,4 +1,4 @@
-// src/components/layout/Header.tsx - FIXED: Better loading state management
+// src/components/layout/Header.tsx - DEFINITIVE FIX: Simple and reliable
 import React, { useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -9,10 +9,7 @@ import { shouldLoadChatbot, removeChatbot } from '../../config/chatbot';
 import askstanLogo from '../../img/askstanlogo.png';
 
 export const Header: React.FC = () => {
-  // CRITICAL FIX: ALL HOOKS MUST BE CALLED FIRST - BEFORE ANY CONDITIONAL LOGIC
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
-  
-  // CRITICAL FIX: Use hasActiveSubscription from AuthContext
   const { user, signOut, hasActiveSubscription, initialized, loading } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -26,11 +23,10 @@ export const Header: React.FC = () => {
     }
   }, [location.pathname]);
 
-  // CONDITIONAL LOGIC AFTER ALL HOOKS ARE CALLED
+  // Don't show header on auth and legal pages
   const isAuthPage = ['/signin', '/signup', '/forgot-password', '/reset-password'].includes(location.pathname);
   const isLegalPage = ['/terms', '/privacy'].includes(location.pathname);
   
-  // NOW it's safe to return early - all hooks have been called
   if (isAuthPage || isLegalPage) {
     return null;
   }
@@ -46,15 +42,15 @@ export const Header: React.FC = () => {
     }
   };
 
-  // FIXED: Better logic to determine when to show loading vs actual buttons
-  const shouldShowLoading = loading || (user && !initialized);
+  // DEFINITIVE FIX: Simple logic - only show loading during initial app load
+  const showLoading = !initialized;
   
   console.log('🔍 Header render:', { 
     user: !!user, 
     hasActiveSubscription, 
     initialized,
     loading,
-    shouldShowLoading,
+    showLoading,
     pathname: location.pathname 
   });
 
@@ -78,14 +74,14 @@ export const Header: React.FC = () => {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
-            {shouldShowLoading ? (
-              // FIXED: Show loading state only when actually loading
+            {showLoading ? (
+              // Only show loading during initial app load
               <div className="flex items-center space-x-4">
                 <div className="animate-pulse bg-gray-200 h-4 w-16 rounded"></div>
                 <div className="animate-pulse bg-gray-200 h-8 w-20 rounded"></div>
               </div>
             ) : user ? (
-              // FIXED: User is logged in and initialized
+              // User is logged in
               <>
                 {hasActiveSubscription ? (
                   <Link
@@ -158,14 +154,14 @@ export const Header: React.FC = () => {
             className="md:hidden py-4 border-t border-gray-200"
           >
             <div className="space-y-4">
-              {shouldShowLoading ? (
-                // FIXED: Show loading state only when actually loading
+              {showLoading ? (
+                // Only show loading during initial app load
                 <div className="space-y-4">
                   <div className="animate-pulse bg-gray-200 h-4 w-24 rounded"></div>
                   <div className="animate-pulse bg-gray-200 h-8 w-32 rounded"></div>
                 </div>
               ) : user ? (
-                // FIXED: User is logged in and initialized
+                // User is logged in
                 <>
                   {hasActiveSubscription ? (
                     <Link

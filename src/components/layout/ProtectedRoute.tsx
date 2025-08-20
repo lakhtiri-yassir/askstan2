@@ -1,4 +1,4 @@
-// src/components/layout/ProtectedRoute.tsx - Fixed to prevent blank pages
+// src/components/layout/ProtectedRoute.tsx - DEFINITIVE FIX: Remove subscriptionStatus reference
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -17,7 +17,6 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 }) => {
   const { 
     user, 
-    subscriptionStatus, 
     loading, 
     hasActiveSubscription, 
     initialized
@@ -29,6 +28,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     initialized, 
     user: !!user, 
     hasActiveSubscription,
+    requireSubscription,
     path: location.pathname 
   });
 
@@ -57,26 +57,13 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to="/verify-email" replace />;
   }
 
-  // Check subscription requirement - only if we have subscription status
-  if (requireSubscription && subscriptionStatus !== null && !hasActiveSubscription) {
+  // FIXED: Check subscription requirement using hasActiveSubscription directly
+  if (requireSubscription && !hasActiveSubscription) {
     console.log("💳 Subscription required but not active, redirecting to plans");
     return <Navigate to="/plans" replace />;
   }
 
-  // If subscription is required but we don't have status yet, keep loading
-  if (requireSubscription && subscriptionStatus === null) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-yellow-50">
-        <div className="text-center">
-          <LoadingSpinner size="lg" />
-          <p className="mt-4 text-gray-600 font-medium">
-            Checking subscription...
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   // All checks passed - render the protected content
+  console.log("✅ ProtectedRoute checks passed, rendering content");
   return <>{children}</>;
 };
