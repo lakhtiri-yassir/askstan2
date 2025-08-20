@@ -1,4 +1,4 @@
-// src/contexts/AdminAuthContext.tsx - Updated for database integration
+// src/contexts/AdminAuthContext.tsx - PRODUCTION READY: Simple and reliable
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 
@@ -8,8 +8,6 @@ interface AdminUser {
   full_name: string | null;
   is_super_admin: boolean;
   is_active: boolean;
-  created_at: string;
-  last_login: string | null;
 }
 
 interface AdminAuthContextType {
@@ -23,152 +21,109 @@ const AdminAuthContext = createContext<AdminAuthContextType | undefined>(undefin
 
 export const useAdminAuth = () => {
   const context = useContext(AdminAuthContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useAdminAuth must be used within an AdminAuthProvider');
   }
   return context;
 };
 
-interface AdminAuthProviderProps {
-  children: ReactNode;
-}
-
-export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({ children }) => {
+export const AdminAuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [admin, setAdmin] = useState<AdminUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Check if current session has admin access
   const checkAdminAccess = async () => {
     try {
-      console.log("🔍 Checking admin access...");
       const { data: { session } } = await supabase.auth.getSession();
       
-      if (!session?.user) {
-        console.log("❌ No session found");
+      if (!session?.user?.email) {
         setAdmin(null);
         return;
       }
 
-      console.log("👤 Session found, verifying admin status for:", session.user.email);
+      // Check if user is in admin_users table
+      const { data: adminData } = await supabase
+        .from('admin_users')
+        .select('*')
+        .eq('email', session.user.email)
+        .eq('is_active', true)
+        .single();
 
-      // Use the safe authentication function
-      const { data: adminData, error } = await supabase
-        .rpc('authenticate_admin', { user_email: session.user.email });
-
-      if (error) {
-        console.error("❌ Admin verification error:", error);
-        setAdmin(null);
-        return;
-      }
-
-      if (!adminData) {
-        console.log("❌ User is not an admin");
-        setAdmin(null);
-        return;
-      }
-
-      console.log("✅ Admin access verified:", adminData.email);
-      setAdmin(adminData);
+      setAdmin(adminData || null);
     } catch (error) {
-      console.error('❌ Error checking admin access:', error);
       setAdmin(null);
     }
   };
 
-  // Initialize admin auth
   useEffect(() => {
-    const initializeAdminAuth = async () => {
+    let mounted = true;
+
+    const initAdmin = async () => {
       await checkAdminAccess();
-      setIsLoading(false);
+      if (mounted) {
+        setIsLoading(false);
+      }
     };
 
-    initializeAdminAuth();
+    initAdmin();
 
-    // Listen for auth changes
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event) => {
+        if (!mounted) return;
+        
         if (event === 'SIGNED_OUT') {
           setAdmin(null);
-        } else if (event === 'SIGNED_IN' && session?.user) {
+        } else if (event === 'SIGNED_IN') {
           await checkAdminAccess();
         }
       }
     );
 
     return () => {
-      authListener.subscription.unsubscribe();
+      mounted = false;
+      subscription.unsubscribe();
     };
   }, []);
 
   const signIn = async (email: string, password: string): Promise<void> => {
-    try {
-      console.log("🔐 Starting admin sign in for:", email);
-      
-      // Sign in with Supabase Auth first
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.toLowerCase().trim(),
-        password,
-      });
+    // First sign in with Supabase Auth
+    const { error: authError } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password,
+    });
 
-      if (error) {
-        console.error("❌ Admin auth error:", error);
-        throw error;
-      }
-
-      if (!data.user) {
-        console.error("❌ No user returned from admin sign in");
-        throw new Error('Sign in failed');
-      }
-
-      console.log("✅ Admin auth successful, checking admin status...");
-
-      // Check if user is an admin using the safe function
-      const { data: adminData, error: adminError } = await supabase
-        .rpc('authenticate_admin', { user_email: email.toLowerCase().trim() });
-
-      if (adminError) {
-        console.error("❌ Admin verification error:", adminError);
-        // Sign out the user since they're not an admin
-        await supabase.auth.signOut();
-        throw new Error('Admin verification failed');
-      }
-
-      if (!adminData) {
-        console.error("❌ No admin data returned");
-        // Sign out the user since they're not an admin
-        await supabase.auth.signOut();
-        throw new Error('Invalid admin credentials or account is disabled');
-      }
-
-      console.log("✅ Admin verification successful:", adminData.email);
-      setAdmin(adminData);
-      
-    } catch (error: any) {
-      console.error('❌ Admin sign in failed:', error);
-      throw new Error(error.message || 'Admin sign in failed');
+    if (authError) {
+      throw new Error(authError.message);
     }
+
+    // Check if user is an admin
+    const { data: adminData, error: adminError } = await supabase
+      .from('admin_users')
+      .select('*')
+      .eq('email', email.trim().toLowerCase())
+      .eq('is_active', true)
+      .single();
+
+    if (adminError || !adminData) {
+      // Sign out if not an admin
+      await supabase.auth.signOut();
+      throw new Error('Invalid admin credentials');
+    }
+
+    setAdmin(adminData);
   };
 
   const signOut = async (): Promise<void> => {
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      setAdmin(null);
-    } catch (error: any) {
-      console.error('Admin sign out error:', error);
-      throw new Error(error.message || 'Sign out failed');
-    }
-  };
-
-  const value: AdminAuthContextType = {
-    admin,
-    isLoading,
-    signIn,
-    signOut,
+    await supabase.auth.signOut();
+    setAdmin(null);
   };
 
   return (
-    <AdminAuthContext.Provider value={value}>
+    <AdminAuthContext.Provider value={{
+      admin,
+      isLoading,
+      signIn,
+      signOut,
+    }}>
       {children}
     </AdminAuthContext.Provider>
   );
