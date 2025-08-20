@@ -1,4 +1,4 @@
-// src/components/layout/Header.tsx - COMPLETE FIX: Reactive to subscription changes
+// src/components/layout/Header.tsx - SIMPLE FIX: Bulletproof header
 import React, { useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -10,7 +10,7 @@ import askstanLogo from '../../img/askstanlogo.png';
 
 export const Header: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
-  const { user, signOut, hasActiveSubscription, initialized, loading, subscription } = useAuth();
+  const { user, signOut, hasActiveSubscription, initialized, loading } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -33,32 +33,52 @@ export const Header: React.FC = () => {
 
   const handleSignOut = async () => {
     try {
-      console.log('🔄 Header: Initiating sign out...');
+      console.log('🔄 Header: Signing out...');
       removeChatbot();
       await signOut();
-      console.log('✅ Header: Sign out complete, redirecting...');
-      // Force navigation to home page after sign out
-      window.location.href = '/';
+      console.log('✅ Header: Redirecting to home...');
+      navigate('/', { replace: true });
     } catch (error) {
       console.error('❌ Header: Sign out error:', error);
-      // Even if sign out fails, redirect to home
-      window.location.href = '/';
+      navigate('/', { replace: true });
     }
   };
 
-  // COMPLETE FIX: Only show loading during initial app load
-  const showLoading = !initialized;
-  
-  // ENHANCED: Detailed logging for debugging
-  console.log('🔍 Header render:', { 
+  console.log('🔍 Header:', { 
     user: !!user, 
     hasActiveSubscription, 
     initialized,
     loading,
-    showLoading,
-    subscriptionStatus: subscription?.status,
     pathname: location.pathname 
   });
+
+  // SIMPLE: Only show loading if not initialized yet
+  if (!initialized) {
+    return (
+      <motion.header
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        className="bg-white/90 backdrop-blur-lg shadow-lg border-b border-gray-200 sticky top-0 z-50"
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4">
+            <Link to="/" className="flex items-center">
+              <img 
+                src={askstanLogo} 
+                alt="AskStan! Logo" 
+                className="h-8 w-auto"
+              />
+            </Link>
+            <div className="flex items-center space-x-4">
+              <div className="animate-pulse bg-gray-200 h-4 w-16 rounded"></div>
+              <div className="animate-pulse bg-gray-200 h-8 w-20 rounded"></div>
+            </div>
+          </div>
+        </div>
+      </motion.header>
+    );
+  }
 
   return (
     <motion.header
@@ -80,14 +100,8 @@ export const Header: React.FC = () => {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
-            {showLoading ? (
-              // Only show loading during initial app load
-              <div className="flex items-center space-x-4">
-                <div className="animate-pulse bg-gray-200 h-4 w-16 rounded"></div>
-                <div className="animate-pulse bg-gray-200 h-8 w-20 rounded"></div>
-              </div>
-            ) : user ? (
-              // User is logged in - REACTIVE to subscription changes
+            {user ? (
+              // User is logged in
               <>
                 {hasActiveSubscription ? (
                   <Link
@@ -160,14 +174,8 @@ export const Header: React.FC = () => {
             className="md:hidden py-4 border-t border-gray-200"
           >
             <div className="space-y-4">
-              {showLoading ? (
-                // Only show loading during initial app load
-                <div className="space-y-4">
-                  <div className="animate-pulse bg-gray-200 h-4 w-24 rounded"></div>
-                  <div className="animate-pulse bg-gray-200 h-8 w-32 rounded"></div>
-                </div>
-              ) : user ? (
-                // User is logged in - REACTIVE to subscription changes
+              {user ? (
+                // User is logged in
                 <>
                   {hasActiveSubscription ? (
                     <Link
