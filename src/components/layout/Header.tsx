@@ -1,16 +1,24 @@
-// src/components/layout/Header.tsx - SIMPLE FIX: Bulletproof header
+// src/components/layout/Header.tsx - ENHANCED: Subscription loading state support
 import React, { useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Menu, X, LogOut, Settings, User } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../ui/Button';
+import { LoadingSpinner } from '../ui/LoadingSpinner';
 import { shouldLoadChatbot, removeChatbot } from '../../config/chatbot';
 import askstanLogo from '../../img/askstanlogo.png';
 
 export const Header: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
-  const { user, signOut, hasActiveSubscription, initialized, loading } = useAuth();
+  const { 
+    user, 
+    signOut, 
+    hasActiveSubscription, 
+    initialized, 
+    loading, 
+    subscriptionLoading  // NEW: Track subscription loading state
+  } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -36,24 +44,25 @@ export const Header: React.FC = () => {
       console.log('🔄 Header: Signing out...');
       removeChatbot();
       await signOut();
-      console.log('✅ Header: Redirecting to home...');
-      navigate('/', { replace: true });
+      // Navigation handled by signOut function redirect
     } catch (error) {
       console.error('❌ Header: Sign out error:', error);
-      navigate('/', { replace: true });
+      // Fallback navigation
+      window.location.href = '/';
     }
   };
 
-  console.log('🔍 Header:', { 
+  console.log('🔍 Header state:', { 
     user: !!user, 
     hasActiveSubscription, 
     initialized,
     loading,
+    subscriptionLoading, // NEW: Include in debug
     pathname: location.pathname 
   });
 
-  // SIMPLE: Only show loading if not initialized yet
-  if (!initialized) {
+  // Show loading while auth is initializing
+  if (!initialized || loading) {
     return (
       <motion.header
         initial={{ opacity: 0, y: -20 }}
@@ -70,15 +79,91 @@ export const Header: React.FC = () => {
                 className="h-8 w-auto"
               />
             </Link>
-            <div className="flex items-center space-x-4">
-              <div className="animate-pulse bg-gray-200 h-4 w-16 rounded"></div>
-              <div className="animate-pulse bg-gray-200 h-8 w-20 rounded"></div>
+            <div className="flex items-center">
+              <LoadingSpinner size="sm" />
+              <span className="ml-2 text-sm text-gray-600">Loading...</span>
             </div>
           </div>
         </div>
       </motion.header>
     );
   }
+
+  // ENHANCED: Navigation logic with subscription loading consideration
+  const getNavigationLink = () => {
+    if (!user) {
+      return null; // No user, show sign in options
+    }
+
+    // If subscription is still loading, show loading state
+    if (subscriptionLoading) {
+      return (
+        <div className="flex items-center text-gray-500">
+          <LoadingSpinner size="sm" className="mr-2" />
+          <span className="text-sm">Loading subscription...</span>
+        </div>
+      );
+    }
+
+    // User is loaded, subscription is loaded (or failed to load)
+    if (hasActiveSubscription) {
+      return (
+        <Link
+          to="/dashboard"
+          className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
+        >
+          Dashboard
+        </Link>
+      );
+    } else {
+      return (
+        <Link
+          to="/plans"
+          className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
+        >
+          Plans
+        </Link>
+      );
+    }
+  };
+
+  // ENHANCED: Mobile navigation with same loading logic
+  const getMobileNavigationLink = () => {
+    if (!user) {
+      return null;
+    }
+
+    if (subscriptionLoading) {
+      return (
+        <div className="flex items-center text-gray-500 py-2">
+          <LoadingSpinner size="sm" className="mr-2" />
+          <span className="text-sm">Loading subscription...</span>
+        </div>
+      );
+    }
+
+    if (hasActiveSubscription) {
+      return (
+        <Link
+          to="/dashboard"
+          className="block text-gray-700 hover:text-blue-600 font-medium transition-colors"
+          onClick={() => setIsMenuOpen(false)}
+        >
+          Dashboard
+        </Link>
+      );
+    } else {
+      return (
+        <Link
+          to="/plans"
+          className="block text-gray-700 hover:text-blue-600 font-medium transition-colors"
+          onClick={() => setIsMenuOpen(false)}
+        >
+          Plans
+        </Link>
+      );
+    }
+  };
 
   return (
     <motion.header
@@ -89,7 +174,6 @@ export const Header: React.FC = () => {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center py-4">
-          {/* Logo */}
           <Link to="/" className="flex items-center">
             <img 
               src={askstanLogo} 
@@ -103,21 +187,7 @@ export const Header: React.FC = () => {
             {user ? (
               // User is logged in
               <>
-                {hasActiveSubscription ? (
-                  <Link
-                    to="/dashboard"
-                    className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
-                  >
-                    Dashboard
-                  </Link>
-                ) : (
-                  <Link
-                    to="/plans"
-                    className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
-                  >
-                    Plans
-                  </Link>
-                )}
+                {getNavigationLink()}
                 
                 <Link
                   to="/settings"
@@ -177,23 +247,7 @@ export const Header: React.FC = () => {
               {user ? (
                 // User is logged in
                 <>
-                  {hasActiveSubscription ? (
-                    <Link
-                      to="/dashboard"
-                      className="block text-gray-700 hover:text-blue-600 font-medium transition-colors"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      Dashboard
-                    </Link>
-                  ) : (
-                    <Link
-                      to="/plans"
-                      className="block text-gray-700 hover:text-blue-600 font-medium transition-colors"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      Plans
-                    </Link>
-                  )}
+                  {getMobileNavigationLink()}
                   
                   <Link
                     to="/settings"
