@@ -1,4 +1,4 @@
-// src/contexts/AuthContext.tsx - SIMPLIFIED: Clean and efficient
+// src/contexts/AuthContext.tsx - FIXED: Proper initialization order
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
@@ -58,9 +58,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Simple subscription check
   const hasActiveSubscription = subscription?.status === 'active' || subscription?.status === 'trialing';
 
-  // Load user data - simplified
+  // Load user data function
   const loadUserData = async (authUser: User) => {
     try {
+      console.log('Loading data for:', authUser.email);
+      
       // Load profile
       const { data: profileData } = await supabase
         .from('user_profiles')
@@ -80,66 +82,92 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setProfile(profileData);
       setSubscription(subscriptionData);
       
-      console.log('✅ User data loaded:', {
-        hasProfile: !!profileData,
-        hasSubscription: !!subscriptionData,
-        subscriptionStatus: subscriptionData?.status
+      console.log('Data loaded:', {
+        profile: !!profileData,
+        subscription: !!subscriptionData,
+        status: subscriptionData?.status
       });
     } catch (error) {
-      console.error('❌ Error loading user data:', error);
-      setProfile(null);
-      setSubscription(null);
+      console.error('Error loading user data:', error);
     }
   };
 
-  // Initialize auth
+  // Initialize auth - FIXED ORDER
   useEffect(() => {
     let mounted = true;
 
-    const initAuth = async () => {
+    const initialize = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        // Get current session
+        const { data: { session }, error } = await supabase.auth.getSession();
         
+        if (error) {
+          console.error('Session error:', error);
+        }
+
         if (mounted) {
           if (session?.user) {
+            console.log('Found user in session:', session.user.email);
             setUser(session.user);
+            // Load user data
             await loadUserData(session.user);
+          } else {
+            console.log('No user in session');
+            setUser(null);
+            setProfile(null);
+            setSubscription(null);
           }
+          
+          // CRITICAL: Always set loading to false after initialization
           setLoading(false);
         }
       } catch (error) {
-        console.error('❌ Auth init error:', error);
+        console.error('Auth initialization error:', error);
         if (mounted) {
-          setLoading(false);
+          setLoading(false); // Set loading false even on error
         }
       }
     };
 
-    initAuth();
+    // Start initialization
+    initialize();
 
-    // Listen for auth changes
-    const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
+    // Listen for auth state changes
+    const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!mounted) return;
 
-        console.log('🔄 Auth change:', event);
+        console.log('Auth state changed:', event);
 
-        if (event === 'SIGNED_OUT') {
-          setUser(null);
-          setProfile(null);
-          setSubscription(null);
-        } else if (event === 'SIGNED_IN' && session?.user) {
-          setUser(session.user);
-          await loadUserData(session.user);
+        switch (event) {
+          case 'SIGNED_OUT':
+            setUser(null);
+            setProfile(null);
+            setSubscription(null);
+            break;
+            
+          case 'SIGNED_IN':
+            if (session?.user) {
+              setUser(session.user);
+              await loadUserData(session.user);
+            }
+            break;
+            
+          case 'TOKEN_REFRESHED':
+            if (session?.user && (!user || user.id !== session.user.id)) {
+              setUser(session.user);
+              await loadUserData(session.user);
+            }
+            break;
         }
       }
     );
 
     return () => {
       mounted = false;
-      authSubscription.unsubscribe();
+      authSub.unsubscribe();
     };
-  }, []);
+  }, []); // Empty dependency array - only run once
 
   const signIn = async (email: string, password: string): Promise<void> => {
     const { error } = await supabase.auth.signInWithPassword({
@@ -154,7 +182,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const signOut = async (): Promise<void> => {
     try {
-      // Clear local state
+      console.log('Signing out...');
+      
+      // Clear state immediately
       setUser(null);
       setProfile(null);
       setSubscription(null);
@@ -162,11 +192,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // Sign out from Supabase
       await supabase.auth.signOut();
       
-      // Redirect to home
+      // Redirect
       window.location.href = '/';
     } catch (error) {
-      console.error('❌ Sign out error:', error);
-      // Force redirect anyway
+      console.error('Sign out error:', error);
       window.location.href = '/';
     }
   };
@@ -191,6 +220,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  // Debug current state - visible in UI
+  const debugInfo = {
+    user: !!user,
+    userEmail: user?.email || 'none',
+    hasSubscription: !!subscription,
+    subscriptionStatus: subscription?.status || 'none',
+    hasActiveSubscription,
+    loading
+  };
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -203,6 +242,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       signUp,
       refreshSubscription,
     }}>
+      {/* Debug panel - remove after fixing */}
+      {process.env.NODE_ENV === 'development' && (
+        <div style={{
+          position: 'fixed',
+          top: '10px',
+          right: '10px',
+          background: 'rgba(0,0,0,0.8)',
+          color: 'white',
+          padding: '10px',
+          borderRadius: '5px',
+          fontSize: '12px',
+          zIndex: 9999,
+          fontFamily: 'monospace'
+        }}>
+          <div>🔍 AUTH DEBUG</div>
+          <div>User: {debugInfo.userEmail}</div>
+          <div>Subscription: {debugInfo.subscriptionStatus}</div>
+          <div>Active: {debugInfo.hasActiveSubscription.toString()}</div>
+          <div>Loading: {debugInfo.loading.toString()}</div>
+        </div>
+      )}
       {children}
     </AuthContext.Provider>
   );

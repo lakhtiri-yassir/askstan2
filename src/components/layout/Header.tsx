@@ -1,6 +1,6 @@
-// src/components/layout/Header.tsx - SIMPLIFIED: Clean and efficient
+// src/components/layout/Header.tsx - FIXED: Proper loading logic
 import React from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Menu, X, LogOut } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -12,7 +12,6 @@ export const Header: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const { user, hasActiveSubscription, loading, signOut } = useAuth();
   const location = useLocation();
-  const navigate = useNavigate();
 
   // Don't show header on auth and legal pages
   const isAuthPage = ['/signin', '/signup', '/forgot-password', '/reset-password'].includes(location.pathname);
@@ -26,37 +25,13 @@ export const Header: React.FC = () => {
     try {
       await signOut();
     } catch (error) {
-      console.error('❌ Header: Sign out error:', error);
+      console.error('Sign out error:', error);
       window.location.href = '/';
     }
   };
 
-  // Show loading only during initial load
-  if (loading) {
-    return (
-      <motion.header
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="bg-white/90 backdrop-blur-lg shadow-lg border-b border-gray-200 sticky top-0 z-50"
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <Link to="/" className="flex items-center">
-              <img 
-                src={askstanLogo} 
-                alt="AskStan! Logo" 
-                className="h-8 w-auto"
-              />
-            </Link>
-            <div className="flex items-center">
-              <LoadingSpinner size="sm" />
-            </div>
-          </div>
-        </div>
-      </motion.header>
-    );
-  }
+  // Debug info for header
+  const headerDebug = { user: !!user, hasActiveSubscription, loading, pathname: location.pathname };
 
   return (
     <motion.header
@@ -75,9 +50,15 @@ export const Header: React.FC = () => {
             />
           </Link>
 
-          {/* Desktop Navigation */}
+          {/* Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
-            {user ? (
+            {loading ? (
+              // Show loading only during initial auth load
+              <div className="flex items-center">
+                <LoadingSpinner size="sm" />
+                <span className="ml-2 text-sm text-gray-600">Loading...</span>
+              </div>
+            ) : user ? (
               // User is logged in
               <>
                 {hasActiveSubscription ? (
@@ -151,7 +132,12 @@ export const Header: React.FC = () => {
             className="md:hidden py-4 border-t border-gray-200"
           >
             <div className="space-y-4">
-              {user ? (
+              {loading ? (
+                <div className="flex items-center justify-center py-2">
+                  <LoadingSpinner size="sm" />
+                  <span className="ml-2 text-sm text-gray-600">Loading...</span>
+                </div>
+              ) : user ? (
                 // User is logged in
                 <>
                   {hasActiveSubscription ? (
