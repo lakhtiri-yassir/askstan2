@@ -241,12 +241,12 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  // Load users with subscriptions - FIXED: Proper subscription status evaluation
+  // Load users with subscriptions - FIXED: Use same logic as AuthContext
   const loadUsers = async () => {
     try {
       setLoading(true);
 
-      // Get users with their subscriptions using a left join
+      // Get users with their subscriptions - FIXED: Get ALL subscriptions, not just active ones
       const { data, error } = await supabase
         .from('user_profiles')
         .select(`
@@ -270,22 +270,35 @@ export const AdminDashboard: React.FC = () => {
 
       if (error) throw error;
 
-      // Transform data and filter for ACTIVE/TRIALING subscriptions only
-      const transformedUsers: User[] = data.map(user => ({
-        id: user.id,
-        email: user.email,
-        display_name: user.display_name,
-        email_verified: user.email_verified,
-        created_at: user.created_at,
-        updated_at: user.updated_at,
-        subscription: user.subscriptions && user.subscriptions.length > 0 
-          ? user.subscriptions.find(sub => ['active', 'trialing'].includes(sub.status)) || user.subscriptions[0]
-          : null
-      }));
+      // Transform data - FIXED: Use same subscription logic as AuthContext
+      const transformedUsers: User[] = data.map(user => {
+        // Find the most recent subscription
+        let activeSubscription = null;
+        if (user.subscriptions && user.subscriptions.length > 0) {
+          // First try to find active or trialing
+          activeSubscription = user.subscriptions.find(sub => ['active', 'trialing'].includes(sub.status));
+          // If none found, use the most recent one
+          if (!activeSubscription) {
+            activeSubscription = user.subscriptions.sort((a, b) => 
+              new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+            )[0];
+          }
+        }
+
+        return {
+          id: user.id,
+          email: user.email,
+          display_name: user.display_name,
+          email_verified: user.email_verified,
+          created_at: user.created_at,
+          updated_at: user.updated_at,
+          subscription: activeSubscription
+        };
+      });
 
       setUsers(transformedUsers);
 
-      // Calculate stats - FIXED: Count active AND trialing as active
+      // Calculate stats - FIXED: Count correctly
       const totalUsers = transformedUsers.length;
       const activeSubscriptions = transformedUsers.filter(u => 
         u.subscription?.status === 'active'

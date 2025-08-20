@@ -126,7 +126,7 @@ function App() {
                   } 
                 />
                 
-                {/* Admin Routes */}
+                {/* Admin Routes - FIXED: Auto-redirect from /admin to /admin/login if not authenticated */}
                 <Route path="/admin/login" element={<AdminLoginPage />} />
                 <Route 
                   path="/admin" 
