@@ -1,4 +1,4 @@
-// src/components/layout/Header.tsx - FIXED: Consistent subscription status checking
+// src/components/layout/Header.tsx - FIXED: Better loading state management
 import React, { useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -12,19 +12,16 @@ export const Header: React.FC = () => {
   // CRITICAL FIX: ALL HOOKS MUST BE CALLED FIRST - BEFORE ANY CONDITIONAL LOGIC
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   
-  // CRITICAL FIX: Use hasActiveSubscription from AuthContext instead of custom logic
-  // This ensures consistency with ProtectedRoute logic
-  const { user, signOut, hasActiveSubscription, initialized } = useAuth();
+  // CRITICAL FIX: Use hasActiveSubscription from AuthContext
+  const { user, signOut, hasActiveSubscription, initialized, loading } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
   // Handle chatbot loading/removal based on current page
   useEffect(() => {
     if (shouldLoadChatbot(location.pathname)) {
-      // Load chatbot on dashboard
       console.log('Loading chatbot for dashboard');
     } else {
-      // Remove chatbot when leaving dashboard
       removeChatbot();
     }
   }, [location.pathname]);
@@ -40,26 +37,24 @@ export const Header: React.FC = () => {
 
   const handleSignOut = async () => {
     try {
-      // Remove chatbot before signing out
       removeChatbot();
       await signOut();
-      // Force navigation to home page after sign out
       window.location.href = '/';
     } catch (error) {
       console.error('Sign out error:', error);
-      // Even if sign out fails, redirect to home
       window.location.href = '/';
     }
   };
 
-  // CRITICAL FIX: Use the same subscription logic as ProtectedRoute
-  // This was the root cause - Header was using different logic than AuthContext
-  // Now both use the same hasActiveSubscription from AuthContext
-
+  // FIXED: Better logic to determine when to show loading vs actual buttons
+  const shouldShowLoading = loading || (user && !initialized);
+  
   console.log('🔍 Header render:', { 
     user: !!user, 
     hasActiveSubscription, 
     initialized,
+    loading,
+    shouldShowLoading,
     pathname: location.pathname 
   });
 
@@ -83,9 +78,15 @@ export const Header: React.FC = () => {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
-            {user && initialized ? (
+            {shouldShowLoading ? (
+              // FIXED: Show loading state only when actually loading
+              <div className="flex items-center space-x-4">
+                <div className="animate-pulse bg-gray-200 h-4 w-16 rounded"></div>
+                <div className="animate-pulse bg-gray-200 h-8 w-20 rounded"></div>
+              </div>
+            ) : user ? (
+              // FIXED: User is logged in and initialized
               <>
-                {/* FIXED: Show Dashboard if user has active subscription, Plans if not */}
                 {hasActiveSubscription ? (
                   <Link
                     to="/dashboard"
@@ -119,12 +120,6 @@ export const Header: React.FC = () => {
                   Sign Out
                 </Button>
               </>
-            ) : user && !initialized ? (
-              // Show loading state while subscription data loads
-              <div className="flex items-center space-x-4">
-                <div className="animate-pulse bg-gray-200 h-4 w-16 rounded"></div>
-                <div className="animate-pulse bg-gray-200 h-8 w-20 rounded"></div>
-              </div>
             ) : (
               // Not signed in
               <>
@@ -163,9 +158,15 @@ export const Header: React.FC = () => {
             className="md:hidden py-4 border-t border-gray-200"
           >
             <div className="space-y-4">
-              {user && initialized ? (
+              {shouldShowLoading ? (
+                // FIXED: Show loading state only when actually loading
+                <div className="space-y-4">
+                  <div className="animate-pulse bg-gray-200 h-4 w-24 rounded"></div>
+                  <div className="animate-pulse bg-gray-200 h-8 w-32 rounded"></div>
+                </div>
+              ) : user ? (
+                // FIXED: User is logged in and initialized
                 <>
-                  {/* FIXED: Show Dashboard if user has active subscription, Plans if not */}
                   {hasActiveSubscription ? (
                     <Link
                       to="/dashboard"
@@ -205,12 +206,6 @@ export const Header: React.FC = () => {
                     Sign Out
                   </Button>
                 </>
-              ) : user && !initialized ? (
-                // Show loading state while subscription data loads
-                <div className="space-y-4">
-                  <div className="animate-pulse bg-gray-200 h-4 w-24 rounded"></div>
-                  <div className="animate-pulse bg-gray-200 h-8 w-32 rounded"></div>
-                </div>
               ) : (
                 // Not signed in
                 <>

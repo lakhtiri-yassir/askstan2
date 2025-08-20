@@ -1,4 +1,4 @@
-// src/contexts/AuthContext.tsx - PRODUCTION READY: Simple and reliable
+// src/contexts/AuthContext.tsx - FIXED: Proper initialization and loading states
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
@@ -57,57 +57,85 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [loading, setLoading] = useState(true);
   const [initialized, setInitialized] = useState(false);
 
+  // FIXED: Improved subscription logic
   const hasActiveSubscription = !!(subscription && ['active', 'trialing'].includes(subscription.status));
 
-  // Load user data
+  // FIXED: Improved user data loading with better error handling
   const loadUserData = async (authUser: User) => {
     try {
+      console.log('🔄 Loading user data for:', authUser.email);
+      
       // Load profile
-      const { data: profileData } = await supabase
+      const { data: profileData, error: profileError } = await supabase
         .from('user_profiles')
         .select('*')
         .eq('id', authUser.id)
         .single();
 
-      if (profileData) {
+      if (profileError) {
+        console.warn('⚠️ Profile loading error:', profileError);
+      } else if (profileData) {
+        console.log('✅ Profile loaded');
         setProfile(profileData);
       }
 
       // Load subscription
-      const { data: subscriptionData } = await supabase
+      const { data: subscriptionData, error: subscriptionError } = await supabase
         .from('subscriptions')
         .select('*')
         .eq('user_id', authUser.id)
-        .in('status', ['active', 'trialing'])
+        .in('status', ['active', 'trialing', 'cancelled', 'expired'])
         .order('created_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle(); // Use maybeSingle to handle no results gracefully
 
-      if (subscriptionData) {
+      if (subscriptionError) {
+        console.warn('⚠️ Subscription loading error:', subscriptionError);
+      } else if (subscriptionData) {
+        console.log('✅ Subscription loaded:', subscriptionData.status);
         setSubscription(subscriptionData);
+      } else {
+        console.log('ℹ️ No subscription found');
+        setSubscription(null);
       }
     } catch (error) {
-      // Silently handle errors - user will just see no subscription
+      console.error('❌ Error loading user data:', error);
+      // Don't throw - just set states to null and continue
+      setProfile(null);
+      setSubscription(null);
     }
   };
 
-  // Initialize auth
+  // FIXED: Better initialization logic
   useEffect(() => {
     let mounted = true;
 
     const initAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        console.log('🚀 Initializing auth...');
+        
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('❌ Session error:', error);
+        }
         
         if (mounted) {
           if (session?.user) {
+            console.log('👤 User found in session');
             setUser(session.user);
             await loadUserData(session.user);
+          } else {
+            console.log('🚫 No user in session');
           }
+          
+          // CRITICAL FIX: Always set initialized and loading to false after processing
           setLoading(false);
           setInitialized(true);
+          console.log('✅ Auth initialization complete');
         }
       } catch (error) {
+        console.error('❌ Auth initialization error:', error);
         if (mounted) {
           setLoading(false);
           setInitialized(true);
@@ -117,18 +145,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     initAuth();
 
-    // Auth listener
+    // FIXED: Better auth state change handling
     const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!mounted) return;
 
+        console.log('🔄 Auth state change:', event);
+
         if (event === 'SIGNED_OUT') {
+          console.log('👋 User signed out');
           setUser(null);
           setProfile(null);
           setSubscription(null);
         } else if (event === 'SIGNED_IN' && session?.user) {
+          console.log('🔑 User signed in');
           setUser(session.user);
           await loadUserData(session.user);
+        }
+        
+        // CRITICAL FIX: Ensure we're always initialized after auth changes
+        if (!initialized) {
+          setInitialized(true);
+          setLoading(false);
         }
       }
     );
@@ -140,21 +178,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   const signIn = useCallback(async (email: string, password: string): Promise<void> => {
+    console.log('🔐 Signing in...');
     const { error } = await supabase.auth.signInWithPassword({
       email: email.trim().toLowerCase(),
       password,
     });
 
     if (error) {
+      console.error('❌ Sign in error:', error);
       throw new Error(error.message);
     }
   }, []);
 
   const signOut = useCallback(async (): Promise<void> => {
+    console.log('👋 Signing out...');
     await supabase.auth.signOut();
   }, []);
 
   const signUp = useCallback(async (email: string, password: string, fullName?: string): Promise<void> => {
+    console.log('📝 Signing up...');
     const { error } = await supabase.auth.signUp({
       email: email.trim().toLowerCase(),
       password,
@@ -164,14 +206,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
 
     if (error) {
+      console.error('❌ Sign up error:', error);
       throw new Error(error.message);
     }
   }, []);
 
   const refreshSubscription = useCallback(async (): Promise<void> => {
     if (!user) return;
+    console.log('🔄 Refreshing subscription...');
     await loadUserData(user);
   }, [user]);
+
+  // FIXED: Add logging to understand state changes
+  useEffect(() => {
+    console.log('📊 Auth state:', {
+      user: !!user,
+      hasActiveSubscription,
+      loading,
+      initialized,
+      subscriptionStatus: subscription?.status
+    });
+  }, [user, hasActiveSubscription, loading, initialized, subscription]);
 
   return (
     <AuthContext.Provider value={{
