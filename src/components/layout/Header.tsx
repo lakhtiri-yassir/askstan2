@@ -1,4 +1,4 @@
-// src/components/layout/Header.tsx - DEFINITIVE FIX: Simple and reliable
+// src/components/layout/Header.tsx - COMPLETE FIX: Reactive to subscription changes
 import React, { useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -10,7 +10,7 @@ import askstanLogo from '../../img/askstanlogo.png';
 
 export const Header: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
-  const { user, signOut, hasActiveSubscription, initialized, loading } = useAuth();
+  const { user, signOut, hasActiveSubscription, initialized, loading, subscription } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -33,24 +33,30 @@ export const Header: React.FC = () => {
 
   const handleSignOut = async () => {
     try {
+      console.log('🔄 Header: Initiating sign out...');
       removeChatbot();
       await signOut();
+      console.log('✅ Header: Sign out complete, redirecting...');
+      // Force navigation to home page after sign out
       window.location.href = '/';
     } catch (error) {
-      console.error('Sign out error:', error);
+      console.error('❌ Header: Sign out error:', error);
+      // Even if sign out fails, redirect to home
       window.location.href = '/';
     }
   };
 
-  // DEFINITIVE FIX: Simple logic - only show loading during initial app load
+  // COMPLETE FIX: Only show loading during initial app load
   const showLoading = !initialized;
   
+  // ENHANCED: Detailed logging for debugging
   console.log('🔍 Header render:', { 
     user: !!user, 
     hasActiveSubscription, 
     initialized,
     loading,
     showLoading,
+    subscriptionStatus: subscription?.status,
     pathname: location.pathname 
   });
 
@@ -81,7 +87,7 @@ export const Header: React.FC = () => {
                 <div className="animate-pulse bg-gray-200 h-8 w-20 rounded"></div>
               </div>
             ) : user ? (
-              // User is logged in
+              // User is logged in - REACTIVE to subscription changes
               <>
                 {hasActiveSubscription ? (
                   <Link
@@ -161,7 +167,7 @@ export const Header: React.FC = () => {
                   <div className="animate-pulse bg-gray-200 h-8 w-32 rounded"></div>
                 </div>
               ) : user ? (
-                // User is logged in
+                // User is logged in - REACTIVE to subscription changes
                 <>
                   {hasActiveSubscription ? (
                     <Link

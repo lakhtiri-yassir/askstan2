@@ -1,4 +1,4 @@
-// src/contexts/AuthContext.tsx - DEFINITIVE FIX: Complete solution for loading states
+// src/contexts/AuthContext.tsx - COMPLETE FIX: Reactive state management
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
@@ -57,60 +57,49 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [loading, setLoading] = useState(true);
   const [initialized, setInitialized] = useState(false);
 
-  // Subscription logic
+  // REACTIVE subscription logic - recalculates when subscription changes
   const hasActiveSubscription = !!(subscription && ['active', 'trialing'].includes(subscription.status));
 
-  // FIXED: Simplified user data loading that doesn't block initialization
+  // FIXED: Improved user data loading with proper state updates
   const loadUserData = useCallback(async (authUser: User) => {
     try {
       console.log('🔄 Loading user data for:', authUser.email);
       
-      // Load profile (non-blocking)
-      const profilePromise = supabase
+      // Load profile
+      const { data: profileData, error: profileError } = await supabase
         .from('user_profiles')
         .select('*')
         .eq('id', authUser.id)
-        .single()
-        .then(({ data, error }) => {
-          if (error) {
-            console.warn('⚠️ Profile loading error:', error);
-            return null;
-          }
-          console.log('✅ Profile loaded');
-          return data;
-        });
+        .single();
 
-      // Load subscription (non-blocking)
-      const subscriptionPromise = supabase
+      if (profileError) {
+        console.warn('⚠️ Profile loading error:', profileError);
+        setProfile(null);
+      } else if (profileData) {
+        console.log('✅ Profile loaded');
+        setProfile(profileData);
+      }
+
+      // Load subscription with better error handling
+      const { data: subscriptionData, error: subscriptionError } = await supabase
         .from('subscriptions')
         .select('*')
         .eq('user_id', authUser.id)
         .in('status', ['active', 'trialing', 'cancelled', 'expired'])
         .order('created_at', { ascending: false })
         .limit(1)
-        .maybeSingle()
-        .then(({ data, error }) => {
-          if (error) {
-            console.warn('⚠️ Subscription loading error:', error);
-            return null;
-          }
-          if (data) {
-            console.log('✅ Subscription loaded:', data.status);
-          } else {
-            console.log('ℹ️ No subscription found');
-          }
-          return data;
-        });
+        .maybeSingle();
 
-      // Execute both queries simultaneously
-      const [profileData, subscriptionData] = await Promise.all([
-        profilePromise,
-        subscriptionPromise
-      ]);
-
-      // Update states
-      setProfile(profileData);
-      setSubscription(subscriptionData);
+      if (subscriptionError) {
+        console.warn('⚠️ Subscription loading error:', subscriptionError);
+        setSubscription(null);
+      } else if (subscriptionData) {
+        console.log('✅ Subscription loaded:', subscriptionData.status);
+        setSubscription(subscriptionData);
+      } else {
+        console.log('ℹ️ No subscription found');
+        setSubscription(null);
+      }
 
     } catch (error) {
       console.error('❌ Error loading user data:', error);
@@ -119,7 +108,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, []);
 
-  // FIXED: Proper initialization with dependency management
+  // FIXED: Proper initialization logic
   useEffect(() => {
     let mounted = true;
 
@@ -137,13 +126,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           if (session?.user) {
             console.log('👤 User found in session');
             setUser(session.user);
-            // Load user data in background - don't wait for it
-            loadUserData(session.user);
+            // Load user data - this will update subscription state
+            await loadUserData(session.user);
           } else {
             console.log('🚫 No user in session');
+            setUser(null);
+            setProfile(null);
+            setSubscription(null);
           }
           
-          // CRITICAL FIX: Always mark as initialized and stop loading immediately
+          // CRITICAL FIX: Set initialized after everything is loaded
           setLoading(false);
           setInitialized(true);
           console.log('✅ Auth initialization complete');
@@ -159,7 +151,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     initAuth();
 
-    // FIXED: Auth state change handler with proper state management
+    // FIXED: Auth state change handler
     const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!mounted) return;
@@ -171,16 +163,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           setUser(null);
           setProfile(null);
           setSubscription(null);
+          setInitialized(true);
+          setLoading(false);
         } else if (event === 'SIGNED_IN' && session?.user) {
           console.log('🔑 User signed in');
           setUser(session.user);
-          // Load user data in background - don't wait for it
-          loadUserData(session.user);
+          // Load user data and wait for it to complete
+          await loadUserData(session.user);
+          setInitialized(true);
+          setLoading(false);
+        } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+          console.log('🔄 Token refreshed');
+          // Don't reload data on token refresh, just ensure states are correct
+          if (!user || user.id !== session.user.id) {
+            setUser(session.user);
+            await loadUserData(session.user);
+          }
         }
-        
-        // CRITICAL FIX: Always ensure we're initialized and not loading after auth events
-        setInitialized(true);
-        setLoading(false);
       }
     );
 
@@ -188,7 +187,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       mounted = false;
       authSubscription.unsubscribe();
     };
-  }, []); // FIXED: Empty dependency array to prevent stale closures
+  }, []); // Empty dependency array to prevent stale closures
 
   const signIn = useCallback(async (email: string, password: string): Promise<void> => {
     console.log('🔐 Signing in...');
@@ -205,7 +204,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const signOut = useCallback(async (): Promise<void> => {
     console.log('👋 Signing out...');
-    await supabase.auth.signOut();
+    
+    // FIXED: Clear states immediately for better UX
+    setUser(null);
+    setProfile(null);
+    setSubscription(null);
+    
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('❌ Sign out error:', error);
+        // Still continue with sign out even if there's an error
+      }
+    } catch (error) {
+      console.error('❌ Sign out error:', error);
+      // Continue with local state clearing
+    }
+    
+    console.log('✅ Sign out complete');
   }, []);
 
   const signUp = useCallback(async (email: string, password: string, fullName?: string): Promise<void> => {
@@ -230,14 +246,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     await loadUserData(user);
   }, [user, loadUserData]);
 
-  // Debug logging
+  // ENHANCED: Debug logging with more details
   useEffect(() => {
-    console.log('📊 Auth state:', {
+    console.log('📊 Auth state update:', {
       user: !!user,
+      userId: user?.id?.slice(0, 8),
       hasActiveSubscription,
       loading,
       initialized,
-      subscriptionStatus: subscription?.status
+      subscriptionStatus: subscription?.status,
+      subscriptionId: subscription?.id?.slice(0, 8)
     });
   }, [user, hasActiveSubscription, loading, initialized, subscription]);
 
