@@ -1,4 +1,4 @@
-// src/contexts/AuthContext.tsx - IMPROVED: Better error handling for database issues
+// src/contexts/AuthContext.tsx - DEBUG VERSION: Better error handling and logging
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
@@ -68,50 +68,43 @@ const createProfileSafe = async (userId: string, email: string): Promise<UserPro
   try {
     console.log("🔧 Creating profile for user:", userId);
     
-    // First try the safe function
-    const { data, error } = await supabase.rpc('create_user_profile_safe', {
-      user_id: userId,
-      user_email: email
-    });
+    // Try direct insert first
+    const { data: insertData, error: insertError } = await supabase
+      .from('user_profiles')
+      .insert({
+        id: userId,
+        email,
+        email_verified: false
+      })
+      .select()
+      .single();
 
-    if (error) {
-      console.warn('RPC function failed, trying direct insert:', error);
-      
-      // Fallback: try direct insert
-      const { data: insertData, error: insertError } = await supabase
-        .from('user_profiles')
-        .insert({
-          id: userId,
-          email,
-          email_verified: false
-        })
-        .select()
-        .single();
-
-      if (insertError) {
-        console.warn('Direct insert failed, trying upsert:', insertError);
-        
-        // Final fallback: try upsert
-        const { data: upsertData, error: upsertError } = await supabase
-          .from('user_profiles')
-          .upsert({
-            id: userId,
-            email,
-            email_verified: false,
-            updated_at: new Date().toISOString()
-          })
-          .select()
-          .single();
-
-        if (upsertError) {
-          console.error('All profile creation methods failed:', upsertError);
-          return null;
-        }
-        return upsertData;
-      }
+    if (!insertError && insertData) {
+      console.log("✅ Profile created successfully");
       return insertData;
     }
-    return data;
+
+    console.warn('Direct insert failed, trying upsert:', insertError);
+    
+    // Fallback: try upsert
+    const { data: upsertData, error: upsertError } = await supabase
+      .from('user_profiles')
+      .upsert({
+        id: userId,
+        email,
+        email_verified: false,
+        updated_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (upsertError) {
+      console.error('Profile creation completely failed:', upsertError);
+      return null;
+    }
+    
+    console.log("✅ Profile created via upsert");
+    return upsertData;
   } catch (error) {
     console.error('Profile creation completely failed:', error);
     return null;
@@ -133,7 +126,7 @@ const checkUserSubscription = async (userId: string): Promise<SubscriptionCheckR
 
     if (error) {
       console.warn("Subscription query error:", error);
-      // IMPROVED: Don't throw on database errors, return inactive state
+      // Return inactive state instead of throwing
       return {
         hasActiveSubscription: false,
         subscription: null,
@@ -143,6 +136,8 @@ const checkUserSubscription = async (userId: string): Promise<SubscriptionCheckR
 
     const subscription = data && data.length > 0 ? data[0] : null;
     const hasActiveSubscription = !!subscription;
+
+    console.log("✅ Subscription check result:", { hasActiveSubscription, status: subscription?.status || 'inactive' });
 
     return {
       hasActiveSubscription,
@@ -175,14 +170,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [error, setError] = useState<string | null>(null);
   const [authInProgress, setAuthInProgress] = useState(false);
 
-  // Stable refs
-  const userRef = useRef<User | null>(null);
-  const authInProgressRef = useRef(false);
-  
-  // Update refs when state changes
-  userRef.current = user;
-  authInProgressRef.current = authInProgress;
-
   // Computed values
   const hasActiveSubscription = useMemo(() => {
     return subscriptionStatus?.hasActiveSubscription ?? false;
@@ -212,10 +199,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setProfile(newProfile);
         } else {
           console.error("Profile load error:", profileError);
-          // Don't fail completely, continue with null profile
           setProfile(null);
         }
       } else {
+        console.log("✅ Profile loaded successfully");
         setProfile(profileData);
       }
 
@@ -224,15 +211,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setSubscriptionStatus(subStatus);
       setSubscription(subStatus.subscription);
 
-      console.log("✅ User data loaded:", {
-        profile: !!profileData,
-        hasSubscription: subStatus.hasActiveSubscription,
-        status: subStatus.status
-      });
+      console.log("✅ User data loaded successfully");
 
     } catch (error) {
       console.error("Error loading user data:", error);
-      // IMPROVED: Set safe default values instead of throwing
+      // Set safe default values instead of throwing
       setProfile(null);
       setSubscriptionStatus({
         hasActiveSubscription: false,
@@ -251,6 +234,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const initializeAuth = async () => {
       try {
         console.log("🔐 Initializing auth...");
+        setLoading(true);
         
         const { data: { session: initialSession }, error } = await supabase.auth.getSession();
         
@@ -269,8 +253,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setUser(initialSession?.user ?? null);
 
           if (initialSession?.user) {
+            console.log("👤 User found in session, loading data...");
             await loadUserData(initialSession.user);
           } else {
+            console.log("👤 No user in session");
             setSubscriptionStatus({
               hasActiveSubscription: false,
               subscription: null,
@@ -280,6 +266,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
           setLoading(false);
           setInitialized(true);
+          console.log("✅ Auth initialization complete");
         }
         
       } catch (error) {
@@ -295,12 +282,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const setupAuthListener = () => {
       const { data } = supabase.auth.onAuthStateChange(
         async (event, newSession) => {
-          if (!mounted || authInProgress) return;
+          if (!mounted) return;
 
-          console.log("Auth state change:", event);
+          console.log("🔄 Auth state change:", event);
           
           switch (event) {
             case 'SIGNED_OUT':
+              console.log("👋 User signed out");
               setSession(null);
               setUser(null);
               setProfile(null);
@@ -314,11 +302,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               break;
               
             case 'TOKEN_REFRESHED':
+              console.log("🔄 Token refreshed");
               setSession(newSession);
               setUser(newSession?.user ?? null);
               break;
               
             case 'SIGNED_IN':
+              console.log("👤 User signed in");
               setSession(newSession);
               setUser(newSession?.user ?? null);
               if (newSession?.user) {
@@ -347,33 +337,43 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
   }, []);
 
-  // Auth functions with better error handling
-  const signInRef = useRef<(email: string, password: string) => Promise<void>>();
-  signInRef.current = async (email: string, password: string): Promise<void> => {
-    if (authInProgressRef.current) return;
+  // FIXED: Sign in function with better error handling
+  const signIn = useCallback(async (email: string, password: string): Promise<void> => {
+    if (authInProgress) {
+      console.log("🔄 Sign in already in progress");
+      return;
+    }
 
     setAuthInProgress(true);
-    setLoading(true);
     setError(null);
 
     try {
-      console.log("🔐 Starting sign in...");
+      console.log("🔐 Starting sign in for:", email);
       
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
         password,
       });
 
-      if (error) throw error;
-      if (!data.user) throw new Error("Sign in failed");
+      if (error) {
+        console.error("❌ Sign in error:", error);
+        throw error;
+      }
 
-      setSession(data.session);
-      setUser(data.user);
-      await loadUserData(data.user);
+      if (!data.user) {
+        console.error("❌ No user returned from sign in");
+        throw new Error("Sign in failed");
+      }
+
+      console.log("✅ Sign in successful, user:", data.user.id);
+      
+      // The auth state change listener will handle loading user data
+      // Don't call loadUserData here to avoid conflicts
 
     } catch (error: any) {
-      console.error("Sign in error:", error);
+      console.error("❌ Sign in failed:", error);
       setError(error.message);
+      
       if (error.message?.includes("Invalid login credentials")) {
         throw new Error("Invalid email or password. Please check your credentials and try again.");
       } else if (error.message?.includes("Email not confirmed")) {
@@ -383,9 +383,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     } finally {
       setAuthInProgress(false);
-      setLoading(false);
     }
-  };
+  }, [authInProgress]);
 
   const signUp = useCallback(async (email: string, password: string, fullName?: string): Promise<void> => {
     setError(null);
@@ -403,9 +402,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       throw new Error(error.message || "Failed to create account");
     }
   }, []);
-
-  const signIn = useCallback((email: string, password: string) => 
-    signInRef.current?.(email, password) || Promise.resolve(), []);
 
   const signOut = useCallback(async (): Promise<void> => {
     try {
@@ -430,13 +426,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const updateProfile = useCallback(async (updates: Partial<UserProfile>): Promise<void> => {
-    if (!userRef.current) throw new Error("No authenticated user");
+    if (!user) throw new Error("No authenticated user");
 
     try {
       const { data, error } = await supabase
         .from('user_profiles')
         .update(updates)
-        .eq('id', userRef.current.id)
+        .eq('id', user.id)
         .select()
         .single();
 
@@ -445,19 +441,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error: any) {
       throw new Error(error.message || "Failed to update profile");
     }
-  }, []);
+  }, [user]);
 
   const refreshSubscription = useCallback(async (): Promise<void> => {
-    if (!userRef.current) return;
+    if (!user) return;
 
     try {
-      const subStatus = await checkUserSubscription(userRef.current.id);
+      const subStatus = await checkUserSubscription(user.id);
       setSubscriptionStatus(subStatus);
       setSubscription(subStatus.subscription);
     } catch (error) {
       console.error("Failed to refresh subscription:", error);
     }
-  }, []);
+  }, [user]);
 
   const resetPassword = useCallback(async (email: string): Promise<void> => {
     return forgotPassword(email);

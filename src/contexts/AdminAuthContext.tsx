@@ -40,26 +40,37 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({ children }
   // Check if current session has admin access
   const checkAdminAccess = async () => {
     try {
+      console.log("🔍 Checking admin access...");
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.user) {
+        console.log("❌ No session found");
         setAdmin(null);
         return;
       }
+
+      console.log("👤 Session found, verifying admin status for:", session.user.email);
 
       // Use the safe authentication function
       const { data: adminData, error } = await supabase
         .rpc('authenticate_admin', { user_email: session.user.email });
 
-      if (error || !adminData) {
-        console.log('User is not an admin or admin not found');
+      if (error) {
+        console.error("❌ Admin verification error:", error);
         setAdmin(null);
         return;
       }
 
+      if (!adminData) {
+        console.log("❌ User is not an admin");
+        setAdmin(null);
+        return;
+      }
+
+      console.log("✅ Admin access verified:", adminData.email);
       setAdmin(adminData);
     } catch (error) {
-      console.error('Error checking admin access:', error);
+      console.error('❌ Error checking admin access:', error);
       setAdmin(null);
     }
   };
@@ -91,6 +102,8 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({ children }
 
   const signIn = async (email: string, password: string): Promise<void> => {
     try {
+      console.log("🔐 Starting admin sign in for:", email);
+      
       // Sign in with Supabase Auth first
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.toLowerCase().trim(),
@@ -98,30 +111,40 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({ children }
       });
 
       if (error) {
+        console.error("❌ Admin auth error:", error);
         throw error;
       }
 
       if (!data.user) {
+        console.error("❌ No user returned from admin sign in");
         throw new Error('Sign in failed');
       }
+
+      console.log("✅ Admin auth successful, checking admin status...");
 
       // Check if user is an admin using the safe function
       const { data: adminData, error: adminError } = await supabase
         .rpc('authenticate_admin', { user_email: email.toLowerCase().trim() });
 
-      if (adminError || !adminData) {
+      if (adminError) {
+        console.error("❌ Admin verification error:", adminError);
+        // Sign out the user since they're not an admin
+        await supabase.auth.signOut();
+        throw new Error('Admin verification failed');
+      }
+
+      if (!adminData) {
+        console.error("❌ No admin data returned");
         // Sign out the user since they're not an admin
         await supabase.auth.signOut();
         throw new Error('Invalid admin credentials or account is disabled');
       }
 
-      // Update last login
-      await supabase
-        .rpc('authenticate_admin', { user_email: email.toLowerCase().trim() });
-
+      console.log("✅ Admin verification successful:", adminData.email);
       setAdmin(adminData);
+      
     } catch (error: any) {
-      console.error('Admin sign in error:', error);
+      console.error('❌ Admin sign in failed:', error);
       throw new Error(error.message || 'Admin sign in failed');
     }
   };

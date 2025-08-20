@@ -69,15 +69,18 @@ export const AdminLoginPage: React.FC = () => {
     setErrors({});
 
     try {
+      console.log("🔐 Starting admin login...");
       await signIn(formData.email, formData.password);
-      // Don't set isLoading to false here - let the redirect happen
+      console.log("✅ Admin login successful - redirect will be handled by useEffect");
+      // The useEffect will handle the redirect when admin state updates
     } catch (error: any) {
-      console.error('Admin login error:', error);
+      console.error('❌ Admin login error:', error);
       setErrors({ 
         submit: error.message || 'Login failed. Please check your credentials.'
       });
-      setIsLoading(false); // Only reset on error
+      setIsLoading(false); // Reset on error to allow retry
     }
+    // Note: Don't set isLoading to false on success - let the redirect happen
   };
 
   const handleInputChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -120,13 +120,14 @@ export const SignInPage: React.FC = () => {
       await signIn(formData.email, formData.password);
       
       console.log("✅ Sign in successful - routing will be handled by useEffect");
-      // Don't set isSubmitting to false here - let the redirect happen
+      // The useEffect will handle the redirect when user state updates
       
     } catch (error: any) {
-      console.error('Sign in failed:', error);
+      console.error('❌ Sign in failed:', error);
       setErrors({ submit: error.message });
-      setIsSubmitting(false); // Only reset on error
+      setIsSubmitting(false); // Reset on error to allow retry
     }
+    // Note: Don't set isSubmitting to false on success - let the redirect happen
   };
 
   // CRITICAL FIX: If user is already signed in and we're about to redirect, show loading
