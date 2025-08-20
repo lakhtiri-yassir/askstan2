@@ -14,18 +14,20 @@ export const AdminLoginPage: React.FC = () => {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [hasRedirected, setHasRedirected] = useState(false);
   
   const { signIn, admin, isLoading: adminLoading } = useAdminAuth();
   const navigate = useNavigate();
 
   // CRITICAL FIX: Redirect logic with proper state checking
   useEffect(() => {
-    // Don't redirect if we're still loading admin state
-    if (adminLoading || isLoading) {
+    // Don't redirect if we're still loading admin state or already redirected
+    if (adminLoading || isLoading || hasRedirected) {
       return;
     }
 
     if (admin) {
+      setHasRedirected(true);
       // Add small delay to ensure state is fully loaded
       const timer = setTimeout(() => {
         navigate('/admin', { replace: true });
@@ -33,13 +35,7 @@ export const AdminLoginPage: React.FC = () => {
       
       return () => clearTimeout(timer);
     }
-  }, [admin, adminLoading, isLoading, navigate]);
-
-  // CRITICAL FIX: Reset form state when component mounts
-  useEffect(() => {
-    setIsLoading(false);
-    setErrors({});
-  }, []);
+  }, [admin, adminLoading, isLoading, hasRedirected, navigate]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -61,8 +57,8 @@ export const AdminLoginPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // CRITICAL FIX: Prevent double submissions
-    if (isLoading || adminLoading) {
+    // CRITICAL FIX: Only prevent submission if actually loading
+    if (isLoading) {
       console.log("⏸️ Admin login already in progress");
       return;
     }
@@ -98,8 +94,8 @@ export const AdminLoginPage: React.FC = () => {
     }
   };
 
-  // CRITICAL FIX: If admin is already logged in, show loading state
-  if (admin && !adminLoading) {
+  // CRITICAL FIX: If admin is already logged in and redirecting, show loading state
+  if (admin && hasRedirected) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center p-4">
         <div className="text-center">
@@ -110,7 +106,8 @@ export const AdminLoginPage: React.FC = () => {
     );
   }
 
-  const loading = isLoading || adminLoading;
+  // CRITICAL FIX: Only disable form when actually loading
+  const isFormDisabled = isLoading;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center p-4">
@@ -160,7 +157,7 @@ export const AdminLoginPage: React.FC = () => {
             onChange={handleInputChange('email')}
             error={errors.email}
             icon={<Mail className="w-5 h-5" />}
-            disabled={loading}
+            disabled={isFormDisabled}
             required
           />
 
@@ -173,7 +170,7 @@ export const AdminLoginPage: React.FC = () => {
             onChange={handleInputChange('password')}
             error={errors.password}
             icon={<Lock className="w-5 h-5" />}
-            disabled={loading}
+            disabled={isFormDisabled}
             required
           />
 
@@ -191,12 +188,12 @@ export const AdminLoginPage: React.FC = () => {
           {/* Submit Button */}
           <Button
             type="submit"
-            loading={loading}
+            loading={isFormDisabled}
             className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
-            disabled={loading}
+            disabled={isFormDisabled}
           >
-            {loading ? 'Signing In...' : 'Access Admin Dashboard'}
-            {!loading && <LogIn className="w-5 h-5 ml-2" />}
+            {isLoading ? 'Signing In...' : 'Access Admin Dashboard'}
+            {!isFormDisabled && <LogIn className="w-5 h-5 ml-2" />}
           </Button>
         </motion.form>
 

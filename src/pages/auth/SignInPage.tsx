@@ -30,15 +30,18 @@ export const SignInPage: React.FC = () => {
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasRedirected, setHasRedirected] = useState(false);
 
   // CRITICAL FIX: Only redirect after auth is fully initialized and we have subscription status
   useEffect(() => {
-    // Don't redirect if we're still loading or not initialized
-    if (!initialized || authLoading || isSubmitting) {
+    // Don't redirect if we're still loading, not initialized, or already redirected
+    if (!initialized || authLoading || isSubmitting || hasRedirected) {
       return;
     }
 
     if (user) {
+      setHasRedirected(true);
+      
       // Check if there's a redirect location from ProtectedRoute
       const from = (location.state as any)?.from?.pathname;
       
@@ -59,13 +62,7 @@ export const SignInPage: React.FC = () => {
         return () => clearTimeout(timer);
       }
     }
-  }, [user, hasActiveSubscription, initialized, authLoading, isSubmitting, navigate, location.state]);
-
-  // CRITICAL FIX: Reset form state when component mounts
-  useEffect(() => {
-    setIsSubmitting(false);
-    setErrors({});
-  }, []);
+  }, [user, hasActiveSubscription, initialized, authLoading, isSubmitting, hasRedirected, navigate, location.state]);
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
@@ -106,9 +103,9 @@ export const SignInPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // CRITICAL FIX: Prevent double submissions and check current state
-    if (isSubmitting || authLoading) {
-      console.log("⏸️ Sign in already in progress or auth loading");
+    // CRITICAL FIX: Only prevent submission if actually submitting
+    if (isSubmitting) {
+      console.log("⏸️ Sign in already in progress");
       return;
     }
 
@@ -132,8 +129,8 @@ export const SignInPage: React.FC = () => {
     }
   };
 
-  // CRITICAL FIX: If user is already signed in, show loading state
-  if (user && initialized) {
+  // CRITICAL FIX: If user is already signed in and we're about to redirect, show loading
+  if (user && initialized && hasRedirected) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center p-4">
         <div className="text-center">
@@ -144,7 +141,8 @@ export const SignInPage: React.FC = () => {
     );
   }
 
-  const isLoading = authLoading || isSubmitting;
+  // CRITICAL FIX: Only consider form loading if actually submitting
+  const isFormDisabled = isSubmitting;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center p-4">
@@ -182,7 +180,7 @@ export const SignInPage: React.FC = () => {
             onChange={handleInputChange('email')}
             error={errors.email}
             icon={<Mail className="w-5 h-5" />}
-            disabled={isLoading}
+            disabled={isFormDisabled}
             required
           />
 
@@ -195,7 +193,7 @@ export const SignInPage: React.FC = () => {
             onChange={handleInputChange('password')}
             error={errors.password}
             icon={<Lock className="w-5 h-5" />}
-            disabled={isLoading}
+            disabled={isFormDisabled}
             required
           />
 
@@ -213,12 +211,12 @@ export const SignInPage: React.FC = () => {
           {/* Submit Button */}
           <Button
             type="submit"
-            loading={isLoading}
+            loading={isFormDisabled}
             className="w-full bg-gradient-to-r from-blue-500 to-yellow-500 hover:from-blue-600 hover:to-yellow-600 text-white font-semibold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
-            disabled={isLoading}
+            disabled={isFormDisabled}
           >
             {isSubmitting ? 'Signing In...' : 'Sign In'}
-            {!isLoading && <ArrowRight className="w-5 h-5 ml-2" />}
+            {!isFormDisabled && <ArrowRight className="w-5 h-5 ml-2" />}
           </Button>
 
           {/* Footer Links */}
