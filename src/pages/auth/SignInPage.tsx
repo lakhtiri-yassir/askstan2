@@ -7,7 +7,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 
-export const SignInPage: React.FC = () => {
+const SignInPage: React.FC = () => {
   const navigate = useNavigate();
   const { signIn, user, hasActiveSubscription, initialized } = useAuth();
   
@@ -217,3 +217,6 @@ export const SignInPage: React.FC = () => {
     </div>
   );
 };
+
+// CRITICAL FIX: Export as default to match lazy loading expectations  
+export default SignInPage;
