@@ -1,20 +1,22 @@
-// src/contexts/AdminAuthContext.tsx
+// src/contexts/AdminAuthContext.tsx - Updated for database integration
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 
 interface AdminUser {
   id: string;
   email: string;
-  full_name: string;
+  full_name: string | null;
   is_super_admin: boolean;
+  is_active: boolean;
+  created_at: string;
+  last_login: string | null;
 }
 
 interface AdminAuthContextType {
   admin: AdminUser | null;
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signOut: () => void;
-  validateSession: () => Promise<boolean>;
+  signOut: () => Promise<void>;
 }
 
 const AdminAuthContext = createContext<AdminAuthContextType | undefined>(undefined);
@@ -35,110 +37,125 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({ children }
   const [admin, setAdmin] = useState<AdminUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Check for existing session on mount
-  useEffect(() => {
-    const checkSession = async () => {
-      const sessionToken = localStorage.getItem('admin_session_token');
-      if (sessionToken) {
-        try {
-          const { data, error } = await supabase.rpc('admin_validate_session', {
-            session_token: sessionToken
-          });
-
-          if (error) throw error;
-
-          if (data && data.length > 0) {
-            const adminData = data[0];
-            setAdmin({
-              id: adminData.admin_id,
-              email: adminData.email,
-              full_name: adminData.full_name,
-              is_super_admin: adminData.is_super_admin
-            });
-          } else {
-            localStorage.removeItem('admin_session_token');
-          }
-        } catch (error) {
-          console.error('Session validation error:', error);
-          localStorage.removeItem('admin_session_token');
-        }
+  // Check if current session has admin access
+  const checkAdminAccess = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.user) {
+        setAdmin(null);
+        return;
       }
+
+      // Check if user is an admin and get admin details
+      const { data: adminData, error } = await supabase
+        .from('admin_users')
+        .select('*')
+        .eq('email', session.user.email)
+        .eq('is_active', true)
+        .single();
+
+      if (error || !adminData) {
+        console.log('User is not an admin or admin not found');
+        setAdmin(null);
+        return;
+      }
+
+      // Update last login
+      await supabase
+        .from('admin_users')
+        .update({ last_login: new Date().toISOString() })
+        .eq('id', adminData.id);
+
+      setAdmin(adminData);
+    } catch (error) {
+      console.error('Error checking admin access:', error);
+      setAdmin(null);
+    }
+  };
+
+  // Initialize admin auth
+  useEffect(() => {
+    const initializeAdminAuth = async () => {
+      await checkAdminAccess();
       setIsLoading(false);
     };
 
-    checkSession();
+    initializeAdminAuth();
+
+    // Listen for auth changes
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'SIGNED_OUT') {
+          setAdmin(null);
+        } else if (event === 'SIGNED_IN' && session?.user) {
+          await checkAdminAccess();
+        }
+      }
+    );
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
   }, []);
 
   const signIn = async (email: string, password: string): Promise<void> => {
     try {
-      setIsLoading(true);
-      
-      const { data, error } = await supabase.rpc('admin_authenticate', {
-        admin_email: email,
-        admin_password: password
+      // First check if user is an admin before attempting sign in
+      const { data: adminData, error: adminError } = await supabase
+        .from('admin_users')
+        .select('*')
+        .eq('email', email.toLowerCase().trim())
+        .eq('is_active', true)
+        .single();
+
+      if (adminError || !adminData) {
+        throw new Error('Invalid admin credentials or account is disabled');
+      }
+
+      // Sign in with Supabase Auth
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.toLowerCase().trim(),
+        password,
       });
 
       if (error) {
-        throw new Error(error.message || 'Authentication failed');
+        throw error;
       }
 
-      if (!data || data.length === 0) {
-        throw new Error('Invalid credentials');
+      if (!data.user) {
+        throw new Error('Sign in failed');
       }
 
-      const authResult = data[0];
-      
-      // Store session token
-      localStorage.setItem('admin_session_token', authResult.session_token);
-      
-      // Set admin user
-      setAdmin({
-        id: authResult.admin_id,
-        email: email,
-        full_name: authResult.full_name,
-        is_super_admin: authResult.is_super_admin
-      });
+      // Update last login and set admin
+      await supabase
+        .from('admin_users')
+        .update({ last_login: new Date().toISOString() })
+        .eq('id', adminData.id);
 
-    } catch (error) {
+      setAdmin(adminData);
+    } catch (error: any) {
       console.error('Admin sign in error:', error);
-      throw error;
-    } finally {
-      setIsLoading(false);
+      throw new Error(error.message || 'Admin sign in failed');
     }
   };
 
-  const signOut = () => {
-    localStorage.removeItem('admin_session_token');
-    setAdmin(null);
-  };
-
-  const validateSession = async (): Promise<boolean> => {
-    const sessionToken = localStorage.getItem('admin_session_token');
-    if (!sessionToken) return false;
-
+  const signOut = async (): Promise<void> => {
     try {
-      const { data, error } = await supabase.rpc('admin_validate_session', {
-        session_token: sessionToken
-      });
-
-      if (error || !data || data.length === 0) {
-        signOut();
-        return false;
-      }
-
-      return true;
-    } catch (error) {
-      signOut();
-      return false;
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      setAdmin(null);
+    } catch (error: any) {
+      console.error('Admin sign out error:', error);
+      throw new Error(error.message || 'Sign out failed');
     }
   };
 
-  const value = {
+  const value: AdminAuthContextType = {
     admin,
     isLoading,
     signIn,
     signOut,
-    validateSession
   };
 
   return (
