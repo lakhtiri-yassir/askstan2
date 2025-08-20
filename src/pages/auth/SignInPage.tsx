@@ -1,4 +1,4 @@
-// src/pages/auth/SignInPage.tsx - FIXED: Proper subscription-based redirect
+// src/pages/auth/SignInPage.tsx - CRITICAL FIX: Icons passed as JSX elements
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -132,7 +132,7 @@ const SignInPage: React.FC = () => {
           className="bg-white rounded-2xl shadow-xl p-8"
         >
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Email Field */}
+            {/* Email Field - CRITICAL FIX: Pass icon as JSX element */}
             <div>
               <Input
                 label="Email Address"
@@ -140,13 +140,13 @@ const SignInPage: React.FC = () => {
                 value={formData.email}
                 onChange={handleInputChange('email')}
                 error={errors.email}
-                icon={Mail}
+                icon={<Mail className="w-5 h-5" />}
                 placeholder="Enter your email"
                 required
               />
             </div>
 
-            {/* Password Field */}
+            {/* Password Field - CRITICAL FIX: Pass icon as JSX element */}
             <div>
               <Input
                 label="Password"
@@ -154,7 +154,7 @@ const SignInPage: React.FC = () => {
                 value={formData.password}
                 onChange={handleInputChange('password')}
                 error={errors.password}
-                icon={Lock}
+                icon={<Lock className="w-5 h-5" />}
                 placeholder="Enter your password"
                 required
               />
@@ -171,7 +171,7 @@ const SignInPage: React.FC = () => {
             <Button
               type="submit"
               className="w-full flex items-center justify-center"
-              loading={isSubmitting}
+              isLoading={isSubmitting}
               disabled={isSubmitting}
             >
               {isSubmitting ? (
