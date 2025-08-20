@@ -58,37 +58,60 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Simple subscription check
   const hasActiveSubscription = subscription?.status === 'active' || subscription?.status === 'trialing';
 
-  // Load user data function
+  // Load user data function with better error handling
   const loadUserData = async (authUser: User) => {
     try {
-      console.log('Loading data for:', authUser.email);
+      console.log('🔄 Loading data for:', authUser.email);
       
-      // Load profile
-      const { data: profileData } = await supabase
+      // Load profile with error handling
+      const { data: profileData, error: profileError } = await supabase
         .from('user_profiles')
         .select('*')
         .eq('id', authUser.id)
         .single();
 
-      // Load subscription
-      const { data: subscriptionData } = await supabase
+      if (profileError) {
+        console.warn('⚠️ Profile error:', profileError);
+      }
+
+      // Load subscription with better query
+      const { data: subscriptionData, error: subscriptionError } = await supabase
         .from('subscriptions')
         .select('*')
         .eq('user_id', authUser.id)
+        .in('status', ['active', 'trialing', 'past_due']) // Include all potentially active statuses
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
 
-      setProfile(profileData);
-      setSubscription(subscriptionData);
+      if (subscriptionError) {
+        console.warn('⚠️ Subscription error:', subscriptionError);
+      }
+
+      // Update states
+      setProfile(profileData || null);
+      setSubscription(subscriptionData || null);
       
-      console.log('Data loaded:', {
+      console.log('✅ Data loaded:', {
+        userId: authUser.id.slice(0, 8),
         profile: !!profileData,
         subscription: !!subscriptionData,
-        status: subscriptionData?.status
+        subscriptionStatus: subscriptionData?.status || 'none',
+        subscriptionId: subscriptionData?.id?.slice(0, 8) || 'none'
       });
+
+      // Also try loading ANY subscription for this user for debugging
+      const { data: allSubs, error: allSubsError } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('user_id', authUser.id);
+      
+      console.log('🔍 All subscriptions for user:', allSubs?.length || 0, allSubs);
+
     } catch (error) {
-      console.error('Error loading user data:', error);
+      console.error('❌ Critical error loading user data:', error);
+      setProfile(null);
+      setSubscription(null);
     }
   };
 
@@ -107,23 +130,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
         if (mounted) {
           if (session?.user) {
-            console.log('Found user in session:', session.user.email);
+            console.log('👤 Found user in session:', session.user.email);
             setUser(session.user);
-            // Load user data
+            // Load user data and wait for completion
             await loadUserData(session.user);
           } else {
-            console.log('No user in session');
+            console.log('🚫 No user in session');
             setUser(null);
             setProfile(null);
             setSubscription(null);
           }
           
-          // CRITICAL: Always set loading to false after initialization
+          // CRITICAL: Always set loading to false after data loading completes
+          console.log('✅ Setting loading to false');
           setLoading(false);
         }
-      } catch (error) {
-        console.error('Auth initialization error:', error);
+              } catch (error) {
+        console.error('❌ Auth initialization error:', error);
         if (mounted) {
+          console.log('✅ Setting loading to false due to error');
           setLoading(false); // Set loading false even on error
         }
       }
@@ -243,7 +268,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       refreshSubscription,
     }}>
       {/* Debug panel - remove after fixing */}
-      {true && (
+      {process.env.NODE_ENV === 'development' && (
         <div style={{
           position: 'fixed',
           top: '10px',
