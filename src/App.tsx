@@ -1,4 +1,4 @@
-// src/App.tsx - FIXED: Admin routing redirects to correct dashboard
+// src/App.tsx - FIXED: Proper lazy loading imports
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
@@ -8,26 +8,52 @@ import { ProtectedRoute } from './components/layout/ProtectedRoute';
 import { AdminProtectedRoute } from './components/layout/AdminProtectedRoute';
 import { LoadingSpinner } from './components/ui/LoadingSpinner';
 
-// Lazy load pages for better performance - ALL NOW HAVE PROPER DEFAULT EXPORTS
-const LandingPage = lazy(() => import('./pages/LandingPage').then(module => ({ default: module.LandingPage })));
-const SignUpPage = lazy(() => import('./pages/auth/SignUpPage'));
-const SignInPage = lazy(() => import('./pages/auth/SignInPage'));
-const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPasswordPage').then(module => ({ default: module.ForgotPasswordPage })));
-const ResetPasswordPage = lazy(() => import('./pages/auth/ResetPasswordPage').then(module => ({ default: module.ResetPasswordPage })));
+// FIXED: Proper lazy loading with correct default exports
+const LandingPage = lazy(() => import('./pages/LandingPage').then(module => ({ 
+  default: module.LandingPage || module.default 
+})));
+const SignUpPage = lazy(() => import('./pages/auth/SignUpPage').then(module => ({ 
+  default: module.SignUpPage || module.default 
+})));
+const SignInPage = lazy(() => import('./pages/auth/SignInPage').then(module => ({ 
+  default: module.SignInPage || module.default 
+})));
+const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPasswordPage').then(module => ({ 
+  default: module.ForgotPasswordPage || module.default 
+})));
+const ResetPasswordPage = lazy(() => import('./pages/auth/ResetPasswordPage').then(module => ({ 
+  default: module.ResetPasswordPage || module.default 
+})));
 
 // Protected pages
-const PlansPage = lazy(() => import('./pages/subscription/PlansPage').then(module => ({ default: module.PlansPage })));
-const CheckoutSuccessPage = lazy(() => import('./pages/checkout/CheckoutSuccessPage').then(module => ({ default: module.CheckoutSuccessPage })));
-const DashboardPage = lazy(() => import('./pages/dashboard/DashboardPage').then(module => ({ default: module.DashboardPage })));
-const SettingsPage = lazy(() => import('./pages/settings/SettingsPage').then(module => ({ default: module.SettingsPage })));
+const PlansPage = lazy(() => import('./pages/subscription/PlansPage').then(module => ({ 
+  default: module.PlansPage || module.default 
+})));
+const CheckoutSuccessPage = lazy(() => import('./pages/checkout/CheckoutSuccessPage').then(module => ({ 
+  default: module.CheckoutSuccessPage || module.default 
+})));
+const DashboardPage = lazy(() => import('./pages/dashboard/DashboardPage').then(module => ({ 
+  default: module.DashboardPage || module.default 
+})));
+const SettingsPage = lazy(() => import('./pages/settings/SettingsPage').then(module => ({ 
+  default: module.SettingsPage || module.default 
+})));
 
 // Legal pages
-const TermsOfServicePage = lazy(() => import('./pages/legal/TermsOfServicePage').then(module => ({ default: module.TermsOfServicePage })));
-const PrivacyPolicyPage = lazy(() => import('./pages/legal/PrivacyPolicyPage').then(module => ({ default: module.PrivacyPolicyPage })));
+const TermsOfServicePage = lazy(() => import('./pages/legal/TermsOfServicePage').then(module => ({ 
+  default: module.TermsOfServicePage || module.default 
+})));
+const PrivacyPolicyPage = lazy(() => import('./pages/legal/PrivacyPolicyPage').then(module => ({ 
+  default: module.PrivacyPolicyPage || module.default 
+})));
 
-// Admin pages
-const AdminLoginPage = lazy(() => import('./pages/admin/AdminLoginPage'));
-const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard').then(module => ({ default: module.AdminDashboard })));
+// Admin pages - FIXED: Proper imports
+const AdminLoginPage = lazy(() => import('./pages/admin/AdminLoginPage').then(module => ({ 
+  default: module.AdminLoginPage || module.default 
+})));
+const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard').then(module => ({ 
+  default: module.AdminDashboard || module.default 
+})));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -55,7 +81,6 @@ function App() {
               <Routes>
                 {/* Public Routes */}
                 <Route path="/" element={<LandingPage />} />
-                {/* FIXED: Auth pages now have proper default exports */}
                 <Route path="/signup" element={<SignUpPage />} />
                 <Route path="/signin" element={<SignInPage />} />
                 <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -101,7 +126,7 @@ function App() {
                   } 
                 />
                 
-                {/* Admin Routes - FIXED: Proper routing */}
+                {/* Admin Routes */}
                 <Route path="/admin/login" element={<AdminLoginPage />} />
                 <Route 
                   path="/admin" 
@@ -111,7 +136,6 @@ function App() {
                     </AdminProtectedRoute>
                   } 
                 />
-                {/* REMOVED: /admin/dashboard route - now redirects to /admin */}
                 
                 {/* Fallback Route */}
                 <Route path="*" element={<LandingPage />} />

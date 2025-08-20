@@ -47,25 +47,15 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({ children }
         return;
       }
 
-      // Check if user is an admin and get admin details
+      // Use the safe authentication function
       const { data: adminData, error } = await supabase
-        .from('admin_users')
-        .select('*')
-        .eq('email', session.user.email)
-        .eq('is_active', true)
-        .single();
+        .rpc('authenticate_admin', { user_email: session.user.email });
 
       if (error || !adminData) {
         console.log('User is not an admin or admin not found');
         setAdmin(null);
         return;
       }
-
-      // Update last login
-      await supabase
-        .from('admin_users')
-        .update({ last_login: new Date().toISOString() })
-        .eq('id', adminData.id);
 
       setAdmin(adminData);
     } catch (error) {
@@ -101,19 +91,7 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({ children }
 
   const signIn = async (email: string, password: string): Promise<void> => {
     try {
-      // First check if user is an admin before attempting sign in
-      const { data: adminData, error: adminError } = await supabase
-        .from('admin_users')
-        .select('*')
-        .eq('email', email.toLowerCase().trim())
-        .eq('is_active', true)
-        .single();
-
-      if (adminError || !adminData) {
-        throw new Error('Invalid admin credentials or account is disabled');
-      }
-
-      // Sign in with Supabase Auth
+      // Sign in with Supabase Auth first
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.toLowerCase().trim(),
         password,
@@ -127,11 +105,19 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({ children }
         throw new Error('Sign in failed');
       }
 
-      // Update last login and set admin
+      // Check if user is an admin using the safe function
+      const { data: adminData, error: adminError } = await supabase
+        .rpc('authenticate_admin', { user_email: email.toLowerCase().trim() });
+
+      if (adminError || !adminData) {
+        // Sign out the user since they're not an admin
+        await supabase.auth.signOut();
+        throw new Error('Invalid admin credentials or account is disabled');
+      }
+
+      // Update last login
       await supabase
-        .from('admin_users')
-        .update({ last_login: new Date().toISOString() })
-        .eq('id', adminData.id);
+        .rpc('authenticate_admin', { user_email: email.toLowerCase().trim() });
 
       setAdmin(adminData);
     } catch (error: any) {
