@@ -43,9 +43,12 @@ export const Header: React.FC = () => {
       // Remove chatbot before signing out
       removeChatbot();
       await signOut();
-      navigate('/', { replace: true });
+      // Force navigation to home page after sign out
+      window.location.href = '/';
     } catch (error) {
       console.error('Sign out error:', error);
+      // Even if sign out fails, redirect to home
+      window.location.href = '/';
     }
   };
 

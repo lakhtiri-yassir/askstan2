@@ -1,4 +1,4 @@
-// src/pages/admin/AdminLoginPage.tsx - Fixed with platform styling
+// src/pages/admin/AdminLoginPage.tsx - FIXED: Proper state management
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -15,15 +15,31 @@ export const AdminLoginPage: React.FC = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   
-  const { signIn, admin } = useAdminAuth();
+  const { signIn, admin, isLoading: adminLoading } = useAdminAuth();
   const navigate = useNavigate();
 
-  // Redirect if already logged in
+  // CRITICAL FIX: Redirect logic with proper state checking
   useEffect(() => {
-    if (admin) {
-      navigate('/admin', { replace: true });
+    // Don't redirect if we're still loading admin state
+    if (adminLoading || isLoading) {
+      return;
     }
-  }, [admin, navigate]);
+
+    if (admin) {
+      // Add small delay to ensure state is fully loaded
+      const timer = setTimeout(() => {
+        navigate('/admin', { replace: true });
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [admin, adminLoading, isLoading, navigate]);
+
+  // CRITICAL FIX: Reset form state when component mounts
+  useEffect(() => {
+    setIsLoading(false);
+    setErrors({});
+  }, []);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -45,19 +61,26 @@ export const AdminLoginPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // CRITICAL FIX: Prevent double submissions
+    if (isLoading || adminLoading) {
+      console.log("⏸️ Admin login already in progress");
+      return;
+    }
+
     if (!validateForm()) return;
 
     setIsLoading(true);
+    setErrors({});
+
     try {
       await signIn(formData.email, formData.password);
-      navigate('/admin', { replace: true });
+      // Don't set isLoading to false here - let the redirect happen
     } catch (error: any) {
       console.error('Admin login error:', error);
       setErrors({ 
         submit: error.message || 'Login failed. Please check your credentials.'
       });
-    } finally {
-      setIsLoading(false);
+      setIsLoading(false); // Only reset on error
     }
   };
 
@@ -74,6 +97,20 @@ export const AdminLoginPage: React.FC = () => {
       }));
     }
   };
+
+  // CRITICAL FIX: If admin is already logged in, show loading state
+  if (admin && !adminLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center p-4">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Redirecting to admin dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const loading = isLoading || adminLoading;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center p-4">
@@ -99,92 +136,77 @@ export const AdminLoginPage: React.FC = () => {
           transition={{ delay: 0.1 }}
           className="text-center mb-8"
         >
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-500 to-yellow-500 rounded-2xl mb-4">
+          <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
             <LogIn className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Admin Access</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Admin Access</h1>
           <p className="text-gray-600">Sign in to the admin dashboard</p>
         </motion.div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Login Form */}
+        <motion.form
+          onSubmit={handleSubmit}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="space-y-6"
+        >
           {/* Email Field */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <Input
-              type="email"
-              placeholder="Enter admin email"
-              value={formData.email}
-              onChange={handleInputChange('email')}
-              error={errors.email}
-              icon={<Mail />}
-              autoComplete="email"
-              autoFocus
-            />
-          </motion.div>
+          <Input
+            type="email"
+            label="Admin Email"
+            placeholder="Enter your admin email"
+            value={formData.email}
+            onChange={handleInputChange('email')}
+            error={errors.email}
+            icon={<Mail className="w-5 h-5" />}
+            disabled={loading}
+            required
+          />
 
           {/* Password Field */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.3 }}
-          >
-            <Input
-              type="password"
-              placeholder="Enter admin password"
-              value={formData.password}
-              onChange={handleInputChange('password')}
-              error={errors.password}
-              icon={<Lock />}
-              autoComplete="current-password"
-            />
-          </motion.div>
+          <Input
+            type="password"
+            label="Password"
+            placeholder="Enter your password"
+            value={formData.password}
+            onChange={handleInputChange('password')}
+            error={errors.password}
+            icon={<Lock className="w-5 h-5" />}
+            disabled={loading}
+            required
+          />
 
           {/* Submit Error */}
           {errors.submit && (
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-red-50 border border-red-200 rounded-lg p-3"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-4 bg-red-50 border border-red-200 rounded-lg"
             >
-              <p className="text-red-700 text-sm text-center">{errors.submit}</p>
+              <p className="text-red-600 text-sm">{errors.submit}</p>
             </motion.div>
           )}
 
           {/* Submit Button */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
+          <Button
+            type="submit"
+            loading={loading}
+            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
+            disabled={loading}
           >
-            <Button
-              type="submit"
-              className="w-full"
-              isLoading={isLoading}
-              disabled={isLoading}
-            >
-              {isLoading ? 'Signing in...' : 'Sign In to Admin'}
-            </Button>
-          </motion.div>
-        </form>
+            {loading ? 'Signing In...' : 'Access Admin Dashboard'}
+            {!loading && <LogIn className="w-5 h-5 ml-2" />}
+          </Button>
+        </motion.form>
 
         {/* Footer */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="mt-8 text-center"
-        >
+        <div className="mt-6 text-center">
           <p className="text-xs text-gray-500">
-            This is a secure admin area. Unauthorized access is prohibited.
+            Authorized personnel only
           </p>
-        </motion.div>
+        </div>
       </motion.div>
     </div>
   );
 };
-
-export default AdminLoginPage;

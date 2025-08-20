@@ -1,4 +1,4 @@
-// src/pages/auth/SignInPage.tsx - COMPLETE FIX: Proper post-signin routing
+// src/pages/auth/SignInPage.tsx - FIXED: Proper state management and routing
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -21,7 +21,7 @@ interface FormErrors {
 export const SignInPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { signIn, loading, user, hasActiveSubscription, initialized } = useAuth();
+  const { signIn, user, hasActiveSubscription, initialized, loading: authLoading } = useAuth();
   
   const [formData, setFormData] = useState<FormData>({
     email: '',
@@ -31,10 +31,14 @@ export const SignInPage: React.FC = () => {
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // CRITICAL FIX: Proper post-signin routing logic
+  // CRITICAL FIX: Only redirect after auth is fully initialized and we have subscription status
   useEffect(() => {
-    // Only redirect if we have a user AND auth is fully initialized
-    if (user && initialized) {
+    // Don't redirect if we're still loading or not initialized
+    if (!initialized || authLoading || isSubmitting) {
+      return;
+    }
+
+    if (user) {
       // Check if there's a redirect location from ProtectedRoute
       const from = (location.state as any)?.from?.pathname;
       
@@ -43,14 +47,25 @@ export const SignInPage: React.FC = () => {
         navigate(from, { replace: true });
       } else {
         // Normal sign-in flow - route based on subscription status
-        if (hasActiveSubscription) {
-          navigate('/dashboard', { replace: true });
-        } else {
-          navigate('/plans', { replace: true });
-        }
+        // Add a small delay to ensure subscription status is loaded
+        const timer = setTimeout(() => {
+          if (hasActiveSubscription) {
+            navigate('/dashboard', { replace: true });
+          } else {
+            navigate('/plans', { replace: true });
+          }
+        }, 500);
+        
+        return () => clearTimeout(timer);
       }
     }
-  }, [user, hasActiveSubscription, initialized, navigate, location.state]);
+  }, [user, hasActiveSubscription, initialized, authLoading, isSubmitting, navigate, location.state]);
+
+  // CRITICAL FIX: Reset form state when component mounts
+  useEffect(() => {
+    setIsSubmitting(false);
+    setErrors({});
+  }, []);
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
@@ -91,9 +106,9 @@ export const SignInPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Prevent double submissions
-    if (isSubmitting || loading) {
-      console.log("⏸️ Sign in already in progress");
+    // CRITICAL FIX: Prevent double submissions and check current state
+    if (isSubmitting || authLoading) {
+      console.log("⏸️ Sign in already in progress or auth loading");
       return;
     }
 
@@ -108,17 +123,28 @@ export const SignInPage: React.FC = () => {
       await signIn(formData.email, formData.password);
       
       console.log("✅ Sign in successful - routing will be handled by useEffect");
-      // Navigation will be handled by the useEffect above when user state updates
+      // Don't set isSubmitting to false here - let the redirect happen
       
     } catch (error: any) {
       console.error('Sign in failed:', error);
       setErrors({ submit: error.message });
-    } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false); // Only reset on error
     }
   };
 
-  const isLoading = loading || isSubmitting;
+  // CRITICAL FIX: If user is already signed in, show loading state
+  if (user && initialized) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center p-4">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Redirecting...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const isLoading = authLoading || isSubmitting;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center p-4">
@@ -191,7 +217,7 @@ export const SignInPage: React.FC = () => {
             className="w-full bg-gradient-to-r from-blue-500 to-yellow-500 hover:from-blue-600 hover:to-yellow-600 text-white font-semibold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
             disabled={isLoading}
           >
-            {isLoading ? 'Signing In...' : 'Sign In'}
+            {isSubmitting ? 'Signing In...' : 'Sign In'}
             {!isLoading && <ArrowRight className="w-5 h-5 ml-2" />}
           </Button>
 

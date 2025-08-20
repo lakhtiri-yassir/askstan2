@@ -224,6 +224,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setSubscriptionStatus(subStatus);
       setSubscription(subStatus.subscription);
 
+      console.log("✅ User data loaded:", {
+        profile: !!profileData,
+        hasSubscription: subStatus.hasActiveSubscription,
+        status: subStatus.status
+      });
+
     } catch (error) {
       console.error("Error loading user data:", error);
       // IMPROVED: Set safe default values instead of throwing
