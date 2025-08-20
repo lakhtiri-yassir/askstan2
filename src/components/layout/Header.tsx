@@ -14,7 +14,7 @@ export const Header: React.FC = () => {
   
   // CRITICAL FIX: Use hasActiveSubscription from AuthContext instead of custom logic
   // This ensures consistency with ProtectedRoute logic
-  const { user, signOut, hasActiveSubscription } = useAuth();
+  const { user, signOut, hasActiveSubscription, initialized } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -53,9 +53,15 @@ export const Header: React.FC = () => {
   };
 
   // CRITICAL FIX: Use the same subscription logic as ProtectedRoute
-  // This was the root cause - Header was using subscriptionStatus?.status === 'active'
-  // while ProtectedRoute was using hasActiveSubscription (which includes 'trialing')
-  // Now both use the same logic from AuthContext
+  // This was the root cause - Header was using different logic than AuthContext
+  // Now both use the same hasActiveSubscription from AuthContext
+
+  console.log('🔍 Header render:', { 
+    user: !!user, 
+    hasActiveSubscription, 
+    initialized,
+    pathname: location.pathname 
+  });
 
   return (
     <motion.header
@@ -70,24 +76,24 @@ export const Header: React.FC = () => {
           <Link to="/" className="flex items-center">
             <img 
               src={askstanLogo} 
-              alt="AskStan! AI Social Media Coach" 
-              className="h-10 w-auto object-contain"
+              alt="AskStan! Logo" 
+              className="h-8 w-auto"
             />
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-6">
-            {user ? (
+          <nav className="hidden md:flex items-center space-x-8">
+            {user && initialized ? (
               <>
-                {hasActiveSubscription && (
+                {/* FIXED: Show Dashboard if user has active subscription, Plans if not */}
+                {hasActiveSubscription ? (
                   <Link
                     to="/dashboard"
                     className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
                   >
                     Dashboard
                   </Link>
-                )}
-                {!hasActiveSubscription && (
+                ) : (
                   <Link
                     to="/plans"
                     className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
@@ -95,12 +101,14 @@ export const Header: React.FC = () => {
                     Plans
                   </Link>
                 )}
+                
                 <Link
                   to="/settings"
                   className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
                 >
-                  <Settings className="w-4 h-4" />
+                  Settings
                 </Link>
+                
                 <Button
                   onClick={handleSignOut}
                   variant="outline"
@@ -111,7 +119,14 @@ export const Header: React.FC = () => {
                   Sign Out
                 </Button>
               </>
+            ) : user && !initialized ? (
+              // Show loading state while subscription data loads
+              <div className="flex items-center space-x-4">
+                <div className="animate-pulse bg-gray-200 h-4 w-16 rounded"></div>
+                <div className="animate-pulse bg-gray-200 h-8 w-20 rounded"></div>
+              </div>
             ) : (
+              // Not signed in
               <>
                 <Link
                   to="/signin"
@@ -126,9 +141,9 @@ export const Header: React.FC = () => {
                 </Link>
               </>
             )}
-          </div>
+          </nav>
 
-          {/* Mobile Menu Button */}
+          {/* Mobile menu button */}
           <div className="md:hidden">
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -148,9 +163,10 @@ export const Header: React.FC = () => {
             className="md:hidden py-4 border-t border-gray-200"
           >
             <div className="space-y-4">
-              {user ? (
+              {user && initialized ? (
                 <>
-                  {hasActiveSubscription && (
+                  {/* FIXED: Show Dashboard if user has active subscription, Plans if not */}
+                  {hasActiveSubscription ? (
                     <Link
                       to="/dashboard"
                       className="block text-gray-700 hover:text-blue-600 font-medium transition-colors"
@@ -158,8 +174,7 @@ export const Header: React.FC = () => {
                     >
                       Dashboard
                     </Link>
-                  )}
-                  {!hasActiveSubscription && (
+                  ) : (
                     <Link
                       to="/plans"
                       className="block text-gray-700 hover:text-blue-600 font-medium transition-colors"
@@ -168,6 +183,7 @@ export const Header: React.FC = () => {
                       Plans
                     </Link>
                   )}
+                  
                   <Link
                     to="/settings"
                     className="block text-gray-700 hover:text-blue-600 font-medium transition-colors"
@@ -175,6 +191,7 @@ export const Header: React.FC = () => {
                   >
                     Settings
                   </Link>
+                  
                   <Button
                     onClick={() => {
                       setIsMenuOpen(false);
@@ -188,7 +205,14 @@ export const Header: React.FC = () => {
                     Sign Out
                   </Button>
                 </>
+              ) : user && !initialized ? (
+                // Show loading state while subscription data loads
+                <div className="space-y-4">
+                  <div className="animate-pulse bg-gray-200 h-4 w-24 rounded"></div>
+                  <div className="animate-pulse bg-gray-200 h-8 w-32 rounded"></div>
+                </div>
               ) : (
+                // Not signed in
                 <>
                   <Link
                     to="/signin"

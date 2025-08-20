@@ -1,26 +1,25 @@
-// src/pages/admin/AdminDashboard.tsx - CLEAN VERSION: No duplicate components
+// src/pages/admin/AdminDashboard.tsx - FIXED: Unified subscription detection
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Users, 
-  Search, 
-  Filter, 
-  CheckCircle, 
+  CreditCard, 
+  Clock, 
   XCircle, 
-  Clock,
-  Calendar,
+  Search, 
+  Filter,
   Mail,
-  AlertTriangle,
+  Calendar,
+  CheckCircle,
   MoreVertical,
   LogOut
 } from 'lucide-react';
 import { useAdminAuth } from '../../contexts/AdminAuthContext';
+import { supabase } from '../../lib/supabase';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
-import { supabase } from '../../lib/supabase';
 
-// Types based on existing database structure
 interface User {
   id: string;
   email: string;
@@ -28,13 +27,13 @@ interface User {
   email_verified: boolean;
   created_at: string;
   updated_at: string;
-  subscription?: {
+  subscription: {
     id: string;
-    plan_type: 'monthly' | 'yearly';
-    status: 'active' | 'cancelled' | 'expired' | 'past_due' | 'trialing';
-    current_period_start: string | null;
-    current_period_end: string | null;
-    cancel_at_period_end: boolean;
+    plan_type: string;
+    status: string;
+    current_period_start?: string | null;
+    current_period_end?: string | null;
+    cancel_at_period_end?: boolean;
     created_at: string;
   } | null;
 }
@@ -46,43 +45,61 @@ interface AdminStats {
   cancelledSubscriptions: number;
 }
 
-const StatusBadge: React.FC<{ status: string; className?: string }> = ({ status, className = "" }) => {
-  const getStatusConfig = (status: string) => {
+// CRITICAL FIX: Create unified subscription status checker that matches AuthContext logic
+const hasActiveSubscription = (subscription: User['subscription']): boolean => {
+  if (!subscription) return false;
+  
+  // FIXED: Use same logic as AuthContext - includes both 'active' and 'trialing'
+  return subscription.status === 'active' || subscription.status === 'trialing';
+};
+
+const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
-        return { color: 'bg-green-100 text-green-800', icon: CheckCircle, label: 'Active' };
+        return 'bg-green-100 text-green-800';
       case 'trialing':
-        return { color: 'bg-blue-100 text-blue-800', icon: Clock, label: 'Trial' };
+        return 'bg-blue-100 text-blue-800';
       case 'cancelled':
-        return { color: 'bg-red-100 text-red-800', icon: XCircle, label: 'Cancelled' };
+        return 'bg-red-100 text-red-800';
       case 'expired':
-        return { color: 'bg-gray-100 text-gray-800', icon: XCircle, label: 'Expired' };
-      case 'past_due':
-        return { color: 'bg-yellow-100 text-yellow-800', icon: AlertTriangle, label: 'Past Due' };
+        return 'bg-gray-100 text-gray-800';
       default:
-        return { color: 'bg-gray-100 text-gray-800', icon: XCircle, label: 'No Subscription' };
+        return 'bg-gray-100 text-gray-600';
     }
   };
 
-  const config = getStatusConfig(status);
-  const Icon = config.icon;
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'active':
+        return 'Active';
+      case 'trialing':
+        return 'Trial';
+      case 'cancelled':
+        return 'Cancelled';
+      case 'expired':
+        return 'Expired';
+      default:
+        return 'No Plan';
+    }
+  };
 
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color} ${className}`}>
-      <Icon className="w-3 h-3 mr-1" />
-      {config.label}
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(status)}`}>
+      {getStatusText(status)}
     </span>
   );
 };
 
 const UserRow: React.FC<{ 
   user: User; 
-  onUpdateSubscription: (userId: string, action: 'activate' | 'cancel') => void;
-  isUpdating: string | null;
+  onUpdateSubscription: (userId: string, action: 'activate' | 'cancel') => Promise<void>;
+  isUpdating: boolean;
 }> = ({ user, onUpdateSubscription, isUpdating }) => {
   const [showActions, setShowActions] = useState(false);
-  const hasSubscription = !!user.subscription;
-  const isActive = user.subscription?.status === 'active' || user.subscription?.status === 'trialing';
+  
+  // FIXED: Use unified subscription logic
+  const hasSubscription = hasActiveSubscription(user.subscription);
 
   return (
     <motion.tr
@@ -157,51 +174,25 @@ const UserRow: React.FC<{
             <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border">
               <div className="py-1">
                 {hasSubscription ? (
-                  <>
-                    {isActive ? (
-                      <button
-                        onClick={() => {
-                          onUpdateSubscription(user.id, 'cancel');
-                          setShowActions(false);
-                        }}
-                        disabled={isUpdating === user.id}
-                        className="flex items-center w-full px-4 py-2 text-sm text-red-700 hover:bg-red-50 transition-colors disabled:opacity-50"
-                      >
-                        {isUpdating === user.id ? (
-                          <LoadingSpinner size="sm" className="mr-2" />
-                        ) : (
-                          <XCircle className="w-4 h-4 mr-2" />
-                        )}
-                        Cancel Subscription
-                      </button>
+                  <button
+                    onClick={() => onUpdateSubscription(user.id, 'cancel')}
+                    disabled={isUpdating}
+                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center"
+                  >
+                    {isUpdating ? (
+                      <LoadingSpinner size="sm" className="mr-2" />
                     ) : (
-                      <button
-                        onClick={() => {
-                          onUpdateSubscription(user.id, 'activate');
-                          setShowActions(false);
-                        }}
-                        disabled={isUpdating === user.id}
-                        className="flex items-center w-full px-4 py-2 text-sm text-green-700 hover:bg-green-50 transition-colors disabled:opacity-50"
-                      >
-                        {isUpdating === user.id ? (
-                          <LoadingSpinner size="sm" className="mr-2" />
-                        ) : (
-                          <CheckCircle className="w-4 h-4 mr-2" />
-                        )}
-                        Activate Subscription
-                      </button>
+                      <XCircle className="w-4 h-4 mr-2" />
                     )}
-                  </>
+                    Cancel Subscription
+                  </button>
                 ) : (
                   <button
-                    onClick={() => {
-                      onUpdateSubscription(user.id, 'activate');
-                      setShowActions(false);
-                    }}
-                    disabled={isUpdating === user.id}
-                    className="flex items-center w-full px-4 py-2 text-sm text-green-700 hover:bg-green-50 transition-colors disabled:opacity-50"
+                    onClick={() => onUpdateSubscription(user.id, 'activate')}
+                    disabled={isUpdating}
+                    className="w-full text-left px-4 py-2 text-sm text-green-600 hover:bg-green-50 transition-colors flex items-center"
                   >
-                    {isUpdating === user.id ? (
+                    {isUpdating ? (
                       <LoadingSpinner size="sm" className="mr-2" />
                     ) : (
                       <CheckCircle className="w-4 h-4 mr-2" />
@@ -241,12 +232,12 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  // Load users with subscriptions - FIXED: Use same logic as AuthContext
+  // FIXED: Load users with unified subscription logic
   const loadUsers = async () => {
     try {
       setLoading(true);
 
-      // Get users with their subscriptions - FIXED: Get ALL subscriptions, not just active ones
+      // Get users with their subscriptions
       const { data, error } = await supabase
         .from('user_profiles')
         .select(`
@@ -270,13 +261,15 @@ export const AdminDashboard: React.FC = () => {
 
       if (error) throw error;
 
-      // Transform data - FIXED: Use same subscription logic as AuthContext
+      // FIXED: Transform data using same logic as AuthContext
       const transformedUsers: User[] = data.map(user => {
-        // Find the most recent subscription
+        // Find the most recent subscription (prioritize active/trialing)
         let activeSubscription = null;
         if (user.subscriptions && user.subscriptions.length > 0) {
-          // First try to find active or trialing
-          activeSubscription = user.subscriptions.find(sub => ['active', 'trialing'].includes(sub.status));
+          // First try to find active or trialing (matching AuthContext logic)
+          activeSubscription = user.subscriptions.find(sub => 
+            sub.status === 'active' || sub.status === 'trialing'
+          );
           // If none found, use the most recent one
           if (!activeSubscription) {
             activeSubscription = user.subscriptions.sort((a, b) => 
@@ -298,10 +291,10 @@ export const AdminDashboard: React.FC = () => {
 
       setUsers(transformedUsers);
 
-      // Calculate stats - FIXED: Count correctly
+      // FIXED: Calculate stats using unified logic
       const totalUsers = transformedUsers.length;
       const activeSubscriptions = transformedUsers.filter(u => 
-        u.subscription?.status === 'active'
+        hasActiveSubscription(u.subscription)
       ).length;
       const trialingUsers = transformedUsers.filter(u => 
         u.subscription?.status === 'trialing'
@@ -375,13 +368,13 @@ export const AdminDashboard: React.FC = () => {
     }
   }, [admin]);
 
-  // Filter users based on search and status
+  // FIXED: Filter users based on unified subscription logic
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          user.display_name?.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = statusFilter === 'all' || 
-                         (statusFilter === 'subscribed' && (user.subscription?.status === 'active' || user.subscription?.status === 'trialing')) ||
+                         (statusFilter === 'subscribed' && hasActiveSubscription(user.subscription)) ||
                          (statusFilter === 'trial' && user.subscription?.status === 'trialing') ||
                          (statusFilter === 'cancelled' && user.subscription?.status === 'cancelled') ||
                          (statusFilter === 'none' && !user.subscription);
@@ -421,87 +414,110 @@ export const AdminDashboard: React.FC = () => {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-xl shadow-lg p-6"
+          >
             <div className="flex items-center">
-              <Users className="w-8 h-8 text-blue-500 mr-3" />
-              <div>
-                <p className="text-gray-600 text-sm">Total Users</p>
-                <p className="text-gray-900 text-2xl font-bold">{stats.totalUsers}</p>
+              <div className="p-3 bg-blue-100 rounded-lg">
+                <Users className="w-6 h-6 text-blue-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Total Users</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.totalUsers}</p>
               </div>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-white rounded-xl shadow-lg p-6"
+          >
             <div className="flex items-center">
-              <CheckCircle className="w-8 h-8 text-green-500 mr-3" />
-              <div>
-                <p className="text-gray-600 text-sm">Active Subscriptions</p>
-                <p className="text-gray-900 text-2xl font-bold">{stats.activeSubscriptions}</p>
+              <div className="p-3 bg-green-100 rounded-lg">
+                <CreditCard className="w-6 h-6 text-green-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Active Subscriptions</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.activeSubscriptions}</p>
               </div>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-white rounded-xl shadow-lg p-6"
+          >
             <div className="flex items-center">
-              <Clock className="w-8 h-8 text-blue-500 mr-3" />
-              <div>
-                <p className="text-gray-600 text-sm">Trial Users</p>
-                <p className="text-gray-900 text-2xl font-bold">{stats.trialingUsers}</p>
+              <div className="p-3 bg-blue-100 rounded-lg">
+                <Clock className="w-6 h-6 text-blue-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Trial Users</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.trialingUsers}</p>
               </div>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="bg-white rounded-xl shadow-lg p-6"
+          >
             <div className="flex items-center">
-              <XCircle className="w-8 h-8 text-red-500 mr-3" />
-              <div>
-                <p className="text-gray-600 text-sm">Cancelled</p>
-                <p className="text-gray-900 text-2xl font-bold">{stats.cancelledSubscriptions}</p>
+              <div className="p-3 bg-red-100 rounded-lg">
+                <XCircle className="w-6 h-6 text-red-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Cancelled</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.cancelledSubscriptions}</p>
               </div>
             </div>
-          </div>
+          </motion.div>
         </div>
 
         {/* Filters and Search */}
-        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200 mb-8">
+        <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
-              <Input
-                type="text"
-                placeholder="Search users by email or name..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                icon={<Search className="w-5 h-5" />}
-                className="w-full"
-              />
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <Input
+                  type="text"
+                  placeholder="Search users by email or name..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
             </div>
-            <div className="flex gap-2">
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="all">All Users</option>
-                <option value="subscribed">Active Subscriptions</option>
-                <option value="trial">Trial Users</option>
-                <option value="cancelled">Cancelled</option>
-                <option value="none">No Subscription</option>
-              </select>
-              <Button
-                onClick={loadUsers}
-                variant="outline"
-                size="sm"
-                className="flex items-center"
-              >
-                <Filter className="w-4 h-4 mr-2" />
-                Refresh
-              </Button>
+            <div className="sm:w-48">
+              <div className="relative">
+                <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
+                >
+                  <option value="all">All Users</option>
+                  <option value="subscribed">Subscribed</option>
+                  <option value="trial">Trial</option>
+                  <option value="cancelled">Cancelled</option>
+                  <option value="none">No Subscription</option>
+                </select>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Users Table */}
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
+        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -532,7 +548,7 @@ export const AdminDashboard: React.FC = () => {
                     key={user.id}
                     user={user}
                     onUpdateSubscription={handleUpdateSubscription}
-                    isUpdating={updatingUser}
+                    isUpdating={updatingUser === user.id}
                   />
                 ))}
               </tbody>
@@ -541,8 +557,13 @@ export const AdminDashboard: React.FC = () => {
 
           {filteredUsers.length === 0 && (
             <div className="text-center py-12">
-              <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">No users found matching your criteria</p>
+              <Users className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900">No users found</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                {searchTerm || statusFilter !== 'all' 
+                  ? 'Try adjusting your search or filter criteria.' 
+                  : 'No users have been created yet.'}
+              </p>
             </div>
           )}
         </div>

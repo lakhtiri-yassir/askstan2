@@ -1,4 +1,4 @@
-// src/pages/auth/SignInPage.tsx - PRODUCTION READY: Simple and reliable
+// src/pages/auth/SignInPage.tsx - FIXED: Proper subscription-based redirect
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -18,16 +18,25 @@ export const SignInPage: React.FC = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Handle redirect when user signs in
+  // FIXED: Handle redirect when user signs in with proper subscription check
   useEffect(() => {
     if (user && initialized) {
+      console.log('🔍 SignIn redirect logic:', { 
+        user: !!user, 
+        hasActiveSubscription, 
+        initialized 
+      });
+
+      // CRITICAL FIX: Use a longer timeout to ensure subscription status is loaded
       const timer = setTimeout(() => {
         if (hasActiveSubscription) {
+          console.log('✅ User has active subscription, redirecting to dashboard');
           navigate('/dashboard', { replace: true });
         } else {
+          console.log('💳 User has no active subscription, redirecting to plans');
           navigate('/plans', { replace: true });
         }
-      }, 1000); // Give time for subscription to load
+      }, 1500); // Increased timeout to ensure subscription data is loaded
 
       return () => clearTimeout(timer);
     }
@@ -75,21 +84,25 @@ export const SignInPage: React.FC = () => {
     setErrors({});
 
     try {
+      console.log('🔐 Attempting sign in...');
       await signIn(formData.email, formData.password);
-      // Redirect will be handled by useEffect
+      // Redirect will be handled by useEffect once user and subscription data load
     } catch (error: any) {
-      setErrors({ submit: error.message || 'Sign in failed' });
+      console.error('❌ Sign in error:', error);
+      setErrors({
+        submit: error.message || 'Invalid email or password. Please try again.'
+      });
       setIsSubmitting(false);
     }
   };
 
-  // Show loading screen if user is signed in
-  if (user && initialized) {
+  // If user is already signed in and we're still loading, show loading state
+  if (user && !initialized) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center p-4">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Redirecting...</p>
+          <p className="text-gray-600 font-medium">Loading your account...</p>
         </div>
       </div>
     );
@@ -97,95 +110,110 @@ export const SignInPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center p-4">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md"
-      >
+      <div className="max-w-md w-full space-y-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="text-center"
+        >
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">
+            Welcome Back!
+          </h2>
+          <p className="text-gray-600">
+            Sign in to your AskStan! account
+          </p>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.1 }}
+          className="bg-white rounded-2xl shadow-xl p-8"
+        >
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Email Field */}
+            <div>
+              <Input
+                label="Email Address"
+                type="email"
+                value={formData.email}
+                onChange={handleInputChange('email')}
+                error={errors.email}
+                icon={Mail}
+                placeholder="Enter your email"
+                required
+              />
+            </div>
+
+            {/* Password Field */}
+            <div>
+              <Input
+                label="Password"
+                type="password"
+                value={formData.password}
+                onChange={handleInputChange('password')}
+                error={errors.password}
+                icon={Lock}
+                placeholder="Enter your password"
+                required
+              />
+            </div>
+
+            {/* Submit Error */}
+            {errors.submit && (
+              <div className="text-red-600 text-sm text-center bg-red-50 p-3 rounded-lg">
+                {errors.submit}
+              </div>
+            )}
+
+            {/* Submit Button */}
+            <Button
+              type="submit"
+              className="w-full flex items-center justify-center"
+              loading={isSubmitting}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                'Signing In...'
+              ) : (
+                <>
+                  Sign In
+                  <ArrowRight className="w-5 h-5 ml-2" />
+                </>
+              )}
+            </Button>
+
+            {/* Forgot Password Link */}
+            <div className="text-center">
+              <Link
+                to="/forgot-password"
+                className="text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors"
+              >
+                Forgot your password?
+              </Link>
+            </div>
+          </form>
+        </motion.div>
+
+        {/* Sign Up Link */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.1 }}
-          className="text-center mb-8"
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="text-center"
         >
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back!</h1>
-          <p className="text-gray-600">Sign in to your AskStan! account</p>
-        </motion.div>
-
-        <motion.form
-          onSubmit={handleSubmit}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          className="space-y-6"
-        >
-          <Input
-            type="email"
-            label="Email Address"
-            placeholder="Enter your email"
-            value={formData.email}
-            onChange={handleInputChange('email')}
-            error={errors.email}
-            icon={<Mail className="w-5 h-5" />}
-            disabled={isSubmitting}
-            required
-          />
-
-          <Input
-            type="password"
-            label="Password"
-            placeholder="Enter your password"
-            value={formData.password}
-            onChange={handleInputChange('password')}
-            error={errors.password}
-            icon={<Lock className="w-5 h-5" />}
-            disabled={isSubmitting}
-            required
-          />
-
-          {errors.submit && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="p-4 bg-red-50 border border-red-200 rounded-lg"
-            >
-              <p className="text-red-600 text-sm">{errors.submit}</p>
-            </motion.div>
-          )}
-
-          <Button
-            type="submit"
-            loading={isSubmitting}
-            className="w-full bg-gradient-to-r from-blue-500 to-yellow-500 hover:from-blue-600 hover:to-yellow-600 text-white font-semibold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? 'Signing In...' : 'Sign In'}
-            {!isSubmitting && <ArrowRight className="w-5 h-5 ml-2" />}
-          </Button>
-
-          <div className="text-center space-y-4">
+          <p className="text-gray-600">
+            Don't have an account?{' '}
             <Link
-              to="/forgot-password"
-              className="text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors"
+              to="/signup"
+              className="text-blue-600 hover:text-blue-800 font-medium transition-colors"
             >
-              Forgot your password?
+              Sign up for free
             </Link>
-            
-            <div className="border-t pt-4">
-              <p className="text-gray-600 text-sm">
-                Don't have an account?{' '}
-                <Link
-                  to="/signup"
-                  className="text-blue-600 hover:text-blue-800 font-medium transition-colors"
-                >
-                  Sign up here
-                </Link>
-              </p>
-            </div>
-          </div>
-        </motion.form>
-      </motion.div>
+          </p>
+        </motion.div>
+      </div>
     </div>
   );
 };
