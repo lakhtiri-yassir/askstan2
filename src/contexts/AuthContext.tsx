@@ -64,80 +64,80 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setDebugLog(prev => [...prev.slice(-4), `${new Date().toLocaleTimeString()}: ${message}`]);
   };
 
-  // ENHANCED DIAGNOSTIC VERSION - all info in debug panel
+  // FINAL DIAGNOSTIC - pinpoints exact connection issue
   const loadUserData = async (authUser: User) => {
     try {
       addDebug(`🔄 Loading data for: ${authUser.email}`);
       addDebug(`🔑 User ID: ${authUser.id.slice(0, 8)}...`);
       
-      // Test 1: Basic database connection
+      // Test 1: Basic database connection with short timeout
       addDebug('🔍 Step 1: Testing database connection...');
-      try {
-        const { data: testData, error: testError } = await supabase
-          .from('subscriptions')
-          .select('count(*)')
-          .limit(1);
-        
-        if (testError) {
-          addDebug(`❌ STEP 1 FAILED: ${testError.message}`);
-          addDebug(`❌ Error Code: ${testError.code || 'no code'}`);
-          addDebug(`❌ Error Details: ${testError.details || 'no details'}`);
-          addDebug(`❌ Error Hint: ${testError.hint || 'no hint'}`);
-          return; // Stop here if connection fails
-        } else {
-          addDebug('✅ STEP 1 SUCCESS: Database connection works');
+      
+      const connectionTest = new Promise(async (resolve, reject) => {
+        try {
+          const { error } = await supabase
+            .from('subscriptions')
+            .select('count(*)')
+            .limit(1);
+          
+          if (error) {
+            reject(new Error(`DB Error: ${error.message} (Code: ${error.code})`));
+          } else {
+            resolve('SUCCESS');
+          }
+        } catch (err) {
+          reject(err);
         }
-      } catch (connectionError) {
-        addDebug(`❌ STEP 1 CATCH: ${connectionError.message}`);
-        return;
-      }
+      });
 
-      // Test 2: User-specific query
-      addDebug('🔍 Step 2: Testing user subscription query...');
+      const timeout = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Connection timeout after 3 seconds')), 3000);
+      });
+
       try {
-        const { data: subscriptionData, error: subscriptionError } = await supabase
+        await Promise.race([connectionTest, timeout]);
+        addDebug('✅ STEP 1 SUCCESS: Database connection works');
+        
+        // If connection works, try subscription query
+        addDebug('🔍 Step 2: Querying user subscriptions...');
+        const { data: subs, error: subError } = await supabase
           .from('subscriptions')
           .select('*')
           .eq('user_id', authUser.id);
 
-        if (subscriptionError) {
-          addDebug(`❌ STEP 2 FAILED: ${subscriptionError.message}`);
-          addDebug(`❌ Error Code: ${subscriptionError.code || 'no code'}`);
-          addDebug(`❌ Error Details: ${subscriptionError.details || 'no details'}`);
-          addDebug(`❌ This is likely an RLS (Row Level Security) issue`);
+        if (subError) {
+          addDebug(`❌ STEP 2 FAILED: ${subError.message}`);
+          addDebug(`❌ Error Code: ${subError.code} (likely RLS issue)`);
         } else {
-          addDebug(`✅ STEP 2 SUCCESS: Found ${subscriptionData?.length || 0} subscriptions`);
-          
-          if (subscriptionData && subscriptionData.length > 0) {
-            // Show all subscriptions found
-            subscriptionData.forEach((sub, i) => {
-              addDebug(`📋 Sub ${i + 1}: ${sub.status} (${sub.plan_type})`);
-            });
-            
-            // Find active subscription
-            const activeSub = subscriptionData.find(sub => ['active', 'trialing'].includes(sub.status));
-            if (activeSub) {
-              setSubscription(activeSub);
-              addDebug(`✅ STEP 3 SUCCESS: Set active subscription: ${activeSub.status}`);
-            } else {
-              addDebug(`⚠️ STEP 3 WARNING: No active subscription found`);
-              setSubscription(subscriptionData[0]); // Set first subscription anyway
-            }
+          addDebug(`✅ STEP 2 SUCCESS: Found ${subs?.length || 0} subscriptions`);
+          if (subs && subs.length > 0) {
+            const activeSub = subs.find(s => ['active', 'trialing'].includes(s.status));
+            setSubscription(activeSub || subs[0]);
+            addDebug(`✅ Set subscription: ${activeSub?.status || subs[0]?.status}`);
           } else {
-            addDebug('ℹ️ STEP 3 INFO: User has no subscriptions in database');
-            addDebug('ℹ️ This means your account exists but has no subscription records');
+            addDebug('ℹ️ No subscriptions found for this user');
           }
         }
-      } catch (queryError) {
-        addDebug(`❌ STEP 2 CATCH: ${queryError.message}`);
+        
+      } catch (connectionError) {
+        addDebug(`❌ STEP 1 FAILED: ${connectionError.message}`);
+        
+        if (connectionError.message.includes('timeout')) {
+          addDebug('🔧 DIAGNOSIS: Supabase connection is timing out');
+          addDebug('🔧 LIKELY CAUSES:');
+          addDebug('   - Invalid Supabase URL or API key');
+          addDebug('   - Network/firewall blocking connection');
+          addDebug('   - Supabase project is paused/inactive');
+        } else {
+          addDebug('🔧 DIAGNOSIS: Database permission/RLS error');
+          addDebug('🔧 LIKELY CAUSES:');
+          addDebug('   - Row Level Security blocking queries');
+          addDebug('   - Missing table permissions');
+        }
       }
 
-      addDebug('🏁 DIAGNOSTIC COMPLETE');
-
     } catch (error) {
-      addDebug(`❌ OUTER CATCH: ${error.message}`);
-      setProfile(null);
-      setSubscription(null);
+      addDebug(`❌ OUTER ERROR: ${error.message}`);
     }
   };
 
