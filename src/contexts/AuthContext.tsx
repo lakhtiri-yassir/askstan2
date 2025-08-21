@@ -1,4 +1,4 @@
-// src/contexts/AuthContext.tsx - SIMPLIFIED: Clean debug panel
+// src/contexts/AuthContext.tsx - COMPLETE FIXED VERSION
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
@@ -64,154 +64,78 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setDebugLog(prev => [...prev.slice(-4), `${new Date().toLocaleTimeString()}: ${message}`]);
   };
 
-  // FIXED: Use existing session instead of new Supabase calls
-  const loadUserData = async (authUser: User) => {
-    
-  try {
-    addDebug(`🔄 Loading data for: ${authUser.email}`);
-    
-    // CRITICAL TEST: Check if Supabase URL is reachable
-    addDebug('🌐 Testing Supabase network connectivity...');
-    
-    try {
-      const response = await Promise.race([
-        fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/`, {
-          method: 'HEAD',
-          headers: {
-            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
-          }
-        }),
-        new Promise<never>((_, reject) => 
-          setTimeout(() => reject(new Error('Network timeout')), 3000)
-        )
-      ]);
-      
-      addDebug(`✅ Network test: ${response.status} - Supabase is reachable`);
-    } catch (networkError: any) {
-      addDebug(`❌ Network test failed: ${networkError.message}`);
-      
-      // If network fails, skip all Supabase calls
-      setSubscription(null);
-      addDebug('💳 Subscription set to null (network issue)');
+  // EMERGENCY FIX: Force loading to false after 5 seconds max
+  useEffect(() => {
+    const forceLoadingTimeout = setTimeout(() => {
+      addDebug('🚨 EMERGENCY: Forcing loading to false after 5 seconds');
       setLoading(false);
-      return;
-    }
-    addDebug(`🔄 Loading data for: ${authUser.email}`);
-    
-    // Create profile first
-    const basicProfile: UserProfile = {
-      id: authUser.id,
-      email: authUser.email || '',
-      display_name: authUser.user_metadata?.full_name || null,
-      avatar_url: authUser.user_metadata?.avatar_url || null,
-      email_verified: authUser.email_confirmed_at != null,
-      created_at: authUser.created_at || new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-    setProfile(basicProfile);
-    addDebug('✅ Basic profile created');
+    }, 5000);
 
-    // DEBUG: Test basic Supabase connectivity first
-    addDebug('🔍 Testing basic Supabase connectivity...');
-    
+    return () => clearTimeout(forceLoadingTimeout);
+  }, []);
+
+  // FIXED: Non-blocking loadUserData function
+  const loadUserData = async (authUser: User) => {
     try {
-      // Test 1: Can we connect to Supabase at all?
-      const { data: { session } } = await supabase.auth.getSession();
-      addDebug(`✅ Session check: ${session ? 'Active session' : 'No session'}`);
+      addDebug(`🔄 Loading data for: ${authUser.email}`);
       
-      // Test 2: Can we make ANY database call?
-      addDebug('🔍 Testing simple database connectivity...');
-      const { data: testData, error: testError } = await Promise.race([
-        supabase.from('subscriptions').select('count', { count: 'exact', head: true }),
-        new Promise<never>((_, reject) => 
-          setTimeout(() => reject(new Error('Test query timeout')), 3000)
-        )
-      ]) as any;
+      // Create profile immediately
+      const basicProfile: UserProfile = {
+        id: authUser.id,
+        email: authUser.email || '',
+        display_name: authUser.user_metadata?.full_name || null,
+        avatar_url: authUser.user_metadata?.avatar_url || null,
+        email_verified: authUser.email_confirmed_at != null,
+        created_at: authUser.created_at || new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      setProfile(basicProfile);
+      addDebug('✅ Profile created');
+
+      // CRITICAL FIX: Set loading to false FIRST, then try database
+      addDebug('🎯 Setting loading to false IMMEDIATELY');
+      setLoading(false);
       
-      if (testError) {
-        addDebug(`❌ Basic DB test failed: ${testError.message}`);
-      } else {
-        addDebug(`✅ Basic DB test passed: count query worked`);
-      }
+      // Now try subscription query in background (non-blocking)
+      addDebug('🔍 Background subscription query...');
       
-      // Test 3: Can we query user_profiles table?
-      addDebug('🔍 Testing user_profiles table access...');
-      const { data: profileData, error: profileError } = await Promise.race([
-        supabase.from('user_profiles').select('id').eq('id', authUser.id).limit(1),
-        new Promise<never>((_, reject) => 
-          setTimeout(() => reject(new Error('Profile query timeout')), 3000)
-        )
-      ]) as any;
-      
-      if (profileError) {
-        addDebug(`❌ Profile table test failed: ${profileError.message}`);
-      } else {
-        addDebug(`✅ Profile table test passed`);
-      }
-      
-      // Test 4: Try the actual subscription query with detailed logging
-      addDebug('🔍 Testing subscription query with full logging...');
-      addDebug(`🎯 User ID: ${authUser.id}`);
-      addDebug(`🎯 Query: subscriptions where user_id = ${authUser.id}`);
-      
-      const startTime = Date.now();
-      const { data: subData, error: subError } = await Promise.race([
-        supabase
-          .from('subscriptions')
-          .select('*')
-          .eq('user_id', authUser.id),
-        new Promise<never>((_, reject) => 
-          setTimeout(() => reject(new Error('Subscription query timeout')), 5000)
-        )
-      ]) as any;
-      
-      const endTime = Date.now();
-      addDebug(`⏱️ Query took ${endTime - startTime}ms`);
-      
-      if (subError) {
-        addDebug(`❌ Subscription query failed: ${subError.message}`);
-        addDebug(`❌ Error code: ${subError.code}`);
-        addDebug(`❌ Error details: ${JSON.stringify(subError.details || {})}`);
-      } else {
-        addDebug(`✅ Subscription query succeeded!`);
-        addDebug(`📊 Found ${subData?.length || 0} subscription records`);
-        
-        if (subData && subData.length > 0) {
-          subData.forEach((sub, index) => {
-            addDebug(`📋 Sub ${index + 1}: ${sub.status} (${sub.plan_type})`);
-          });
+      // Use setTimeout to make this truly non-blocking
+      setTimeout(async () => {
+        try {
+          const { data, error } = await Promise.race([
+            supabase.from('subscriptions').select('*').eq('user_id', authUser.id),
+            new Promise<never>((_, reject) => 
+              setTimeout(() => reject(new Error('Background query timeout')), 3000)
+            )
+          ]) as any;
           
-          const activeSub = subData.find(s => s.status === 'active' || s.status === 'trialing');
-          if (activeSub) {
-            setSubscription(activeSub);
-            addDebug(`✅ Set active subscription: ${activeSub.status}`);
+          if (!error && data) {
+            const activeSub = data.find(s => s.status === 'active' || s.status === 'trialing');
+            if (activeSub) {
+              setSubscription(activeSub);
+              addDebug(`🎉 Background query found subscription: ${activeSub.status}`);
+            } else {
+              addDebug('ℹ️ Background query: no active subscription');
+              setSubscription(null);
+            }
           } else {
-            addDebug('ℹ️ No active subscriptions found');
+            addDebug(`❌ Background query error: ${error?.message || 'unknown'}`);
             setSubscription(null);
           }
-        } else {
-          addDebug('ℹ️ No subscription records found');
+        } catch (bgError: any) {
+          addDebug(`❌ Background query failed: ${bgError.message}`);
           setSubscription(null);
         }
-      }
+      }, 100); // Small delay to ensure loading state is set first
       
-    } catch (debugError: any) {
-      addDebug(`❌ Debug test failed: ${debugError.message}`);
-      setSubscription(null);
+      addDebug('🏁 loadUserData complete (non-blocking)');
+      
+    } catch (error: any) {
+      addDebug(`❌ Error: ${error.message}`);
+      addDebug('🎯 Setting loading to false due to error');
+      setLoading(false);
     }
-    
-    addDebug('🏁 Debug loadUserData complete');
-    
-  } catch (error: any) {
-    addDebug(`❌ Critical error: ${error.message}`);
-    setSubscription(null);
-    
-  } finally {
-    addDebug('🎯 Setting loading to false');
-    setLoading(false);
-  }
-};
+  };
 
   // Initialize auth
   useEffect(() => {
@@ -221,7 +145,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       try {
         addDebug('🔍 Getting session...');
         
-        const { data: { session }, error } = await supabase.auth.getSession();
+        // CRITICAL FIX: Race the getSession call with a timeout
+        const result = await Promise.race([
+          supabase.auth.getSession(),
+          new Promise<any>((_, reject) => 
+            setTimeout(() => reject(new Error('getSession timeout')), 3000)
+          )
+        ]);
+        
+        const { data: { session }, error } = result;
         
         if (error) {
           addDebug(`❌ Session error: ${error.message}`);
@@ -231,22 +163,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           if (session?.user) {
             addDebug(`👤 Found user: ${session.user.email}`);
             setUser(session.user);
-            await loadUserData(session.user);
-            addDebug('🔄 loadUserData completed');
+            await loadUserData(session.user); // This now sets loading to false
           } else {
             addDebug('🚫 No user in session');
             setUser(null);
             setProfile(null);
             setSubscription(null);
+            addDebug('🎯 Setting loading to false (no user)');
+            setLoading(false);
           }
-          
-          addDebug('✅ Setting loading to false');
-          setLoading(false);
         }
-      } catch (error) {
+      } catch (error: any) {
         addDebug(`❌ Init error: ${error.message}`);
         if (mounted) {
-          addDebug('✅ Setting loading to false (error)');
+          addDebug('🎯 Setting loading to false (init error)');
           setLoading(false);
         }
       }
@@ -275,6 +205,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setUser(null);
             setProfile(null);
             setSubscription(null);
+            setLoading(false);
             break;
             
           case 'SIGNED_IN':
@@ -326,7 +257,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       addDebug('✅ Signed out, redirecting...');
       window.location.href = '/';
-    } catch (error) {
+    } catch (error: any) {
       addDebug(`❌ Sign out error: ${error.message}`);
       window.location.href = '/';
     }
@@ -364,7 +295,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       signUp,
       refreshSubscription,
     }}>
-      {/* CRITICAL DEBUG PANEL - ALWAYS VISIBLE */}
+      {/* DEBUG PANEL - ALWAYS VISIBLE */}
       {true && (
         <div style={{
           position: 'fixed',
@@ -406,7 +337,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           
           <div style={{ background: 'black', padding: '10px' }}>
             <div style={{ color: 'yellow', fontWeight: 'bold' }}>ACTIVITY LOG (Last 8 messages):</div>
-            {debugLog.slice(-20).map((log, i) => (
+            {debugLog.slice(-8).map((log, i) => (
               <div key={i} style={{ 
                 fontSize: '12px', 
                 marginBottom: '3px',
@@ -423,11 +354,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
           <div style={{ marginTop: '10px', background: 'darkblue', padding: '10px', color: 'white' }}>
             <div style={{ fontWeight: 'bold', color: 'yellow' }}>🎯 WHAT TO LOOK FOR:</div>
-            <div>1. Loading should turn GREEN within 10 seconds</div>
-            <div>2. You should see "✅ Setting loading to false" in the log</div>
+            <div>1. Loading should turn GREEN within 5 seconds</div>
+            <div>2. You should see "🎯 Setting loading to false IMMEDIATELY"</div>
             <div>3. User email should appear (not "NO USER")</div>
-            <div>4. If stuck at "Loading data for: [email]" = database query problem</div>
-            <div>5. If no "✅ Setting loading to false" = initialization problem</div>
+            <div>4. Background subscription query should run separately</div>
+            <div>5. App should be usable even if subscription query fails</div>
           </div>
         </div>
       )}
