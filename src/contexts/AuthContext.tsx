@@ -69,7 +69,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   try {
     addDebug(`🔄 Loading data for: ${authUser.email}`);
     
-    // Create basic profile from auth user data first (always works)
+    // Create profile first
     const basicProfile: UserProfile = {
       id: authUser.id,
       email: authUser.email || '',
@@ -80,120 +80,105 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       updated_at: new Date().toISOString()
     };
     setProfile(basicProfile);
-    addDebug('✅ Basic profile created from auth data');
+    addDebug('✅ Basic profile created');
 
-    // Attempt subscription query with timeout protection
-    addDebug('🔍 Attempting subscription query with timeout protection...');
-    
-    let subscriptionData: Subscription | null = null;
+    // DEBUG: Test basic Supabase connectivity first
+    addDebug('🔍 Testing basic Supabase connectivity...');
     
     try {
-      // Create timeout promise
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Subscription query timeout after 5 seconds')), 5000);
-      });
-
-      // Create subscription query promise
-      const subscriptionPromise = supabase
-        .from('subscriptions')
-        .select(`
-          id,
-          user_id,
-          stripe_customer_id,
-          stripe_subscription_id,
-          plan_type,
-          status,
-          current_period_start,
-          current_period_end,
-          cancel_at_period_end,
-          created_at,
-          updated_at
-        `)
-        .eq('user_id', authUser.id)
-        .in('status', ['active', 'trialing'])
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      // Race between query and timeout
-      const result = await Promise.race([subscriptionPromise, timeoutPromise]);
+      // Test 1: Can we connect to Supabase at all?
+      const { data: { session } } = await supabase.auth.getSession();
+      addDebug(`✅ Session check: ${session ? 'Active session' : 'No session'}`);
       
-      if (result.error) {
-        addDebug(`⚠️ Subscription query error: ${result.error.message}`);
-        
-        // Check for specific RLS error
-        if (result.error.message.includes('row-level security') || 
-            result.error.message.includes('permission') ||
-            result.error.message.includes('policy')) {
-          addDebug('🔒 RLS policy blocking access - subscription set to null');
-        }
-        
-        subscriptionData = null;
+      // Test 2: Can we make ANY database call?
+      addDebug('🔍 Testing simple database connectivity...');
+      const { data: testData, error: testError } = await Promise.race([
+        supabase.from('subscriptions').select('count', { count: 'exact', head: true }),
+        new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('Test query timeout')), 3000)
+        )
+      ]) as any;
+      
+      if (testError) {
+        addDebug(`❌ Basic DB test failed: ${testError.message}`);
       } else {
-        addDebug(`✅ Subscription query successful`);
-        subscriptionData = result.data;
+        addDebug(`✅ Basic DB test passed: count query worked`);
+      }
+      
+      // Test 3: Can we query user_profiles table?
+      addDebug('🔍 Testing user_profiles table access...');
+      const { data: profileData, error: profileError } = await Promise.race([
+        supabase.from('user_profiles').select('id').eq('id', authUser.id).limit(1),
+        new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('Profile query timeout')), 3000)
+        )
+      ]) as any;
+      
+      if (profileError) {
+        addDebug(`❌ Profile table test failed: ${profileError.message}`);
+      } else {
+        addDebug(`✅ Profile table test passed`);
+      }
+      
+      // Test 4: Try the actual subscription query with detailed logging
+      addDebug('🔍 Testing subscription query with full logging...');
+      addDebug(`🎯 User ID: ${authUser.id}`);
+      addDebug(`🎯 Query: subscriptions where user_id = ${authUser.id}`);
+      
+      const startTime = Date.now();
+      const { data: subData, error: subError } = await Promise.race([
+        supabase
+          .from('subscriptions')
+          .select('*')
+          .eq('user_id', authUser.id),
+        new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('Subscription query timeout')), 5000)
+        )
+      ]) as any;
+      
+      const endTime = Date.now();
+      addDebug(`⏱️ Query took ${endTime - startTime}ms`);
+      
+      if (subError) {
+        addDebug(`❌ Subscription query failed: ${subError.message}`);
+        addDebug(`❌ Error code: ${subError.code}`);
+        addDebug(`❌ Error details: ${JSON.stringify(subError.details || {})}`);
+      } else {
+        addDebug(`✅ Subscription query succeeded!`);
+        addDebug(`📊 Found ${subData?.length || 0} subscription records`);
         
-        if (subscriptionData) {
-          addDebug(`✅ Active subscription found: ${subscriptionData.status}`);
+        if (subData && subData.length > 0) {
+          subData.forEach((sub, index) => {
+            addDebug(`📋 Sub ${index + 1}: ${sub.status} (${sub.plan_type})`);
+          });
+          
+          const activeSub = subData.find(s => s.status === 'active' || s.status === 'trialing');
+          if (activeSub) {
+            setSubscription(activeSub);
+            addDebug(`✅ Set active subscription: ${activeSub.status}`);
+          } else {
+            addDebug('ℹ️ No active subscriptions found');
+            setSubscription(null);
+          }
         } else {
-          addDebug('ℹ️ No active subscription found in database');
+          addDebug('ℹ️ No subscription records found');
+          setSubscription(null);
         }
       }
-
-    } catch (queryError: any) {
-      addDebug(`❌ Subscription query failed: ${queryError.message}`);
       
-      // Handle specific error types
-      if (queryError.message.includes('timeout')) {
-        addDebug('⏰ Query timed out - likely RLS or network issue');
-      } else if (queryError.message.includes('permission') || 
-                 queryError.message.includes('policy') ||
-                 queryError.message.includes('row-level security')) {
-        addDebug('🔒 Permission denied - RLS policies need fixing');
-      } else {
-        addDebug(`🔍 Unexpected error type: ${queryError.message}`);
-      }
-      
-      subscriptionData = null;
-    }
-
-    // Set the subscription state
-    setSubscription(subscriptionData);
-    
-    // Log final subscription status
-    if (subscriptionData) {
-      addDebug(`💳 Final subscription status: ${subscriptionData.status}`);
-    } else {
-      addDebug('💳 Final subscription status: none (null)');
+    } catch (debugError: any) {
+      addDebug(`❌ Debug test failed: ${debugError.message}`);
+      setSubscription(null);
     }
     
-    addDebug('🏁 loadUserData complete');
+    addDebug('🏁 Debug loadUserData complete');
     
   } catch (error: any) {
-    addDebug(`❌ Critical error in loadUserData: ${error.message}`);
-    
-    // Ensure we have at least basic profile data
-    if (!profile) {
-      const fallbackProfile: UserProfile = {
-        id: authUser.id,
-        email: authUser.email || '',
-        display_name: null,
-        avatar_url: null,
-        email_verified: authUser.email_confirmed_at != null,
-        created_at: authUser.created_at || new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-      setProfile(fallbackProfile);
-      addDebug('🔄 Fallback profile created');
-    }
-    
-    // Ensure subscription is null on error
+    addDebug(`❌ Critical error: ${error.message}`);
     setSubscription(null);
-    addDebug('💳 Subscription set to null due to error');
     
   } finally {
-    // CRITICAL: Always set loading to false
-    addDebug('🎯 Setting loading to false from loadUserData');
+    addDebug('🎯 Setting loading to false');
     setLoading(false);
   }
 };
