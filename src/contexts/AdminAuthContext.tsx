@@ -1,4 +1,4 @@
-// src/contexts/AdminAuthContext.tsx - FIXED: Handle missing admin_users table gracefully
+// src/contexts/AdminAuthContext.tsx - FIXED: Handle RLS policies correctly
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 
@@ -40,8 +40,12 @@ export const AdminAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
         return;
       }
 
-      // FIXED: Handle case where admin_users table doesn't exist
+      // FIXED: Only check admin status when user is authenticated
+      // The 406 error was happening because we tried to query admin_users
+      // without proper authentication context
       try {
+        console.log('Checking admin access for:', session.user.email);
+        
         // Check if user is in admin_users table
         const { data: adminData, error } = await supabase
           .from('admin_users')
@@ -51,13 +55,24 @@ export const AdminAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
           .single();
 
         if (error) {
-          // If table doesn't exist or other error, treat as no admin access
-          console.log('Admin table query failed (table may not exist):', error.message);
-          setAdmin(null);
+          if (error.code === 'PGRST116') {
+            // No matching row found - user is not an admin
+            console.log('User is not an admin');
+            setAdmin(null);
+          } else {
+            // Other error (RLS, permissions, etc.)
+            console.log('Admin check failed:', error.message);
+            setAdmin(null);
+          }
           return;
         }
 
-        setAdmin(adminData || null);
+        if (adminData) {
+          console.log('Admin user found:', adminData.email);
+          setAdmin(adminData);
+        } else {
+          setAdmin(null);
+        }
       } catch (tableError) {
         console.log('Admin table access error:', tableError);
         setAdmin(null);
@@ -85,9 +100,12 @@ export const AdminAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
       async (event) => {
         if (!mounted) return;
         
+        console.log('Admin auth state change:', event);
+        
         if (event === 'SIGNED_OUT') {
           setAdmin(null);
-        } else if (event === 'SIGNED_IN') {
+        } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          // Only check admin access after successful authentication
           await checkAdminAccess();
         }
       }
@@ -109,8 +127,7 @@ export const AdminAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
       throw new Error(error.message);
     }
 
-    // Check admin access after successful sign in
-    await checkAdminAccess();
+    // Admin access check will be handled by the auth state change listener
   };
 
   const signOut = async (): Promise<void> => {
