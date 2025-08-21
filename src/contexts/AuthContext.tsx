@@ -69,33 +69,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   try {
     addDebug(`🔄 Loading data for: ${authUser.email}`);
     
-    // CRITICAL FIX: Skip database queries entirely and use mock/default data
-    addDebug('🚀 BYPASSING database queries to prevent hanging');
-    
-    // For now, set subscription status based on known test user
-    if (authUser.email === 'nizardhr5@gmail.com') {
-      addDebug('🎯 Setting active subscription for test user');
-      const mockSubscription: Subscription = {
-        id: 'mock-subscription-id',
-        user_id: authUser.id,
-        stripe_customer_id: 'mock-customer',
-        stripe_subscription_id: 'mock-sub',
-        plan_type: 'monthly',
-        status: 'active',
-        current_period_start: new Date().toISOString(),
-        current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        cancel_at_period_end: false,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-      setSubscription(mockSubscription);
-      addDebug('✅ Mock active subscription set');
-    } else {
-      addDebug('ℹ️ Non-test user - no subscription set');
-      setSubscription(null);
-    }
-    
-    // Create a basic profile from auth user data
+    // Create basic profile from auth user data first (always works)
     const basicProfile: UserProfile = {
       id: authUser.id,
       email: authUser.email || '',
@@ -107,17 +81,119 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
     setProfile(basicProfile);
     addDebug('✅ Basic profile created from auth data');
+
+    // Attempt subscription query with timeout protection
+    addDebug('🔍 Attempting subscription query with timeout protection...');
     
-    addDebug('🏁 loadUserData complete (database queries bypassed)');
+    let subscriptionData: Subscription | null = null;
     
-    // 🚨 CRITICAL FIX: Set loading to false directly here
-    addDebug('🎯 FORCING loading to false from loadUserData');
-    setLoading(false);
+    try {
+      // Create timeout promise
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Subscription query timeout after 5 seconds')), 5000);
+      });
+
+      // Create subscription query promise
+      const subscriptionPromise = supabase
+        .from('subscriptions')
+        .select(`
+          id,
+          user_id,
+          stripe_customer_id,
+          stripe_subscription_id,
+          plan_type,
+          status,
+          current_period_start,
+          current_period_end,
+          cancel_at_period_end,
+          created_at,
+          updated_at
+        `)
+        .eq('user_id', authUser.id)
+        .in('status', ['active', 'trialing'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      // Race between query and timeout
+      const result = await Promise.race([subscriptionPromise, timeoutPromise]);
+      
+      if (result.error) {
+        addDebug(`⚠️ Subscription query error: ${result.error.message}`);
+        
+        // Check for specific RLS error
+        if (result.error.message.includes('row-level security') || 
+            result.error.message.includes('permission') ||
+            result.error.message.includes('policy')) {
+          addDebug('🔒 RLS policy blocking access - subscription set to null');
+        }
+        
+        subscriptionData = null;
+      } else {
+        addDebug(`✅ Subscription query successful`);
+        subscriptionData = result.data;
+        
+        if (subscriptionData) {
+          addDebug(`✅ Active subscription found: ${subscriptionData.status}`);
+        } else {
+          addDebug('ℹ️ No active subscription found in database');
+        }
+      }
+
+    } catch (queryError: any) {
+      addDebug(`❌ Subscription query failed: ${queryError.message}`);
+      
+      // Handle specific error types
+      if (queryError.message.includes('timeout')) {
+        addDebug('⏰ Query timed out - likely RLS or network issue');
+      } else if (queryError.message.includes('permission') || 
+                 queryError.message.includes('policy') ||
+                 queryError.message.includes('row-level security')) {
+        addDebug('🔒 Permission denied - RLS policies need fixing');
+      } else {
+        addDebug(`🔍 Unexpected error type: ${queryError.message}`);
+      }
+      
+      subscriptionData = null;
+    }
+
+    // Set the subscription state
+    setSubscription(subscriptionData);
     
-  } catch (error) {
-    addDebug(`❌ Error in loadUserData: ${error.message}`);
-    // Even on error, set loading to false
-    addDebug('🎯 FORCING loading to false due to error');
+    // Log final subscription status
+    if (subscriptionData) {
+      addDebug(`💳 Final subscription status: ${subscriptionData.status}`);
+    } else {
+      addDebug('💳 Final subscription status: none (null)');
+    }
+    
+    addDebug('🏁 loadUserData complete');
+    
+  } catch (error: any) {
+    addDebug(`❌ Critical error in loadUserData: ${error.message}`);
+    
+    // Ensure we have at least basic profile data
+    if (!profile) {
+      const fallbackProfile: UserProfile = {
+        id: authUser.id,
+        email: authUser.email || '',
+        display_name: null,
+        avatar_url: null,
+        email_verified: authUser.email_confirmed_at != null,
+        created_at: authUser.created_at || new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      setProfile(fallbackProfile);
+      addDebug('🔄 Fallback profile created');
+    }
+    
+    // Ensure subscription is null on error
+    setSubscription(null);
+    addDebug('💳 Subscription set to null due to error');
+    
+  } finally {
+    // CRITICAL: Always set loading to false
+    addDebug('🎯 Setting loading to false from loadUserData');
     setLoading(false);
   }
 };
