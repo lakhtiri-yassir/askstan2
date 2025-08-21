@@ -217,7 +217,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     if (!initialized) return;
 
-    const { data: authSub } = supabase.auth.onAuthStateChange(
+    const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log(`🔔 Auth event: ${event}`);
         
