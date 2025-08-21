@@ -1,4 +1,4 @@
-// src/contexts/AuthContext.tsx - FIXED with SessionStorage and Proper Hook Order
+// src/contexts/AuthContext.tsx - COMPLETE FILE with Diagnostic Subscription Query
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
@@ -102,7 +102,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // FIXED: loadUserData function with proper subscription loading
+  // DIAGNOSTIC: loadUserData function with step-by-step subscription testing
   const loadUserData = async (authUser: User) => {
     try {
       addDebug(`🔄 Loading data for: ${authUser.email}`);
@@ -120,36 +120,86 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setProfile(basicProfile);
       addDebug('✅ Profile created');
 
-      // Load subscription data
+      // DIAGNOSTIC: Step-by-step subscription loading
       addDebug('🔍 Loading subscription data...');
       
       try {
         addDebug(`🎯 Querying subscriptions for user: ${authUser.id}`);
         
-        const { data: subscriptions, error: subError } = await Promise.race([
-          supabase
-            .from('subscriptions')
-            .select('*')
-            .eq('user_id', authUser.id),
+        // Step 1: Test basic connectivity to Supabase
+        addDebug('🔍 Step 1: Testing basic Supabase connectivity...');
+        const connectTest = await Promise.race([
+          fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/`, {
+            method: 'HEAD',
+            headers: {
+              'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+            }
+          }),
+          new Promise<never>((_, reject) => 
+            setTimeout(() => reject(new Error('Connectivity test timeout')), 3000)
+          )
+        ]);
+        addDebug(`✅ Connectivity test: ${connectTest.status}`);
+        
+        // Step 2: Test if subscriptions table exists
+        addDebug('🔍 Step 2: Testing subscriptions table access...');
+        const tableTest = await Promise.race([
+          supabase.from('subscriptions').select('count', { count: 'exact', head: true }),
           new Promise<any>((_, reject) => 
-            setTimeout(() => reject(new Error('Subscription query timeout after 8 seconds')), 8000)
+            setTimeout(() => reject(new Error('Table test timeout')), 3000)
           )
         ]);
         
-        if (subError) {
-          addDebug(`❌ Subscription query error: ${subError.message}`);
-          addDebug(`❌ Error code: ${subError.code || 'unknown'}`);
+        if (tableTest.error) {
+          addDebug(`❌ Table test error: ${tableTest.error.message}`);
+        } else {
+          addDebug(`✅ Table test success: ${tableTest.count} total records`);
+        }
+        
+        // Step 3: Test query with no filters (should be fast)
+        addDebug('🔍 Step 3: Testing basic query (no filters)...');
+        const basicQuery = await Promise.race([
+          supabase.from('subscriptions').select('user_id, status').limit(5),
+          new Promise<any>((_, reject) => 
+            setTimeout(() => reject(new Error('Basic query timeout')), 3000)
+          )
+        ]);
+        
+        if (basicQuery.error) {
+          addDebug(`❌ Basic query error: ${basicQuery.error.message}`);
+        } else {
+          addDebug(`✅ Basic query success: ${basicQuery.data?.length} records returned`);
+        }
+        
+        // Step 4: Test query with user filter
+        addDebug('🔍 Step 4: Testing user-specific query...');
+        const userQuery = await Promise.race([
+          supabase
+            .from('subscriptions')
+            .select('*')
+            .eq('user_id', authUser.id)
+            .limit(10),
+          new Promise<any>((_, reject) => 
+            setTimeout(() => reject(new Error('User query timeout')), 5000)
+          )
+        ]);
+        
+        if (userQuery.error) {
+          addDebug(`❌ User query error: ${userQuery.error.message}`);
+          addDebug(`❌ Error code: ${userQuery.error.code || 'unknown'}`);
+          addDebug(`❌ Error details: ${JSON.stringify(userQuery.error.details || {})}`);
           setSubscription(null);
         } else {
-          addDebug(`✅ Subscription query successful`);
-          addDebug(`📊 Found ${subscriptions?.length || 0} subscription records`);
+          addDebug(`✅ User query successful`);
+          addDebug(`📊 Found ${userQuery.data?.length || 0} subscription records`);
           
-          if (subscriptions && subscriptions.length > 0) {
-            subscriptions.forEach((sub, index) => {
-              addDebug(`📋 Sub ${index + 1}: ${sub.status} - ${sub.plan_type}`);
+          if (userQuery.data && userQuery.data.length > 0) {
+            userQuery.data.forEach((sub, index) => {
+              addDebug(`📋 Sub ${index + 1}: ${sub.status} - ${sub.plan_type} - ${sub.id}`);
             });
             
-            const activeSub = subscriptions.find(sub => 
+            const activeSub = userQuery.data.find(sub => 
               sub.status === 'active' || sub.status === 'trialing'
             );
             
@@ -168,6 +218,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         
       } catch (queryError: any) {
         addDebug(`❌ Subscription query exception: ${queryError.message}`);
+        
+        // Additional diagnostic info
+        if (queryError.message.includes('timeout')) {
+          addDebug('🔍 Timeout detected - possible causes:');
+          addDebug('   • Slow network connection to Supabase');
+          addDebug('   • Database performance issue');
+          addDebug('   • Query complexity issue');
+          addDebug('   • Supabase client configuration issue');
+        }
+        
         setSubscription(null);
       }
       
@@ -444,11 +504,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
           <div style={{ marginTop: '10px', background: 'darkblue', padding: '10px', color: 'white' }}>
             <div style={{ fontWeight: 'bold', color: 'yellow' }}>🎯 WHAT TO LOOK FOR:</div>
-            <div>1. Should see "🔍 Checking sessionStorage for user..."</div>
-            <div>2. Should see "✅ Found user in sessionStorage: [email]"</div>
-            <div>3. Should see subscription query results</div>
-            <div>4. Should see user email in CURRENT STATE</div>
-            <div>5. Loading should turn GREEN after trying subscription</div>
+            <div>1. Should see all 4 diagnostic steps</div>
+            <div>2. Step 1: Connectivity test result</div>
+            <div>3. Step 2: Table access test result</div>
+            <div>4. Step 3: Basic query test result</div>
+            <div>5. Step 4: User-specific query result</div>
+            <div>6. Which step fails will show us the problem</div>
           </div>
         </div>
       )}
