@@ -64,33 +64,82 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setDebugLog(prev => [...prev.slice(-4), `${new Date().toLocaleTimeString()}: ${message}`]);
   };
 
-  // Optimized user data loading - runs queries in parallel
+  // ENHANCED DIAGNOSTIC VERSION - all info in debug panel
   const loadUserData = async (authUser: User) => {
-  try {
-    addDebug(`🔄 Loading data for: ${authUser.email}`);
-    
-    // Simple subscription query with timeout
-    const { data: subscriptionData, error } = await Promise.race([
-      supabase
-        .from('subscriptions')
-        .select('*')
-        .eq('user_id', authUser.id)
-        .in('status', ['active', 'trialing'])
-        .limit(1)
-        .maybeSingle(),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Query timeout')), 5000))
-    ]);
+    try {
+      addDebug(`🔄 Loading data for: ${authUser.email}`);
+      addDebug(`🔑 User ID: ${authUser.id.slice(0, 8)}...`);
+      
+      // Test 1: Basic database connection
+      addDebug('🔍 Step 1: Testing database connection...');
+      try {
+        const { data: testData, error: testError } = await supabase
+          .from('subscriptions')
+          .select('count(*)')
+          .limit(1);
+        
+        if (testError) {
+          addDebug(`❌ STEP 1 FAILED: ${testError.message}`);
+          addDebug(`❌ Error Code: ${testError.code || 'no code'}`);
+          addDebug(`❌ Error Details: ${testError.details || 'no details'}`);
+          addDebug(`❌ Error Hint: ${testError.hint || 'no hint'}`);
+          return; // Stop here if connection fails
+        } else {
+          addDebug('✅ STEP 1 SUCCESS: Database connection works');
+        }
+      } catch (connectionError) {
+        addDebug(`❌ STEP 1 CATCH: ${connectionError.message}`);
+        return;
+      }
 
-    if (error) {
-      addDebug(`❌ DB Error: ${error.message}`);
-    } else {
-      addDebug(`✅ Subscription: ${subscriptionData?.status || 'none'}`);
-      setSubscription(subscriptionData);
+      // Test 2: User-specific query
+      addDebug('🔍 Step 2: Testing user subscription query...');
+      try {
+        const { data: subscriptionData, error: subscriptionError } = await supabase
+          .from('subscriptions')
+          .select('*')
+          .eq('user_id', authUser.id);
+
+        if (subscriptionError) {
+          addDebug(`❌ STEP 2 FAILED: ${subscriptionError.message}`);
+          addDebug(`❌ Error Code: ${subscriptionError.code || 'no code'}`);
+          addDebug(`❌ Error Details: ${subscriptionError.details || 'no details'}`);
+          addDebug(`❌ This is likely an RLS (Row Level Security) issue`);
+        } else {
+          addDebug(`✅ STEP 2 SUCCESS: Found ${subscriptionData?.length || 0} subscriptions`);
+          
+          if (subscriptionData && subscriptionData.length > 0) {
+            // Show all subscriptions found
+            subscriptionData.forEach((sub, i) => {
+              addDebug(`📋 Sub ${i + 1}: ${sub.status} (${sub.plan_type})`);
+            });
+            
+            // Find active subscription
+            const activeSub = subscriptionData.find(sub => ['active', 'trialing'].includes(sub.status));
+            if (activeSub) {
+              setSubscription(activeSub);
+              addDebug(`✅ STEP 3 SUCCESS: Set active subscription: ${activeSub.status}`);
+            } else {
+              addDebug(`⚠️ STEP 3 WARNING: No active subscription found`);
+              setSubscription(subscriptionData[0]); // Set first subscription anyway
+            }
+          } else {
+            addDebug('ℹ️ STEP 3 INFO: User has no subscriptions in database');
+            addDebug('ℹ️ This means your account exists but has no subscription records');
+          }
+        }
+      } catch (queryError) {
+        addDebug(`❌ STEP 2 CATCH: ${queryError.message}`);
+      }
+
+      addDebug('🏁 DIAGNOSTIC COMPLETE');
+
+    } catch (error) {
+      addDebug(`❌ OUTER CATCH: ${error.message}`);
+      setProfile(null);
+      setSubscription(null);
     }
-  } catch (error) {
-    addDebug(`❌ Timeout: ${error.message}`);
-  }
-};
+  };
 
   // Initialize auth
   useEffect(() => {
