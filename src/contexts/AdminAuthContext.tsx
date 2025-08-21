@@ -1,4 +1,4 @@
-// src/contexts/AdminAuthContext.tsx - PRODUCTION READY: Simple and reliable
+// src/contexts/AdminAuthContext.tsx - FIXED: Handle missing admin_users table gracefully
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 
@@ -40,16 +40,30 @@ export const AdminAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
         return;
       }
 
-      // Check if user is in admin_users table
-      const { data: adminData } = await supabase
-        .from('admin_users')
-        .select('*')
-        .eq('email', session.user.email)
-        .eq('is_active', true)
-        .single();
+      // FIXED: Handle case where admin_users table doesn't exist
+      try {
+        // Check if user is in admin_users table
+        const { data: adminData, error } = await supabase
+          .from('admin_users')
+          .select('*')
+          .eq('email', session.user.email)
+          .eq('is_active', true)
+          .single();
 
-      setAdmin(adminData || null);
+        if (error) {
+          // If table doesn't exist or other error, treat as no admin access
+          console.log('Admin table query failed (table may not exist):', error.message);
+          setAdmin(null);
+          return;
+        }
+
+        setAdmin(adminData || null);
+      } catch (tableError) {
+        console.log('Admin table access error:', tableError);
+        setAdmin(null);
+      }
     } catch (error) {
+      console.log('Admin auth check error:', error);
       setAdmin(null);
     }
   };
@@ -66,6 +80,7 @@ export const AdminAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
 
     initAdmin();
 
+    // FIXED: Proper auth state listener cleanup
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event) => {
         if (!mounted) return;
@@ -85,36 +100,25 @@ export const AdminAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
   }, []);
 
   const signIn = async (email: string, password: string): Promise<void> => {
-    // First sign in with Supabase Auth
-    const { error: authError } = await supabase.auth.signInWithPassword({
+    const { error } = await supabase.auth.signInWithPassword({
       email: email.trim().toLowerCase(),
       password,
     });
 
-    if (authError) {
-      throw new Error(authError.message);
+    if (error) {
+      throw new Error(error.message);
     }
 
-    // Check if user is an admin
-    const { data: adminData, error: adminError } = await supabase
-      .from('admin_users')
-      .select('*')
-      .eq('email', email.trim().toLowerCase())
-      .eq('is_active', true)
-      .single();
-
-    if (adminError || !adminData) {
-      // Sign out if not an admin
-      await supabase.auth.signOut();
-      throw new Error('Invalid admin credentials');
-    }
-
-    setAdmin(adminData);
+    // Check admin access after successful sign in
+    await checkAdminAccess();
   };
 
   const signOut = async (): Promise<void> => {
-    await supabase.auth.signOut();
     setAdmin(null);
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      throw new Error(error.message);
+    }
   };
 
   return (
