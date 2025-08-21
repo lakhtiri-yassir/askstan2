@@ -1,4 +1,4 @@
-// src/contexts/AuthContext.tsx - BULLETPROOF MINIMAL VERSION
+// src/contexts/AuthContext.tsx - ROOT PROBLEM FIX
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
@@ -56,15 +56,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [loading, setLoading] = useState(true);
   const [debugLog, setDebugLog] = useState<string[]>(['🚀 Starting auth...']);
 
-  // BULLETPROOF: Simple subscription check
-  const hasActiveSubscription = Boolean(subscription && (subscription.status === 'active' || subscription.status === 'trialing'));
+  // Proper subscription check
+  const hasActiveSubscription = subscription?.status === 'active' || subscription?.status === 'trialing';
 
   // Helper function to add debug messages
   const addDebug = (message: string) => {
     setDebugLog(prev => [...prev.slice(-15), `${new Date().toLocaleTimeString()}: ${message}`]);
   };
 
-  // BULLETPROOF: Get user from sessionStorage
+  // Get user from sessionStorage
   const getUserFromSessionStorage = (): User | null => {
     try {
       addDebug('🔍 Checking sessionStorage for user...');
@@ -101,12 +101,43 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // BULLETPROOF: Simple loadUserData - always succeeds
+  // ROOT FIX: Create a new Supabase client with better configuration
+  const createOptimizedSupabaseClient = () => {
+    addDebug('🔧 Creating optimized Supabase client...');
+    
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    
+    // Create client with optimized settings for better performance
+    const { createClient } = require('@supabase/supabase-js');
+    
+    const optimizedClient = createClient(supabaseUrl, supabaseKey, {
+      auth: {
+        autoRefreshToken: false, // Disable auto refresh to avoid conflicts
+        persistSession: false,   // Don't persist, we handle this manually
+        detectSessionInUrl: false // Don't detect session in URL
+      },
+      global: {
+        headers: {
+          'x-client-info': 'optimized-client',
+          'Prefer': 'return=minimal' // Request minimal response for better performance
+        }
+      },
+      db: {
+        schema: 'public' // Explicitly set schema
+      }
+    });
+    
+    addDebug('✅ Optimized client created');
+    return optimizedClient;
+  };
+
+  // ROOT FIX: Improved subscription loading with proper client
   const loadUserData = async (authUser: User) => {
     try {
       addDebug(`🔄 Loading data for: ${authUser.email}`);
       
-      // Create profile immediately - always works
+      // Create profile immediately
       const basicProfile: UserProfile = {
         id: authUser.id,
         email: authUser.email || '',
@@ -119,61 +150,86 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setProfile(basicProfile);
       addDebug('✅ Profile created');
 
-      // BULLETPROOF: Set active subscription for your test user - no database calls
-      if (authUser.email === 'nizardhr5@gmail.com' || authUser.id === '68565a2c-67e0-4364-96ee-de23c9acfb04') {
-        addDebug('🎯 Setting active subscription for test user');
-        const testSubscription: Subscription = {
-          id: 'test-subscription-id',
-          user_id: authUser.id,
-          stripe_customer_id: 'test-customer',
-          stripe_subscription_id: 'test-sub',
-          plan_type: 'monthly',
-          status: 'active',
-          current_period_start: new Date().toISOString(),
-          current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-          cancel_at_period_end: false,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-        setSubscription(testSubscription);
-        addDebug('✅ Active subscription set');
-      } else {
-        addDebug('ℹ️ Other user - no subscription');
+      // ROOT FIX: Use optimized client and proper query structure
+      addDebug('🔍 Loading subscription with optimized approach...');
+      
+      try {
+        // Create optimized client for this specific query
+        const optimizedSupabase = createOptimizedSupabaseClient();
+        
+        addDebug(`🎯 Querying subscriptions for user: ${authUser.id}`);
+        
+        // ROOT FIX: Use more specific and optimized query
+        const subscriptionQuery = optimizedSupabase
+          .from('subscriptions')
+          .select('id, user_id, plan_type, status, created_at, updated_at, stripe_customer_id, stripe_subscription_id, current_period_start, current_period_end, cancel_at_period_end')
+          .eq('user_id', authUser.id)
+          .order('created_at', { ascending: false })
+          .limit(1);
+        
+        // ROOT FIX: Use AbortController for proper timeout handling
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        
+        const { data: subscriptions, error } = await subscriptionQuery.abortSignal(controller.signal);
+        
+        clearTimeout(timeoutId);
+        
+        if (error) {
+          if (error.name === 'AbortError') {
+            addDebug('❌ Query aborted due to timeout');
+          } else {
+            addDebug(`❌ Query error: ${error.message}`);
+            addDebug(`❌ Error code: ${error.code}`);
+          }
+          setSubscription(null);
+        } else {
+          addDebug(`✅ Query successful!`);
+          addDebug(`📊 Found ${subscriptions?.length || 0} subscription records`);
+          
+          if (subscriptions && subscriptions.length > 0) {
+            const subscription = subscriptions[0]; // Get the most recent one
+            addDebug(`📋 Subscription: ${subscription.status} - ${subscription.plan_type}`);
+            
+            // Set subscription regardless of status - let the app decide what to do with it
+            setSubscription(subscription);
+            addDebug(`✅ Subscription set: ${subscription.status}`);
+          } else {
+            setSubscription(null);
+            addDebug('ℹ️ No subscription records found');
+          }
+        }
+        
+      } catch (queryError: any) {
+        addDebug(`❌ Query exception: ${queryError.message}`);
+        
+        if (queryError.name === 'AbortError') {
+          addDebug('⏰ Query was aborted due to timeout');
+        } else {
+          addDebug(`🔍 Error details: ${queryError.stack || 'No stack trace'}`);
+        }
+        
         setSubscription(null);
       }
       
       addDebug('🏁 loadUserData complete');
       
     } catch (error: any) {
-      addDebug(`❌ Error: ${error.message}`);
-      // Even on error, set a basic subscription for test user
-      if (authUser.email === 'nizardhr5@gmail.com') {
-        const fallbackSub: Subscription = {
-          id: 'fallback-id',
-          user_id: authUser.id,
-          stripe_customer_id: 'fallback',
-          stripe_subscription_id: 'fallback',
-          plan_type: 'monthly',
-          status: 'active',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-        setSubscription(fallbackSub);
-        addDebug('✅ Fallback subscription set');
-      }
+      addDebug(`❌ Error in loadUserData: ${error.message}`);
+      setSubscription(null);
     } finally {
       addDebug('🎯 Setting loading to false');
       setLoading(false);
     }
   };
 
-  // BULLETPROOF: Single useEffect - simple and reliable
+  // Initialize auth
   useEffect(() => {
     let mounted = true;
 
     const initialize = async () => {
       try {
-        addDebug('🚀 Initializing...');
+        addDebug('🚀 Initializing auth...');
         
         // Try sessionStorage first
         const sessionUser = getUserFromSessionStorage();
@@ -192,7 +248,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           const { data: { user }, error } = await Promise.race([
             supabase.auth.getUser(),
             new Promise<any>((_, reject) => 
-              setTimeout(() => reject(new Error('Auth timeout')), 3000)
+              setTimeout(() => reject(new Error('Auth timeout')), 5000)
             )
           ]);
           
@@ -233,7 +289,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         addDebug('⏰ Safety timeout');
         setLoading(false);
       }
-    }, 10000);
+    }, 15000);
 
     return () => {
       mounted = false;
@@ -241,9 +297,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
   }, []);
 
-  // BULLETPROOF: Auth state listener - separate effect
+  // Auth state listener
   useEffect(() => {
-    if (loading) return; // Don't set up listener until initial load is done
+    if (loading) return;
     
     addDebug('🔗 Setting up auth listener...');
     
@@ -332,38 +388,37 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       signUp,
       refreshSubscription,
     }}>
-      {/* SIMPLIFIED DEBUG PANEL */}
+      {/* DEBUG PANEL */}
       {true && (
         <div style={{
           position: 'fixed',
           top: '0px',
           left: '0px',
-          background: 'darkgreen',
+          background: 'darkblue',
           color: 'white',
           padding: '15px',
           fontSize: '14px',
           zIndex: 99999,
           fontFamily: 'monospace',
-          border: '3px solid lime',
+          border: '3px solid yellow',
           maxWidth: '100vw',
           overflow: 'auto'
         }}>
           <div style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '10px' }}>
-            ✅ BULLETPROOF AUTH - MINIMAL VERSION ✅
+            🔧 ROOT PROBLEM FIX - OPTIMIZED QUERIES 🔧
           </div>
           
           <div style={{ marginBottom: '10px', background: 'black', padding: '10px' }}>
-            <div style={{ color: 'lime', fontWeight: 'bold' }}>CURRENT STATE:</div>
+            <div style={{ color: 'yellow', fontWeight: 'bold' }}>CURRENT STATE:</div>
             <div>✉️ User: {user?.email || '❌ NO USER'}</div>
             <div>💳 Subscription: {subscription?.status || '❌ NO SUBSCRIPTION'}</div>
-            <div style={{ fontSize: '16px', fontWeight: 'bold' }}>
-              🎯 Access: <span style={{ 
-                color: hasActiveSubscription ? 'lime' : 'red',
-                fontSize: '18px'
-              }}>
-                {hasActiveSubscription ? '✅ GRANTED' : '❌ DENIED'}
-              </span>
-            </div>
+            <div>🎯 Has Active Sub: <span style={{ 
+              color: hasActiveSubscription ? 'lime' : 'red',
+              fontWeight: 'bold',
+              fontSize: '16px'
+            }}>
+              {hasActiveSubscription ? '✅ TRUE' : '❌ FALSE'}
+            </span></div>
             <div>⏳ Loading: <span style={{ 
               color: loading ? 'red' : 'lime',
               fontWeight: 'bold'
@@ -373,25 +428,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           </div>
           
           <div style={{ background: 'black', padding: '10px' }}>
-            <div style={{ color: 'lime', fontWeight: 'bold' }}>RECENT LOG:</div>
-            {debugLog.slice(-10).map((log, i) => (
+            <div style={{ color: 'yellow', fontWeight: 'bold' }}>ACTIVITY LOG:</div>
+            {debugLog.slice(-12).map((log, i) => (
               <div key={i} style={{ 
                 fontSize: '12px', 
                 marginBottom: '2px',
-                color: log.includes('❌') ? '#ff6666' : 
-                      log.includes('✅') ? '#66ff66' : '#ffffff'
+                color: log.includes('❌') ? '#ff4444' : 
+                      log.includes('✅') ? '#44ff44' : 
+                      log.includes('🔧') ? '#ffaa00' : '#ffffff'
               }}>
                 {log}
               </div>
             ))}
           </div>
 
-          <div style={{ marginTop: '10px', background: 'darkblue', padding: '10px' }}>
-            <div style={{ color: 'yellow', fontWeight: 'bold' }}>STATUS:</div>
-            <div>🎯 This version removes all database calls</div>
-            <div>🎯 Test user gets active subscription automatically</div>
-            <div>🎯 Should work reliably for testing</div>
-            <div>🎯 Access should be GRANTED for nizardhr5@gmail.com</div>
+          <div style={{ marginTop: '10px', background: 'darkgreen', padding: '10px' }}>
+            <div style={{ color: 'lime', fontWeight: 'bold' }}>ROOT FIXES APPLIED:</div>
+            <div>🔧 Optimized Supabase client configuration</div>
+            <div>🔧 Proper AbortController timeout handling</div>
+            <div>🔧 Specific query with minimal response</div>
+            <div>🔧 Better error handling and diagnostics</div>
           </div>
         </div>
       )}
