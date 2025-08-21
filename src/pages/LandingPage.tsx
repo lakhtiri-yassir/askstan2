@@ -1,5 +1,5 @@
 // src/pages/LandingPage.tsx - FIXED: Added proper auth-based redirects using React Router
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
@@ -21,10 +21,16 @@ import askstanBanner from '../img/askstanbanner.png';
 
 export const LandingPage: React.FC = () => {
   const navigate = useNavigate();
-  const { user, hasActiveSubscription, subscription, loading, initialized } = useAuth();
+  const { user, hasActiveSubscription, loading, initialized } = useAuth();
+  const [redirectExecuted, setRedirectExecuted] = useState(false);
 
   // CRITICAL FIX: Handle auth-based redirects properly using React Router
   useEffect(() => {
+    // Prevent multiple redirects
+    if (redirectExecuted) {
+      return;
+    }
+
     // Only redirect once auth is fully initialized and not loading
     if (!initialized || loading) {
       console.log('🔄 LandingPage: Waiting for auth initialization', { initialized, loading });
@@ -35,16 +41,16 @@ export const LandingPage: React.FC = () => {
     if (user) {
       console.log('🔍 LandingPage: User detected, checking subscription status', {
         hasActiveSubscription,
-        userEmail: user.email,
-        subscriptionStatus: subscription?.status || 'none'
+        userEmail: user.email
       });
 
-      // INCREASED DELAY: Give more time for subscription data to load
-      // This fixes the issue where subscription status hasn't loaded yet
+      // Mark redirect as executed to prevent loops
+      setRedirectExecuted(true);
+
+      // Small delay to ensure subscription data is available
       const redirectTimer = setTimeout(() => {
-        console.log('⏰ LandingPage: Redirect timer triggered', {
-          hasActiveSubscription,
-          subscriptionStatus: subscription?.status || 'none'
+        console.log('⏰ LandingPage: Executing redirect', {
+          hasActiveSubscription
         });
 
         if (hasActiveSubscription) {
@@ -54,13 +60,13 @@ export const LandingPage: React.FC = () => {
           console.log('💳 User needs subscription, redirecting to plans');
           navigate('/plans', { replace: true });
         }
-      }, 1000); // Increased from 500ms to 1000ms to ensure subscription data loads
+      }, 500); // Reduced timeout to prevent long loading
 
       return () => clearTimeout(redirectTimer);
     } else {
       console.log('ℹ️ LandingPage: No user, showing landing page');
     }
-  }, [user, hasActiveSubscription, subscription, initialized, loading, navigate]);
+  }, [user, hasActiveSubscription, initialized, loading, navigate, redirectExecuted]);
 
   const capabilities = [
     {
