@@ -296,30 +296,73 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       signUp,
       refreshSubscription,
     }}>
-      {/* TEMPORARY DEBUG - to see what's happening */}
-      <div style={{
-        position: 'fixed',
-        top: '10px',
-        right: '10px',
-        background: 'rgba(0,0,0,0.9)',
-        color: 'white',
-        padding: '8px',
-        borderRadius: '4px',
-        fontSize: '11px',
-        zIndex: 9999,
-        fontFamily: 'monospace'
-      }}>
-        <div>User: {user?.email || 'none'}</div>
-        <div>Sub: {subscription?.status || 'none'}</div>
-        <div>Active: {hasActiveSubscription.toString()}</div>
-        <div>Loading: <span style={{ color: loading ? 'red' : 'green' }}>{loading.toString()}</span></div>
-        <div>Last logs:</div>
-        {debugLog.slice(-3).map((log, i) => (
-          <div key={i} style={{ fontSize: '10px', color: '#ccc' }}>
-            {log}
+      {/* CRITICAL DEBUG PANEL - ALWAYS VISIBLE */}
+      {true && (
+        <div style={{
+          position: 'fixed',
+          top: '0px',
+          left: '0px',
+          background: 'red',
+          color: 'white',
+          padding: '15px',
+          fontSize: '14px',
+          zIndex: 99999,
+          fontFamily: 'monospace',
+          border: '3px solid yellow',
+          maxWidth: '100vw',
+          overflow: 'auto'
+        }}>
+          <div style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '10px' }}>
+            🚨 AUTH DEBUG - ALWAYS VISIBLE 🚨
           </div>
-        ))}
-      </div>
+          
+          <div style={{ marginBottom: '10px', background: 'black', padding: '10px' }}>
+            <div style={{ color: 'yellow', fontWeight: 'bold' }}>CURRENT STATE:</div>
+            <div>✉️ User Email: {user?.email || '❌ NO USER'}</div>
+            <div>💳 Subscription: {subscription?.status || '❌ NO SUBSCRIPTION'}</div>
+            <div>🎯 Has Active Sub: <span style={{ 
+              color: hasActiveSubscription ? 'lime' : 'red',
+              fontWeight: 'bold',
+              fontSize: '16px'
+            }}>
+              {hasActiveSubscription ? '✅ TRUE' : '❌ FALSE'}
+            </span></div>
+            <div>⏳ Loading State: <span style={{ 
+              color: loading ? 'red' : 'lime',
+              fontWeight: 'bold',
+              fontSize: '16px'
+            }}>
+              {loading ? '🔴 LOADING (BAD!)' : '🟢 LOADED (GOOD!)'}
+            </span></div>
+          </div>
+          
+          <div style={{ background: 'black', padding: '10px' }}>
+            <div style={{ color: 'yellow', fontWeight: 'bold' }}>ACTIVITY LOG (Last 8 messages):</div>
+            {debugLog.slice(-8).map((log, i) => (
+              <div key={i} style={{ 
+                fontSize: '12px', 
+                marginBottom: '3px',
+                color: log.includes('❌') ? '#ff4444' : 
+                      log.includes('✅') ? '#44ff44' : 
+                      log.includes('⚠️') ? '#ffaa00' : 
+                      log.includes('🔄') ? '#44aaff' : '#ffffff',
+                fontWeight: log.includes('Setting loading') ? 'bold' : 'normal'
+              }}>
+                {log}
+              </div>
+            ))}
+          </div>
+
+          <div style={{ marginTop: '10px', background: 'darkblue', padding: '10px', color: 'white' }}>
+            <div style={{ fontWeight: 'bold', color: 'yellow' }}>🎯 WHAT TO LOOK FOR:</div>
+            <div>1. Loading should turn GREEN within 10 seconds</div>
+            <div>2. You should see "✅ Setting loading to false" in the log</div>
+            <div>3. User email should appear (not "NO USER")</div>
+            <div>4. If stuck at "Loading data for: [email]" = database query problem</div>
+            <div>5. If no "✅ Setting loading to false" = initialization problem</div>
+          </div>
+        </div>
+      )}
       {children}
     </AuthContext.Provider>
   );
