@@ -1,4 +1,4 @@
-// src/pages/LandingPage.tsx - FIXED: Added proper auth-based redirects using React Router
+// src/pages/LandingPage.tsx - Complete version with debug panel
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -12,16 +12,208 @@ import {
   DollarSign, 
   BarChart3,
   Check,
-  Star
+  Star,
+  Bug,
+  X,
+  RefreshCw,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../contexts/AuthContext';
 import { LoadingSpinner } from '../components/ui/LoadingSpinner';
 import askstanBanner from '../img/askstanbanner.png';
 
+// Debug Panel Component (inline for now)
+const AuthDebugPanel: React.FC = () => {
+  const { 
+    user, 
+    subscription, 
+    hasActiveSubscription, 
+    loading, 
+    initialized, 
+    debugSubscriptionStatus,
+    refreshSubscription,
+    debugLogs,
+    addDebugLog
+  } = useAuth();
+  
+  const [isOpen, setIsOpen] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
+
+  // Clear logs
+  const clearLogs = () => {
+    addDebugLog('🧹 Logs cleared');
+  };
+
+  // Manual subscription check
+  const handleDebugSubscription = async () => {
+    addDebugLog('🔍 Manual subscription debug started');
+    try {
+      await debugSubscriptionStatus();
+      addDebugLog('✅ Manual subscription debug completed');
+    } catch (error) {
+      addDebugLog('❌ Manual subscription debug failed', error);
+    }
+  };
+
+  // Manual refresh
+  const handleRefresh = async () => {
+    addDebugLog('🔄 Manual refresh started');
+    try {
+      await refreshSubscription();
+      addDebugLog('✅ Manual refresh completed');
+    } catch (error) {
+      addDebugLog('❌ Manual refresh failed', error);
+    }
+  };
+
+  return (
+    <>
+      {/* Debug Toggle Button */}
+      <motion.button
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        onClick={() => setIsOpen(!isOpen)}
+        className="fixed bottom-4 right-4 z-50 bg-purple-600 hover:bg-purple-700 text-white p-3 rounded-full shadow-lg transition-colors"
+        title="Toggle Auth Debug Panel"
+      >
+        <Bug className="w-5 h-5" />
+      </motion.button>
+
+      {/* Debug Panel */}
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0, x: 400 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: 400 }}
+          className="fixed top-4 right-4 z-40 bg-white rounded-lg shadow-2xl border border-gray-200 w-96 max-h-[80vh] flex flex-col"
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-purple-50 rounded-t-lg">
+            <div className="flex items-center space-x-2">
+              <Bug className="w-5 h-5 text-purple-600" />
+              <h3 className="font-semibold text-purple-800">Auth Debug Panel</h3>
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setIsMinimized(!isMinimized)}
+                className="p-1 hover:bg-purple-100 rounded"
+                title={isMinimized ? 'Expand' : 'Minimize'}
+              >
+                {isMinimized ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+              </button>
+              <button
+                onClick={() => setIsOpen(false)}
+                className="p-1 hover:bg-purple-100 rounded"
+                title="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {!isMinimized && (
+            <>
+              {/* Current State */}
+              <div className="p-4 border-b border-gray-200 bg-gray-50">
+                <h4 className="font-medium text-gray-800 mb-3">Current Auth State</h4>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="space-y-1">
+                    <div className={`flex items-center ${user ? 'text-green-600' : 'text-red-600'}`}>
+                      <span className="w-2 h-2 rounded-full bg-current mr-2"></span>
+                      User: {user ? 'Signed In' : 'Not Signed In'}
+                    </div>
+                    <div className={`flex items-center ${initialized ? 'text-green-600' : 'text-yellow-600'}`}>
+                      <span className="w-2 h-2 rounded-full bg-current mr-2"></span>
+                      Initialized: {initialized ? 'Yes' : 'No'}
+                    </div>
+                    <div className={`flex items-center ${loading ? 'text-yellow-600' : 'text-green-600'}`}>
+                      <span className="w-2 h-2 rounded-full bg-current mr-2"></span>
+                      Loading: {loading ? 'Yes' : 'No'}
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <div className={`flex items-center ${subscription ? 'text-green-600' : 'text-red-600'}`}>
+                      <span className="w-2 h-2 rounded-full bg-current mr-2"></span>
+                      Subscription: {subscription ? 'Found' : 'None'}
+                    </div>
+                    <div className={`flex items-center ${hasActiveSubscription ? 'text-green-600' : 'text-red-600'}`}>
+                      <span className="w-2 h-2 rounded-full bg-current mr-2"></span>
+                      Active Sub: {hasActiveSubscription ? 'Yes' : 'No'}
+                    </div>
+                    <div className="text-gray-600">
+                      Status: {subscription?.status || 'N/A'}
+                    </div>
+                  </div>
+                </div>
+                
+                {user && (
+                  <div className="mt-3 text-xs text-gray-600">
+                    <div>User: {user.email}</div>
+                    <div>ID: {user.id}</div>
+                  </div>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="p-4 border-b border-gray-200">
+                <h4 className="font-medium text-gray-800 mb-3">Debug Actions</h4>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={handleDebugSubscription}
+                    className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded transition-colors"
+                  >
+                    Debug Subscription
+                  </button>
+                  <button
+                    onClick={handleRefresh}
+                    className="px-3 py-1 bg-green-500 hover:bg-green-600 text-white text-sm rounded transition-colors flex items-center"
+                  >
+                    <RefreshCw className="w-3 h-3 mr-1" />
+                    Refresh
+                  </button>
+                  <button
+                    onClick={clearLogs}
+                    className="px-3 py-1 bg-gray-500 hover:bg-gray-600 text-white text-sm rounded transition-colors"
+                  >
+                    Clear Logs
+                  </button>
+                </div>
+              </div>
+
+              {/* Logs */}
+              <div className="flex-1 overflow-hidden flex flex-col">
+                <div className="p-4 border-b border-gray-200">
+                  <h4 className="font-medium text-gray-800">Debug Logs ({debugLogs.length})</h4>
+                </div>
+                <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                  {debugLogs.length === 0 ? (
+                    <div className="text-gray-500 text-sm text-center py-4">
+                      No logs yet. Interact with auth to see logs here.
+                    </div>
+                  ) : (
+                    debugLogs.slice(-20).map((log, index) => (
+                      <div key={index} className="text-xs border-l-2 border-gray-200 pl-2 py-1">
+                        <div className="text-gray-700 font-mono">
+                          {log}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+        </motion.div>
+      )}
+    </>
+  );
+};
+
 export const LandingPage: React.FC = () => {
   const navigate = useNavigate();
-  const { user, hasActiveSubscription, loading, initialized } = useAuth();
+  const { user, hasActiveSubscription, loading, initialized, addDebugLog } = useAuth();
   const [redirectExecuted, setRedirectExecuted] = useState(false);
 
   // CRITICAL FIX: Handle auth-based redirects properly using React Router
@@ -33,13 +225,13 @@ export const LandingPage: React.FC = () => {
 
     // Only redirect once auth is fully initialized and not loading
     if (!initialized || loading) {
-      console.log('🔄 LandingPage: Waiting for auth initialization', { initialized, loading });
+      addDebugLog('🔄 LandingPage: Waiting for auth initialization', { initialized, loading });
       return;
     }
 
     // If user is signed in, redirect based on subscription status
     if (user) {
-      console.log('🔍 LandingPage: User detected, checking subscription status', {
+      addDebugLog('🔍 LandingPage: User detected, checking subscription status', {
         hasActiveSubscription,
         userEmail: user.email
       });
@@ -49,24 +241,25 @@ export const LandingPage: React.FC = () => {
 
       // Small delay to ensure subscription data is available
       const redirectTimer = setTimeout(() => {
-        console.log('⏰ LandingPage: Executing redirect', {
-          hasActiveSubscription
+        addDebugLog('⏰ LandingPage: Executing redirect', {
+          hasActiveSubscription,
+          userEmail: user.email
         });
 
         if (hasActiveSubscription) {
-          console.log('✅ User has active subscription, redirecting to dashboard');
+          addDebugLog('✅ User has active subscription, redirecting to dashboard');
           navigate('/dashboard', { replace: true });
         } else {
-          console.log('💳 User needs subscription, redirecting to plans');
+          addDebugLog('💳 User needs subscription, redirecting to plans');
           navigate('/plans', { replace: true });
         }
-      }, 500); // Reduced timeout to prevent long loading
+      }, 1000); // Give time for subscription data to load
 
       return () => clearTimeout(redirectTimer);
     } else {
-      console.log('ℹ️ LandingPage: No user, showing landing page');
+      addDebugLog('ℹ️ LandingPage: No user, showing landing page');
     }
-  }, [user, hasActiveSubscription, initialized, loading, navigate, redirectExecuted]);
+  }, [user, hasActiveSubscription, initialized, loading, navigate, redirectExecuted, addDebugLog]);
 
   const capabilities = [
     {
@@ -110,6 +303,7 @@ export const LandingPage: React.FC = () => {
   if (!initialized || loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center">
+        <AuthDebugPanel />
         <div className="text-center">
           <LoadingSpinner size="lg" />
           <p className="mt-4 text-gray-600 font-medium">Loading...</p>
@@ -122,6 +316,9 @@ export const LandingPage: React.FC = () => {
   // If user is signed in, the useEffect will handle the redirect
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50">
+      {/* Debug Panel */}
+      <AuthDebugPanel />
+      
       {/* Hero Section */}
       <section className="relative pt-20 pb-32 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
