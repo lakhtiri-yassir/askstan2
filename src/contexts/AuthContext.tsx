@@ -122,18 +122,30 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       };
       setProfile(basicProfile);
       
-      // CRITICAL DEBUG: Comprehensive subscription loading with on-screen logging
+      // CRITICAL FIX: Subscription loading with aggressive timeout and fallback
       addDebugLog(`🔍 Starting subscription query for user: ${authUser.id}`);
       
       try {
-        // Method 1: Standard query
-        const { data: subscriptions, error } = await supabase
+        // Method 1: Standard query with short timeout
+        const subscriptionPromise = supabase
           .from('subscriptions')
           .select('*')
           .eq('user_id', authUser.id)
           .order('created_at', { ascending: false });
+
+        const timeoutPromise = new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('Subscription query timeout')), 3000)
+        );
+
+        const { data: subscriptions, error } = await Promise.race([
+          subscriptionPromise,
+          timeoutPromise
+        ]);
         
-        addDebugLog('📊 Raw subscription query result', { subscriptions, error });
+        addDebugLog('📊 Raw subscription query result', { 
+          subscriptionCount: subscriptions?.length || 0,
+          error: error?.message || null 
+        });
         
         if (error) {
           addDebugLog('❌ Subscription query error', error);
@@ -179,12 +191,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           setSubscription(null);
           
           // FALLBACK: Try direct count query to see if subscriptions exist at all
-          const { count, error: countError } = await supabase
-            .from('subscriptions')
-            .select('*', { count: 'exact', head: true })
-            .eq('user_id', authUser.id);
+          try {
+            const { count, error: countError } = await Promise.race([
+              supabase
+                .from('subscriptions')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', authUser.id),
+              new Promise<never>((_, reject) => 
+                setTimeout(() => reject(new Error('Count query timeout')), 2000)
+              )
+            ]);
             
-          addDebugLog('🔍 Subscription count check', { count, error: countError });
+            addDebugLog('🔍 Subscription count check', { count, error: countError?.message });
+          } catch (countError) {
+            addDebugLog('🔍 Count query failed or timed out', countError);
+          }
         }
         
       } catch (subError) {
@@ -203,11 +224,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Initialize authentication
   useEffect(() => {
     let mounted = true;
+    let initializationTimeout: NodeJS.Timeout;
 
     const initialize = async () => {
       try {
         addDebugLog('🚀 Initializing authentication...');
         setLoading(true);
+        
+        // CRITICAL FIX: Add overall timeout to ensure initialization always completes
+        initializationTimeout = setTimeout(() => {
+          if (mounted) {
+            addDebugLog('⏰ Initialization timeout - forcing completion');
+            setLoading(false);
+            setInitialized(true);
+          }
+        }, 10000); // 10 second max timeout
         
         // Try to get user from storage first (fastest)
         let currentUser = getUserFromStorage();
@@ -239,12 +270,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (mounted) {
           if (currentUser) {
             setUser(currentUser);
-            // CRITICAL FIX: Always load user data (including subscription) 
-            // regardless of how the user was obtained (storage or Supabase)
+            // CRITICAL FIX: Load user data with timeout protection
             addDebugLog('📊 Loading user data and subscription status...');
-            await loadUserData(currentUser);
+            try {
+              await Promise.race([
+                loadUserData(currentUser),
+                new Promise<void>((_, reject) => 
+                  setTimeout(() => reject(new Error('User data loading timeout')), 8000)
+                )
+              ]);
+            } catch (loadError) {
+              addDebugLog('⚠️ User data loading timed out or failed', loadError);
+              // Continue anyway - user is still authenticated
+            }
           }
           
+          // CRITICAL FIX: Always complete initialization
+          clearTimeout(initializationTimeout);
           setLoading(false);
           setInitialized(true);
           addDebugLog('🎯 Auth initialization complete');
@@ -253,6 +295,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       } catch (error) {
         addDebugLog('Auth initialization error', error);
         if (mounted) {
+          clearTimeout(initializationTimeout);
           setLoading(false);
           setInitialized(true);
         }
@@ -263,6 +306,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     return () => {
       mounted = false;
+      if (initializationTimeout) {
+        clearTimeout(initializationTimeout);
+      }
     };
   }, []); // Only run once on mount
 
