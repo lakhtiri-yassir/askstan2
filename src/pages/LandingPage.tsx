@@ -1,6 +1,6 @@
-// src/pages/LandingPage.tsx - Updated with colorful gradient AskStan text
-import React from 'react';
-import { Link } from 'react-router-dom';
+// src/pages/LandingPage.tsx - FIXED: Added proper auth-based redirects using React Router
+import React, { useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   ArrowRight, 
@@ -15,9 +15,45 @@ import {
   Star
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
+import { useAuth } from '../contexts/AuthContext';
+import { LoadingSpinner } from '../components/ui/LoadingSpinner';
 import askstanBanner from '../img/askstanbanner.png';
 
 export const LandingPage: React.FC = () => {
+  const navigate = useNavigate();
+  const { user, hasActiveSubscription, loading, initialized } = useAuth();
+
+  // CRITICAL FIX: Handle auth-based redirects properly using React Router
+  useEffect(() => {
+    // Only redirect once auth is fully initialized and not loading
+    if (!initialized || loading) {
+      return;
+    }
+
+    // If user is signed in, redirect based on subscription status
+    if (user) {
+      console.log('🔍 LandingPage: User detected, checking subscription status', {
+        hasActiveSubscription,
+        userEmail: user.email
+      });
+
+      // Small delay to ensure subscription data is fully loaded
+      const redirectTimer = setTimeout(() => {
+        if (hasActiveSubscription) {
+          console.log('✅ User has active subscription, redirecting to dashboard');
+          navigate('/dashboard', { replace: true });
+        } else {
+          console.log('💳 User needs subscription, redirecting to plans');
+          navigate('/plans', { replace: true });
+        }
+      }, 500); // Small delay to ensure subscription status is determined
+
+      return () => clearTimeout(redirectTimer);
+    } else {
+      console.log('ℹ️ LandingPage: No user, showing landing page');
+    }
+  }, [user, hasActiveSubscription, initialized, loading, navigate]);
+
   const capabilities = [
     {
       icon: MessageSquare,
@@ -56,6 +92,20 @@ export const LandingPage: React.FC = () => {
     }
   ];
 
+  // Show loading spinner while auth is initializing
+  if (!initialized || loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center">
+        <div className="text-center">
+          <LoadingSpinner size="lg" />
+          <p className="mt-4 text-gray-600 font-medium">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Only render landing page content if user is not signed in
+  // If user is signed in, the useEffect will handle the redirect
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50">
       {/* Hero Section */}
@@ -73,63 +123,57 @@ export const LandingPage: React.FC = () => {
                   AskStan!
                 </span>
                 <br />
-                <span className="text-3xl md:text-4xl font-bold text-gray-700">
-                  Your On-Demand Social Media Growth Coach
+                Your Personal
+                <br />
+                <span className="text-blue-600">
+                  AI Coach
                 </span>
               </h1>
               
-              <p className="text-xl text-gray-600 mb-8 leading-relaxed">
-                Get AI-powered social media strategies, content creation, and monetization guidance 
-                to transform your online presence into a revenue-generating machine.
+              <p className="text-xl md:text-2xl text-gray-600 mb-8 leading-relaxed">
+                Transform your social media presence with AI-powered strategies that 
+                <span className="text-blue-600 font-semibold"> drive real engagement </span>
+                and grow your audience authentically.
               </p>
 
-              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start items-center mb-8">
+              <div className="flex flex-col sm:flex-row gap-4">
                 <Link to="/signup">
-                  <Button size="xl" className="px-8 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300">
-                    Start Your 3-Day Free Trial
-                    <ArrowRight className="ml-2 w-5 h-5" />
+                  <Button size="lg" className="w-full sm:w-auto">
+                    Start Free Trial
+                    <ArrowRight className="w-5 h-5 ml-2" />
                   </Button>
                 </Link>
-                <p className="text-sm text-gray-500">
-                  No credit card required • Cancel anytime
-                </p>
-              </div>
-
-              {/* Trust Indicators */}
-              <div className="flex flex-wrap justify-center lg:justify-start items-center gap-6 text-sm text-gray-500">
-                <div className="flex items-center">
-                  <Star className="w-4 h-4 text-yellow-500 mr-1" />
-                  <span>AI-Powered Strategies</span>
-                </div>
-                <div className="flex items-center">
-                  <Check className="w-4 h-4 text-green-500 mr-1" />
-                  <span>Proven Results</span>
-                </div>
-                <div className="flex items-center">
-                  <Users className="w-4 h-4 text-blue-500 mr-1" />
-                  <span>24/7 Support</span>
-                </div>
+                <Link to="/signin">
+                  <Button variant="outline" size="lg" className="w-full sm:w-auto">
+                    Sign In
+                  </Button>
+                </Link>
               </div>
             </motion.div>
 
             <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
+              initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.8, delay: 0.2 }}
-              className="relative flex justify-center"
+              className="relative"
             >
-              <img
-                src={askstanBanner}
-                alt="AskStan! AI Social Media Coach"
-                className="w-64 h-64 md:w-80 md:h-80 lg:w-96 lg:h-96 object-contain"
-              />
+              <div className="relative bg-white rounded-2xl shadow-2xl p-8 backdrop-blur-sm bg-white/80">
+                <img 
+                  src={askstanBanner} 
+                  alt="AskStan AI Dashboard Preview" 
+                  className="w-full h-auto rounded-lg shadow-lg"
+                />
+                <div className="absolute -top-4 -right-4 bg-yellow-400 text-yellow-900 px-4 py-2 rounded-full font-bold text-sm shadow-lg">
+                  🔥 AI-Powered
+                </div>
+              </div>
             </motion.div>
           </div>
         </div>
       </section>
 
-      {/* What AskStan! Can Do Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
+      {/* Features Section */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -139,10 +183,11 @@ export const LandingPage: React.FC = () => {
             className="text-center mb-16"
           >
             <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-              What <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-500 via-purple-600 via-pink-500 to-orange-400">AskStan!</span> Can Do
+              What Can <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">AskStan!</span> Do For You?
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Your personal AI coach for social media growth, content creation, and audience monetization
+              From viral content creation to profile optimization, AskStan! provides personalized AI coaching 
+              to elevate your social media game and grow your business.
             </p>
           </motion.div>
 
@@ -154,10 +199,10 @@ export const LandingPage: React.FC = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: index * 0.1 }}
                 viewport={{ once: true }}
-                className="bg-gradient-to-br from-white to-gray-50 rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100"
+                className="bg-white/80 backdrop-blur-sm rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100"
               >
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-500 to-yellow-500 rounded-2xl mb-6">
-                  <capability.icon className="w-8 h-8 text-white" />
+                <div className="bg-gradient-to-r from-blue-100 to-purple-100 rounded-xl p-4 w-fit mb-6">
+                  <capability.icon className="w-8 h-8 text-blue-600" />
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-4">
                   {capability.title}
@@ -172,8 +217,8 @@ export const LandingPage: React.FC = () => {
       </section>
 
       {/* Pricing Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-gray-50 to-blue-50">
-        <div className="max-w-5xl mx-auto">
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-white/50">
+        <div className="max-w-4xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -184,121 +229,88 @@ export const LandingPage: React.FC = () => {
             <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
               Simple, Transparent Pricing
             </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Choose the plan that works best for your growth goals. Start with a free trial and cancel anytime.
+            <p className="text-xl text-gray-600">
+              Choose the plan that fits your growth goals
             </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-8">
             {/* Monthly Plan */}
             <motion.div
-              initial={{ opacity: 0, x: -30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.8 }}
+              initial={{ opacity: 0, scale: 0.95 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.6 }}
               viewport={{ once: true }}
-              className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100 relative"
+              className="bg-white rounded-2xl p-8 shadow-lg border border-gray-200"
             >
-              <div className="text-center mb-8">
-                <h3 className="text-2xl font-bold text-gray-900 mb-4">Monthly Plan</h3>
-                <div className="text-4xl font-black text-gray-900 mb-2">
-                  $4.99<span className="text-lg font-medium text-gray-600">/month</span>
+              <div className="text-center">
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">Monthly Plan</h3>
+                <div className="text-4xl font-black text-blue-600 mb-4">
+                  $4.99<span className="text-lg text-gray-500 font-normal">/month</span>
                 </div>
-                <p className="text-gray-600">Perfect for getting started</p>
+                <ul className="text-left space-y-3 mb-8">
+                  {[
+                    'AI-powered social media coaching',
+                    'Multi-platform content strategies', 
+                    'Growth analytics dashboard',
+                    '24/7 AI chat support'
+                  ].map((feature, i) => (
+                    <li key={i} className="flex items-center">
+                      <Check className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
+                      <span className="text-gray-700">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                <Link to="/signup" className="block">
+                  <Button className="w-full" size="lg">
+                    Start Monthly Plan
+                  </Button>
+                </Link>
               </div>
-
-              <ul className="space-y-4 mb-8">
-                <li className="flex items-center">
-                  <Check className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
-                  <span>AI-powered social media coaching</span>
-                </li>
-                <li className="flex items-center">
-                  <Check className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
-                  <span>Multi-platform support</span>
-                </li>
-                <li className="flex items-center">
-                  <Check className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
-                  <span>Growth analytics dashboard</span>
-                </li>
-                <li className="flex items-center">
-                  <Check className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
-                  <span>24/7 AI chat support</span>
-                </li>
-              </ul>
-
-              <Link to="/signup" className="block">
-                <Button size="lg" className="w-full">
-                  Start Free Trial
-                </Button>
-              </Link>
             </motion.div>
 
             {/* Yearly Plan */}
             <motion.div
-              initial={{ opacity: 0, x: 30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.8 }}
+              initial={{ opacity: 0, scale: 0.95 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
               viewport={{ once: true }}
-              className="bg-gradient-to-br from-blue-600 to-yellow-500 rounded-2xl shadow-xl p-8 text-white relative"
+              className="bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl p-8 shadow-xl text-white relative overflow-hidden"
             >
-              <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                <span className="bg-yellow-400 text-blue-900 px-4 py-1 rounded-full text-sm font-bold">
-                  BEST VALUE
-                </span>
+              <div className="absolute top-4 right-4 bg-yellow-400 text-yellow-900 px-3 py-1 rounded-full text-sm font-bold">
+                Save 17%
               </div>
-
-              <div className="text-center mb-8">
-                <h3 className="text-2xl font-bold mb-4">Yearly Plan</h3>
-                <div className="text-4xl font-black mb-2">
-                  $49.99<span className="text-lg font-medium text-blue-100">/year</span>
+              <div className="text-center">
+                <h3 className="text-2xl font-bold mb-2">Yearly Plan</h3>
+                <div className="text-4xl font-black mb-4">
+                  $49.99<span className="text-lg font-normal opacity-80">/year</span>
                 </div>
-                <p className="text-blue-100">Save 17% with annual billing</p>
+                <ul className="text-left space-y-3 mb-8">
+                  {[
+                    'Everything in Monthly Plan',
+                    'Priority AI responses',
+                    'Advanced analytics',
+                    'Custom growth strategies'
+                  ].map((feature, i) => (
+                    <li key={i} className="flex items-center">
+                      <Star className="w-5 h-5 text-yellow-400 mr-3 flex-shrink-0" />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                <Link to="/signup" className="block">
+                  <Button variant="outline" className="w-full border-white text-white hover:bg-white hover:text-blue-600" size="lg">
+                    Start Yearly Plan
+                  </Button>
+                </Link>
               </div>
-
-              <ul className="space-y-4 mb-8">
-                <li className="flex items-center">
-                  <Check className="w-5 h-5 text-yellow-300 mr-3 flex-shrink-0" />
-                  <span>Everything in Monthly Plan</span>
-                </li>
-                <li className="flex items-center">
-                  <Check className="w-5 h-5 text-yellow-300 mr-3 flex-shrink-0" />
-                  <span>Priority AI responses</span>
-                </li>
-                <li className="flex items-center">
-                  <Check className="w-5 h-5 text-yellow-300 mr-3 flex-shrink-0" />
-                  <span>Advanced analytics</span>
-                </li>
-                <li className="flex items-center">
-                  <Check className="w-5 h-5 text-yellow-300 mr-3 flex-shrink-0" />
-                  <span>Custom growth strategies</span>
-                </li>
-                <li className="flex items-center">
-                  <Check className="w-5 h-5 text-yellow-300 mr-3 flex-shrink-0" />
-                  <span className="font-semibold">Save $95.45 per year</span>
-                </li>
-              </ul>
-
-              <Link to="/signup" className="block">
-                <Button 
-                  size="lg" 
-                  variant="white"
-                  className="w-full"
-                >
-                  Start Free Trial
-                </Button>
-              </Link>
             </motion.div>
-          </div>
-
-          <div className="text-center mt-8">
-            <p className="text-gray-600">
-              No credit card required for trial • Cancel anytime • 100% satisfaction guarantee
-            </p>
           </div>
         </div>
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-blue-600 to-yellow-500">
+      <section className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto text-center">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -306,29 +318,32 @@ export const LandingPage: React.FC = () => {
             transition={{ duration: 0.8 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
-              Ready to Transform Your Social Media?
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+              Ready to Transform Your Social Media Presence?
             </h2>
-            <p className="text-xl text-white/90 mb-8 max-w-2xl mx-auto">
-              Join thousands of creators and entrepreneurs who are using AskStan! to grow their audience and revenue.
+            <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+              Join thousands of creators and businesses who are already growing their audience 
+              with AI-powered strategies from AskStan!
             </p>
-            
-            <Link to="/signup">
-              <Button 
-                size="xl" 
-                className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-4 text-lg font-semibold shadow-lg"
-              >
-                Start Your Free 3-Day Trial
-                <ArrowRight className="ml-2 w-5 h-5" />
-              </Button>
-            </Link>
-            
-            <p className="text-white/80 mt-4 text-sm">
-              No credit card required • Full access during trial
-            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link to="/signup">
+                <Button size="lg" className="w-full sm:w-auto">
+                  Get Started Free
+                  <ArrowRight className="w-5 h-5 ml-2" />
+                </Button>
+              </Link>
+              <Link to="/signin">
+                <Button variant="outline" size="lg" className="w-full sm:w-auto">
+                  Sign In
+                </Button>
+              </Link>
+            </div>
           </motion.div>
         </div>
       </section>
     </div>
   );
 };
+
+// Export as named export to match the import in App.tsx
+export default LandingPage;

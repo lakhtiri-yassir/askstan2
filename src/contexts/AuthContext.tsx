@@ -1,14 +1,13 @@
-// src/contexts/AuthContext.tsx - COMPLETELY REBUILT FOR PROPER FLOW
+// src/contexts/AuthContext.tsx - COMPREHENSIVE FIX: Remove problematic redirect logic
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User } from '@supabase/supabase-js';
-import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
 interface UserProfile {
   id: string;
   email: string;
-  display_name: string | null;
-  avatar_url: string | null;
+  display_name?: string | null;
+  avatar_url?: string | null;
   email_verified: boolean;
   created_at: string;
   updated_at: string;
@@ -17,10 +16,10 @@ interface UserProfile {
 interface Subscription {
   id: string;
   user_id: string;
-  stripe_customer_id: string;
-  stripe_subscription_id: string;
-  plan_type: string;
-  status: string;
+  status: 'active' | 'inactive' | 'trialing' | 'past_due' | 'canceled';
+  plan_type: 'monthly' | 'yearly';
+  stripe_customer_id?: string | null;
+  stripe_subscription_id?: string | null;
   current_period_start?: string | null;
   current_period_end?: string | null;
   cancel_at_period_end?: boolean;
@@ -63,7 +62,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     subscription && (subscription.status === 'active' || subscription.status === 'trialing')
   );
 
-  // Get user from sessionStorage (most reliable method)
+  // Get user from localStorage (most reliable method)
   const getUserFromStorage = (): User | null => {
     try {
       const keys = Object.keys(localStorage);
@@ -148,44 +147,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Auto-redirect logic based on current route and auth state
-  const handleAutoRedirect = () => {
-    const location = window.location.pathname;
-    
-    // Skip redirects for specific pages
-    const skipRedirectPages = [
-      '/signin', '/signup', '/forgot-password', '/reset-password',
-      '/terms', '/privacy', '/admin'
-    ];
-    
-    if (skipRedirectPages.some(page => location.startsWith(page))) {
-      return;
-    }
-    
-    if (!user) {
-      // User not signed in
-      if (location !== '/') {
-        console.log('🔄 No user, redirecting to landing page');
-        window.location.href = '/';
-      }
-      return;
-    }
-    
-    // User is signed in - determine where they should go
-    if (hasActiveSubscription) {
-      // User has active subscription
-      if (location === '/' || location === '/plans') {
-        console.log('✅ User has subscription, redirecting to dashboard');
-        window.location.href = '/dashboard';
-      }
-    } else {
-      // User signed in but no active subscription
-      if (location === '/' || location === '/dashboard' || location === '/settings') {
-        console.log('💳 User needs subscription, redirecting to plans');
-        window.location.href = '/plans';
-      }
-    }
-  };
+  // REMOVED: handleAutoRedirect function that was causing infinite loops
+  // This logic is now handled properly in individual components using React Router
 
   // Initialize authentication
   useEffect(() => {
@@ -213,36 +176,32 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             if (user && !error) {
               currentUser = user;
               console.log(`✅ Found user via Supabase: ${user.email}`);
+            } else {
+              console.log('ℹ️ No authenticated user found');
             }
           } catch (authError) {
-            console.warn('Supabase auth check failed:', authError);
+            console.warn('Auth check failed:', authError);
           }
         } else {
           console.log(`✅ Found user in storage: ${currentUser.email}`);
         }
         
-        if (currentUser && mounted) {
-          setUser(currentUser);
-          await loadUserData(currentUser);
-        } else if (mounted) {
-          console.log('🚫 No user found');
-          setUser(null);
-          setProfile(null);
-          setSubscription(null);
+        if (mounted) {
+          if (currentUser) {
+            setUser(currentUser);
+            await loadUserData(currentUser);
+          }
+          
+          setLoading(false);
+          setInitialized(true);
+          console.log('🎯 Auth initialization complete');
         }
         
       } catch (error) {
         console.error('Auth initialization error:', error);
         if (mounted) {
-          setUser(null);
-          setProfile(null);
-          setSubscription(null);
-        }
-      } finally {
-        if (mounted) {
           setLoading(false);
           setInitialized(true);
-          console.log('✅ Auth initialization complete');
         }
       }
     };
@@ -252,37 +211,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return () => {
       mounted = false;
     };
-  }, []);
+  }, []); // Only run once on mount
 
-  // Handle auto-redirects when auth state changes
-  useEffect(() => {
-    if (initialized && !loading) {
-      // Small delay to ensure state is fully updated
-      const timer = setTimeout(() => {
-        handleAutoRedirect();
-      }, 100);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [user, hasActiveSubscription, initialized, loading]);
-
-  // Auth state listener for sign-in/sign-out events
+  // FIXED: Listen for auth state changes without triggering redirects
   useEffect(() => {
     if (!initialized) return;
 
-    console.log('🔗 Setting up auth state listener...');
-    
-    const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange(
+    const { data: authSub } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log(`🔄 Auth event: ${event}`);
-
+        console.log(`🔔 Auth event: ${event}`);
+        
         switch (event) {
           case 'SIGNED_OUT':
             console.log('👋 User signed out');
             setUser(null);
             setProfile(null);
             setSubscription(null);
-            window.location.href = '/';
+            // Note: Redirect is handled by individual components, not here
             break;
             
           case 'SIGNED_IN':
@@ -323,10 +268,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       throw new Error(error.message);
     }
     
-    // Redirect will be handled by auth state listener
+    // Redirect will be handled by the calling component
   };
 
-  // Sign out function
+  // FIXED: Improved sign out function
   const signOut = async (): Promise<void> => {
     try {
       console.log('👋 Signing out...');
@@ -336,15 +281,32 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setProfile(null);
       setSubscription(null);
       
-      // Sign out from Supabase
-      await supabase.auth.signOut();
+      // Sign out from Supabase - this should clear all session data
+      const { error } = await supabase.auth.signOut({ scope: 'global' });
       
-      // Redirect to landing page
-      window.location.href = '/';
+      if (error) {
+        console.error('Supabase sign out error:', error);
+      }
+      
+      // Force clear any remaining session data
+      try {
+        const keys = Object.keys(localStorage);
+        const supabaseKeys = keys.filter(key => 
+          key.startsWith('sb-') && key.includes('-auth-token')
+        );
+        supabaseKeys.forEach(key => localStorage.removeItem(key));
+      } catch (storageError) {
+        console.warn('Local storage clear error:', storageError);
+      }
+      
+      console.log('✅ Sign out complete');
+      
     } catch (error) {
       console.error('Sign out error:', error);
-      // Force redirect even if sign out fails
-      window.location.href = '/';
+      // Still clear local state even if sign out fails
+      setUser(null);
+      setProfile(null);
+      setSubscription(null);
     }
   };
 
@@ -362,7 +324,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       throw new Error(error.message);
     }
     
-    // Redirect will be handled by auth state listener
+    // Redirect will be handled by the calling component
   };
 
   // Refresh subscription data

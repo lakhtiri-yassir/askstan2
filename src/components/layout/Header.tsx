@@ -1,6 +1,6 @@
-// src/components/layout/Header.tsx - FIXED: Proper loading logic
+// src/components/layout/Header.tsx - FIXED: Proper sign out with redirect
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Menu, X, LogOut } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -12,6 +12,7 @@ export const Header: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const { user, hasActiveSubscription, loading, signOut } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Don't show header on auth and legal pages
   const isAuthPage = ['/signin', '/signup', '/forgot-password', '/reset-password'].includes(location.pathname);
@@ -21,17 +22,22 @@ export const Header: React.FC = () => {
     return null;
   }
 
+  // FIXED: Improved sign out handler with proper redirect
   const handleSignOut = async () => {
     try {
+      console.log('🔄 Header: Starting sign out process');
       await signOut();
+      
+      // Use React Router navigate instead of window.location
+      console.log('✅ Header: Sign out successful, redirecting to landing page');
+      navigate('/', { replace: true });
+      
     } catch (error) {
-      console.error('Sign out error:', error);
-      window.location.href = '/';
+      console.error('Header: Sign out error:', error);
+      // Force redirect even if sign out fails
+      navigate('/', { replace: true });
     }
   };
-
-  // Debug info for header
-  const headerDebug = { user: !!user, hasActiveSubscription, loading, pathname: location.pathname };
 
   return (
     <motion.header
@@ -133,17 +139,17 @@ export const Header: React.FC = () => {
           >
             <div className="space-y-4">
               {loading ? (
-                <div className="flex items-center justify-center py-2">
+                <div className="flex items-center justify-center py-4">
                   <LoadingSpinner size="sm" />
                   <span className="ml-2 text-sm text-gray-600">Loading...</span>
                 </div>
               ) : user ? (
-                // User is logged in
-                <>
+                // User is logged in - mobile menu
+                <div className="space-y-4">
                   {hasActiveSubscription ? (
                     <Link
                       to="/dashboard"
-                      className="block text-gray-700 hover:text-blue-600 font-medium transition-colors"
+                      className="block text-gray-700 hover:text-blue-600 font-medium transition-colors py-2"
                       onClick={() => setIsMenuOpen(false)}
                     >
                       Dashboard
@@ -151,7 +157,7 @@ export const Header: React.FC = () => {
                   ) : (
                     <Link
                       to="/plans"
-                      className="block text-gray-700 hover:text-blue-600 font-medium transition-colors"
+                      className="block text-gray-700 hover:text-blue-600 font-medium transition-colors py-2"
                       onClick={() => setIsMenuOpen(false)}
                     >
                       Plans
@@ -160,7 +166,7 @@ export const Header: React.FC = () => {
                   
                   <Link
                     to="/settings"
-                    className="block text-gray-700 hover:text-blue-600 font-medium transition-colors"
+                    className="block text-gray-700 hover:text-blue-600 font-medium transition-colors py-2"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     Settings
@@ -178,18 +184,18 @@ export const Header: React.FC = () => {
                     <LogOut className="w-4 h-4 mr-2" />
                     Sign Out
                   </Button>
-                </>
+                </div>
               ) : (
-                // Not signed in
-                <>
+                // Not signed in - mobile menu
+                <div className="space-y-4">
                   <Link
                     to="/signin"
-                    className="block text-gray-700 hover:text-blue-600 font-medium transition-colors"
+                    className="block text-gray-700 hover:text-blue-600 font-medium transition-colors py-2"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     Sign In
                   </Link>
-                  <Link
+                  <Link 
                     to="/signup"
                     onClick={() => setIsMenuOpen(false)}
                   >
@@ -197,7 +203,7 @@ export const Header: React.FC = () => {
                       Get Started
                     </Button>
                   </Link>
-                </>
+                </div>
               )}
             </div>
           </motion.div>

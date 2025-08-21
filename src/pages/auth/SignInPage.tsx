@@ -1,4 +1,4 @@
-// src/pages/auth/SignInPage.tsx - CRITICAL FIX: Icons passed as JSX elements
+// src/pages/auth/SignInPage.tsx - FIXED: Proper redirect timing and logic
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -9,7 +9,7 @@ import { Input } from '../../components/ui/Input';
 
 const SignInPage: React.FC = () => {
   const navigate = useNavigate();
-  const { signIn, user, hasActiveSubscription, initialized } = useAuth();
+  const { signIn, user, hasActiveSubscription, initialized, loading } = useAuth();
   
   const [formData, setFormData] = useState({
     email: '',
@@ -18,29 +18,34 @@ const SignInPage: React.FC = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // FIXED: Handle redirect when user signs in with proper subscription check
+  // FIXED: Improved redirect logic with proper timing
   useEffect(() => {
-    if (user && initialized) {
-      console.log('🔍 SignIn redirect logic:', { 
-        user: !!user, 
-        hasActiveSubscription, 
-        initialized 
+    // Only attempt redirect when auth is fully initialized and not loading
+    if (!initialized || loading) {
+      return;
+    }
+
+    // If user is already signed in, redirect them appropriately
+    if (user) {
+      console.log('🔍 SignIn: User already signed in, redirecting based on subscription', {
+        hasActiveSubscription,
+        userEmail: user.email
       });
 
-      // CRITICAL FIX: Use a longer timeout to ensure subscription status is loaded
-      const timer = setTimeout(() => {
+      // Use a timeout to ensure subscription data is fully loaded
+      const redirectTimer = setTimeout(() => {
         if (hasActiveSubscription) {
-          console.log('✅ User has active subscription, redirecting to dashboard');
+          console.log('✅ SignIn: User has active subscription, redirecting to dashboard');
           navigate('/dashboard', { replace: true });
         } else {
-          console.log('💳 User has no active subscription, redirecting to plans');
+          console.log('💳 SignIn: User needs subscription, redirecting to plans');
           navigate('/plans', { replace: true });
         }
-      }, 1500); // Increased timeout to ensure subscription data is loaded
+      }, 100); // Small delay to ensure subscription status is determined
 
-      return () => clearTimeout(timer);
+      return () => clearTimeout(redirectTimer);
     }
-  }, [user, hasActiveSubscription, initialized, navigate]);
+  }, [user, hasActiveSubscription, initialized, loading, navigate]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -84,11 +89,15 @@ const SignInPage: React.FC = () => {
     setErrors({});
 
     try {
-      console.log('🔐 Attempting sign in...');
+      console.log('🔐 SignIn: Attempting sign in...');
       await signIn(formData.email, formData.password);
-      // Redirect will be handled by useEffect once user and subscription data load
+      console.log('✅ SignIn: Sign in successful, redirect will be handled by useEffect');
+      
+      // Note: Don't manually redirect here - let the useEffect handle it
+      // once the auth state updates and subscription data loads
+      
     } catch (error: any) {
-      console.error('❌ Sign in error:', error);
+      console.error('❌ SignIn: Sign in error:', error);
       setErrors({
         submit: error.message || 'Invalid email or password. Please try again.'
       });
@@ -96,13 +105,13 @@ const SignInPage: React.FC = () => {
     }
   };
 
-  // If user is already signed in and we're still loading, show loading state
-  if (user && !initialized) {
+  // Don't render form if user is already signed in and we're about to redirect
+  if (user && initialized) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 font-medium">Loading your account...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 font-medium">Redirecting...</p>
         </div>
       </div>
     );
@@ -110,79 +119,93 @@ const SignInPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center p-4">
-      <div className="max-w-md w-full space-y-8">
+      <div className="max-w-md w-full">
+        {/* Header */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="text-center"
+          className="text-center mb-8"
         >
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">
-            Welcome Back!
-          </h2>
-          <p className="text-gray-600">
-            Sign in to your AskStan! account
-          </p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back!</h1>
+          <p className="text-gray-600">Sign in to continue your social media growth journey</p>
         </motion.div>
 
+        {/* Sign In Form */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.1 }}
-          className="bg-white rounded-2xl shadow-xl p-8"
+          className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-8 border border-gray-200"
         >
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Email Field - CRITICAL FIX: Pass icon as JSX element */}
-            <div>
+            {/* Email Input */}
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2 }}
+            >
               <Input
-                label="Email Address"
                 type="email"
+                placeholder="Enter your email"
                 value={formData.email}
                 onChange={handleInputChange('email')}
                 error={errors.email}
                 icon={<Mail className="w-5 h-5" />}
-                placeholder="Enter your email"
-                required
+                label="Email Address"
               />
-            </div>
+            </motion.div>
 
-            {/* Password Field - CRITICAL FIX: Pass icon as JSX element */}
-            <div>
+            {/* Password Input */}
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.3 }}
+            >
               <Input
-                label="Password"
                 type="password"
+                placeholder="Enter your password"
                 value={formData.password}
                 onChange={handleInputChange('password')}
                 error={errors.password}
                 icon={<Lock className="w-5 h-5" />}
-                placeholder="Enter your password"
-                required
+                label="Password"
               />
-            </div>
+            </motion.div>
 
             {/* Submit Error */}
             {errors.submit && (
-              <div className="text-red-600 text-sm text-center bg-red-50 p-3 rounded-lg">
-                {errors.submit}
-              </div>
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-red-50 border border-red-200 rounded-lg p-3"
+              >
+                <p className="text-red-700 text-sm text-center">{errors.submit}</p>
+              </motion.div>
             )}
 
             {/* Submit Button */}
-            <Button
-              type="submit"
-              className="w-full flex items-center justify-center"
-              isLoading={isSubmitting}
-              disabled={isSubmitting}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
             >
-              {isSubmitting ? (
-                'Signing In...'
-              ) : (
-                <>
-                  Sign In
-                  <ArrowRight className="w-5 h-5 ml-2" />
-                </>
-              )}
-            </Button>
+              <Button
+                type="submit"
+                className="w-full"
+                isLoading={isSubmitting}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  'Signing In...'
+                ) : (
+                  <>
+                    Sign In
+                    <ArrowRight className="w-5 h-5 ml-2" />
+                  </>
+                )}
+              </Button>
+            </motion.div>
 
             {/* Forgot Password Link */}
             <div className="text-center">
@@ -201,7 +224,7 @@ const SignInPage: React.FC = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="text-center"
+          className="text-center mt-6"
         >
           <p className="text-gray-600">
             Don't have an account?{' '}
@@ -218,5 +241,4 @@ const SignInPage: React.FC = () => {
   );
 };
 
-// CRITICAL FIX: Export as default to match lazy loading expectations  
 export default SignInPage;
