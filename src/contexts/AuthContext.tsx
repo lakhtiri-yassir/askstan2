@@ -178,10 +178,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       } catch (error) {
         addDebug(`❌ Init error: ${error.message}`);
         if (mounted) {
+          addDebug('✅ Setting loading to false (error)');
           setLoading(false);
         }
       }
     };
+
+    // Safety timeout - never let loading stay true forever
+    const safetyTimeout = setTimeout(() => {
+      if (mounted && loading) {
+        addDebug('⏰ Safety timeout - forcing loading false');
+        setLoading(false);
+      }
+    }, 10000); // 10 second max
 
     initialize();
 
@@ -221,6 +230,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     return () => {
       mounted = false;
+      clearTimeout(safetyTimeout);
       authSub.unsubscribe();
     };
   }, []);
@@ -286,26 +296,30 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       signUp,
       refreshSubscription,
     }}>
-      {/* DEBUG PANEL - Remove this after confirming everything works */}
-      {false && (
-        <div style={{
-          position: 'fixed',
-          top: '10px',
-          right: '10px',
-          background: 'rgba(0,0,0,0.8)',
-          color: 'white',
-          padding: '8px',
-          borderRadius: '4px',
-          fontSize: '10px',
-          zIndex: 9999,
-          fontFamily: 'monospace'
-        }}>
-          <div>User: {user?.email || 'none'}</div>
-          <div>Sub: {subscription?.status || 'none'}</div>
-          <div>Active: {hasActiveSubscription.toString()}</div>
-          <div>Loading: {loading.toString()}</div>
-        </div>
-      )}
+      {/* TEMPORARY DEBUG - to see what's happening */}
+      <div style={{
+        position: 'fixed',
+        top: '10px',
+        right: '10px',
+        background: 'rgba(0,0,0,0.9)',
+        color: 'white',
+        padding: '8px',
+        borderRadius: '4px',
+        fontSize: '11px',
+        zIndex: 9999,
+        fontFamily: 'monospace'
+      }}>
+        <div>User: {user?.email || 'none'}</div>
+        <div>Sub: {subscription?.status || 'none'}</div>
+        <div>Active: {hasActiveSubscription.toString()}</div>
+        <div>Loading: <span style={{ color: loading ? 'red' : 'green' }}>{loading.toString()}</span></div>
+        <div>Last logs:</div>
+        {debugLog.slice(-3).map((log, i) => (
+          <div key={i} style={{ fontSize: '10px', color: '#ccc' }}>
+            {log}
+          </div>
+        ))}
+      </div>
       {children}
     </AuthContext.Provider>
   );
