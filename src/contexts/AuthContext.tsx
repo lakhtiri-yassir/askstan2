@@ -64,26 +64,36 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setDebugLog(prev => [...prev.slice(-4), `${new Date().toLocaleTimeString()}: ${message}`]);
   };
 
-  // Load user data function with enhanced debug
+  // Load user data function with timeout and detailed error handling
   const loadUserData = async (authUser: User) => {
     try {
       addDebug(`🔄 Loading data for: ${authUser.email}`);
       
-      // Load profile
-      const { data: profileData, error: profileError } = await supabase
+      // Add timeout protection
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Query timeout after 10 seconds')), 10000);
+      });
+
+      // Load profile with timeout
+      addDebug('📋 Querying user_profiles...');
+      const profilePromise = supabase
         .from('user_profiles')
         .select('*')
         .eq('id', authUser.id)
         .single();
 
+      const profileResult = await Promise.race([profilePromise, timeoutPromise]);
+      const { data: profileData, error: profileError } = profileResult as any;
+
       if (profileError) {
-        addDebug(`⚠️ Profile error: ${profileError.message}`);
+        addDebug(`⚠️ Profile error: ${profileError.code} - ${profileError.message}`);
       } else {
         addDebug(`✅ Profile loaded: ${!!profileData}`);
       }
 
-      // Load subscription
-      const { data: subscriptionData, error: subscriptionError } = await supabase
+      // Load subscription with timeout
+      addDebug('💳 Querying subscriptions...');
+      const subscriptionPromise = supabase
         .from('subscriptions')
         .select('*')
         .eq('user_id', authUser.id)
@@ -92,24 +102,35 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         .limit(1)
         .maybeSingle();
 
+      const subscriptionResult = await Promise.race([subscriptionPromise, timeoutPromise]);
+      const { data: subscriptionData, error: subscriptionError } = subscriptionResult as any;
+
       if (subscriptionError) {
-        addDebug(`⚠️ Subscription error: ${subscriptionError.message}`);
+        addDebug(`⚠️ Sub error: ${subscriptionError.code} - ${subscriptionError.message}`);
+      } else {
+        addDebug(`✅ Sub query done: ${!!subscriptionData}`);
       }
 
-      // Check ALL subscriptions for debugging
-      const { data: allSubs, error: allSubsError } = await supabase
+      // Check ALL subscriptions for debugging with timeout
+      addDebug('🔍 Querying all subscriptions...');
+      const allSubsPromise = supabase
         .from('subscriptions')
         .select('*')
         .eq('user_id', authUser.id);
       
+      const allSubsResult = await Promise.race([allSubsPromise, timeoutPromise]);
+      const { data: allSubs, error: allSubsError } = allSubsResult as any;
+      
       if (allSubsError) {
-        addDebug(`❌ All subs error: ${allSubsError.message}`);
+        addDebug(`❌ All subs error: ${allSubsError.code} - ${allSubsError.message}`);
       } else {
         addDebug(`🔍 Found ${allSubs?.length || 0} total subs`);
         if (allSubs && allSubs.length > 0) {
           allSubs.forEach((sub, i) => {
-            addDebug(`Sub ${i + 1}: ${sub.status} (${sub.plan_type})`);
+            addDebug(`Sub ${i + 1}: ${sub.status} (${sub.plan_type}) - ID: ${sub.id.slice(0, 8)}`);
           });
+        } else {
+          addDebug('🚫 No subscriptions found in database');
         }
       }
 
@@ -117,12 +138,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setProfile(profileData || null);
       setSubscription(subscriptionData || null);
       
-      addDebug(`✅ Final: Profile=${!!profileData}, Sub=${subscriptionData?.status || 'none'}`);
+      addDebug(`✅ Data loading complete`);
 
     } catch (error) {
       addDebug(`❌ Critical error: ${error.message}`);
       setProfile(null);
       setSubscription(null);
+    } finally {
+      // Always complete loading
+      addDebug('🏁 Finishing loadUserData');
     }
   };
 
@@ -145,6 +169,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             addDebug(`👤 Found user: ${session.user.email}`);
             setUser(session.user);
             await loadUserData(session.user);
+            addDebug('🔄 loadUserData completed');
           } else {
             addDebug('🚫 No user in session');
             setUser(null);
