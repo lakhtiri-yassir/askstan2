@@ -64,89 +64,84 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setDebugLog(prev => [...prev.slice(-4), `${new Date().toLocaleTimeString()}: ${message}`]);
   };
 
-  // Load user data function with timeout and detailed error handling
+  // Optimized user data loading - runs queries in parallel
   const loadUserData = async (authUser: User) => {
     try {
       addDebug(`🔄 Loading data for: ${authUser.email}`);
       
-      // Add timeout protection
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Query timeout after 10 seconds')), 10000);
-      });
+      // Run ALL queries in parallel for faster loading
+      const [profileResult, subscriptionResult, allSubsResult] = await Promise.allSettled([
+        // Profile query
+        supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('id', authUser.id)
+          .single(),
+        
+        // Active subscription query
+        supabase
+          .from('subscriptions')
+          .select('*')
+          .eq('user_id', authUser.id)
+          .in('status', ['active', 'trialing'])
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        
+        // All subscriptions for debug (only in debug mode)
+        supabase
+          .from('subscriptions')
+          .select('id, status, plan_type, created_at')
+          .eq('user_id', authUser.id)
+          .limit(5)
+      ]);
 
-      // Load profile with timeout
-      addDebug('📋 Querying user_profiles...');
-      const profilePromise = supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('id', authUser.id)
-        .single();
-
-      const profileResult = await Promise.race([profilePromise, timeoutPromise]);
-      const { data: profileData, error: profileError } = profileResult as any;
-
-      if (profileError) {
-        addDebug(`⚠️ Profile error: ${profileError.code} - ${profileError.message}`);
-      } else {
-        addDebug(`✅ Profile loaded: ${!!profileData}`);
-      }
-
-      // Load subscription with timeout
-      addDebug('💳 Querying subscriptions...');
-      const subscriptionPromise = supabase
-        .from('subscriptions')
-        .select('*')
-        .eq('user_id', authUser.id)
-        .in('status', ['active', 'trialing', 'past_due'])
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      const subscriptionResult = await Promise.race([subscriptionPromise, timeoutPromise]);
-      const { data: subscriptionData, error: subscriptionError } = subscriptionResult as any;
-
-      if (subscriptionError) {
-        addDebug(`⚠️ Sub error: ${subscriptionError.code} - ${subscriptionError.message}`);
-      } else {
-        addDebug(`✅ Sub query done: ${!!subscriptionData}`);
-      }
-
-      // Check ALL subscriptions for debugging with timeout
-      addDebug('🔍 Querying all subscriptions...');
-      const allSubsPromise = supabase
-        .from('subscriptions')
-        .select('*')
-        .eq('user_id', authUser.id);
-      
-      const allSubsResult = await Promise.race([allSubsPromise, timeoutPromise]);
-      const { data: allSubs, error: allSubsError } = allSubsResult as any;
-      
-      if (allSubsError) {
-        addDebug(`❌ All subs error: ${allSubsError.code} - ${allSubsError.message}`);
-      } else {
-        addDebug(`🔍 Found ${allSubs?.length || 0} total subs`);
-        if (allSubs && allSubs.length > 0) {
-          allSubs.forEach((sub, i) => {
-            addDebug(`Sub ${i + 1}: ${sub.status} (${sub.plan_type}) - ID: ${sub.id.slice(0, 8)}`);
-          });
+      // Process profile result
+      let profileData = null;
+      if (profileResult.status === 'fulfilled') {
+        const { data, error } = profileResult.value;
+        if (error) {
+          addDebug(`⚠️ Profile error: ${error.message}`);
         } else {
-          addDebug('🚫 No subscriptions found in database');
+          profileData = data;
+          addDebug(`✅ Profile loaded`);
+        }
+      } else {
+        addDebug(`❌ Profile query failed`);
+      }
+
+      // Process subscription result
+      let subscriptionData = null;
+      if (subscriptionResult.status === 'fulfilled') {
+        const { data, error } = subscriptionResult.value;
+        if (error) {
+          addDebug(`⚠️ Sub error: ${error.message}`);
+        } else {
+          subscriptionData = data;
+          addDebug(`✅ Subscription: ${data?.status || 'none'}`);
+        }
+      } else {
+        addDebug(`❌ Subscription query failed`);
+      }
+
+      // Process all subscriptions for debug
+      if (allSubsResult.status === 'fulfilled') {
+        const { data: allSubs } = allSubsResult.value;
+        if (allSubs?.length) {
+          addDebug(`🔍 Found ${allSubs.length} total subs`);
         }
       }
 
       // Update states
-      setProfile(profileData || null);
-      setSubscription(subscriptionData || null);
+      setProfile(profileData);
+      setSubscription(subscriptionData);
       
-      addDebug(`✅ Data loading complete`);
+      addDebug(`✅ Loading complete - ${subscriptionData?.status || 'no sub'}`);
 
     } catch (error) {
-      addDebug(`❌ Critical error: ${error.message}`);
+      addDebug(`❌ Error: ${error.message}`);
       setProfile(null);
       setSubscription(null);
-    } finally {
-      // Always complete loading
-      addDebug('🏁 Finishing loadUserData');
     }
   };
 
@@ -291,53 +286,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       signUp,
       refreshSubscription,
     }}>
-      {/* DEBUG PANEL - Shows everything we need */}
-      <div style={{
-        position: 'fixed',
-        top: '10px',
-        right: '10px',
-        background: 'rgba(0,0,0,0.9)',
-        color: 'white',
-        padding: '12px',
-        borderRadius: '8px',
-        fontSize: '11px',
-        zIndex: 9999,
-        fontFamily: 'monospace',
-        maxWidth: '350px',
-        maxHeight: '400px',
-        overflow: 'auto'
-      }}>
-        <div style={{ color: '#00ff00', fontWeight: 'bold', marginBottom: '8px' }}>
-          🔍 AUTH DEBUG
-        </div>
-        
-        <div style={{ marginBottom: '8px', borderBottom: '1px solid #333', paddingBottom: '8px' }}>
-          <div style={{ color: '#ffff00' }}>CURRENT STATE:</div>
+      {/* DEBUG PANEL - Remove this after confirming everything works */}
+      {false && (
+        <div style={{
+          position: 'fixed',
+          top: '10px',
+          right: '10px',
+          background: 'rgba(0,0,0,0.8)',
+          color: 'white',
+          padding: '8px',
+          borderRadius: '4px',
+          fontSize: '10px',
+          zIndex: 9999,
+          fontFamily: 'monospace'
+        }}>
           <div>User: {user?.email || 'none'}</div>
-          <div>Subscription: {subscription?.status || 'none'}</div>
-          <div>Active: <span style={{ color: hasActiveSubscription ? '#00ff00' : '#ff0000' }}>
-            {hasActiveSubscription.toString()}
-          </span></div>
-          <div>Loading: <span style={{ color: loading ? '#ffff00' : '#00ff00' }}>
-            {loading.toString()}
-          </span></div>
+          <div>Sub: {subscription?.status || 'none'}</div>
+          <div>Active: {hasActiveSubscription.toString()}</div>
+          <div>Loading: {loading.toString()}</div>
         </div>
-        
-        <div>
-          <div style={{ color: '#ffff00', marginBottom: '4px' }}>ACTIVITY LOG:</div>
-          {debugLog.map((log, i) => (
-            <div key={i} style={{ 
-              fontSize: '10px', 
-              marginBottom: '2px',
-              color: log.includes('❌') ? '#ff0000' : 
-                    log.includes('✅') ? '#00ff00' : 
-                    log.includes('⚠️') ? '#ffaa00' : '#cccccc'
-            }}>
-              {log}
-            </div>
-          ))}
-        </div>
-      </div>
+      )}
       {children}
     </AuthContext.Provider>
   );
