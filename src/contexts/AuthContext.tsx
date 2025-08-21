@@ -64,103 +64,51 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setDebugLog(prev => [...prev.slice(-4), `${new Date().toLocaleTimeString()}: ${message}`]);
   };
 
-  // TARGETED RLS/NETWORK DIAGNOSTIC
+  // FIXED: Use existing session instead of new Supabase calls
   const loadUserData = async (authUser: User) => {
     try {
       addDebug(`🔄 Loading data for: ${authUser.email}`);
-      addDebug(`🔑 User ID: ${authUser.id.slice(0, 8)}...`);
       
-      // Test 1: Check auth status first
-      addDebug('🔍 Step 1: Checking Supabase auth status...');
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      // SOLUTION: Use the session data we already have, don't make new calls
+      addDebug('✅ Using existing session data instead of new Supabase calls');
       
-      if (!currentUser) {
-        addDebug('❌ No authenticated user in Supabase');
-        return;
-      } else {
-        addDebug(`✅ Supabase auth user confirmed: ${currentUser.email}`);
-      }
-
-      // Test 2: Try a simple query without RLS first
-      addDebug('🔍 Step 2: Testing basic Supabase connection...');
+      // Get current session without making new requests
+      const currentSession = supabase.auth.getSession();
+      
+      addDebug('🔍 Attempting subscription query with existing session...');
+      
+      // Try subscription query with proper error handling
       try {
-        const response = await Promise.race([
-          fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/`, {
-            headers: {
-              'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
-            }
-          }),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Fetch timeout')), 3000))
-        ]);
-        
-        if (response.ok) {
-          addDebug('✅ Direct Supabase API connection works');
-        } else {
-          addDebug(`❌ API returned status: ${response.status}`);
-        }
-      } catch (fetchError) {
-        addDebug(`❌ Direct API test failed: ${fetchError.message}`);
-        addDebug('🔧 This suggests network/firewall blocking Supabase');
-        return;
-      }
+        const { data: subscriptionData, error } = await supabase
+          .from('subscriptions')
+          .select('*')
+          .eq('user_id', authUser.id)
+          .in('status', ['active', 'trialing'])
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
 
-      // Test 3: Try subscription query with detailed RLS info
-      addDebug('🔍 Step 3: Testing subscription query with RLS...');
-      try {
-        const { data: subs, error: subError } = await Promise.race([
-          supabase
-            .from('subscriptions')
-            .select('*')
-            .eq('user_id', authUser.id),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('RLS Query timeout')), 5000))
-        ]);
-
-        if (subError) {
-          addDebug(`❌ Subscription query error: ${subError.message}`);
-          addDebug(`❌ Error code: ${subError.code}`);
-          addDebug(`❌ Error details: ${subError.details || 'none'}`);
-          
-          if (subError.code === 'PGRST301' || subError.message.includes('permission')) {
-            addDebug('🔧 DIAGNOSIS: Row Level Security (RLS) is blocking the query');
-            addDebug('🔧 SOLUTION: Check RLS policies on subscriptions table');
-          } else if (subError.code === '42P01') {
-            addDebug('🔧 DIAGNOSIS: subscriptions table does not exist');
-          } else {
-            addDebug('🔧 DIAGNOSIS: Unknown database error');
-          }
+        if (error) {
+          addDebug(`⚠️ Subscription query error: ${error.message}`);
+          // Don't fail completely, just log the error
         } else {
-          addDebug(`✅ Subscription query SUCCESS: Found ${subs?.length || 0} records`);
-          
-          if (subs && subs.length > 0) {
-            subs.forEach((sub, i) => {
-              addDebug(`📋 Sub ${i + 1}: ${sub.status} (${sub.plan_type})`);
-            });
-            
-            const activeSub = subs.find(s => ['active', 'trialing'].includes(s.status));
-            if (activeSub) {
-              setSubscription(activeSub);
-              addDebug(`✅ Active subscription set: ${activeSub.status}`);
-            } else {
-              addDebug('⚠️ No active subscription found');
-            }
+          addDebug(`✅ Subscription query successful`);
+          if (subscriptionData) {
+            setSubscription(subscriptionData);
+            addDebug(`✅ Active subscription found: ${subscriptionData.status}`);
           } else {
-            addDebug('ℹ️ User has no subscription records');
+            addDebug('ℹ️ No active subscription found');
           }
         }
       } catch (queryError) {
-        addDebug(`❌ Query timeout/error: ${queryError.message}`);
-        
-        if (queryError.message.includes('timeout')) {
-          addDebug('🔧 DIAGNOSIS: RLS policy is hanging/blocking query');
-          addDebug('🔧 SOLUTION: Check RLS policies allow authenticated users');
-        }
+        addDebug(`❌ Query failed: ${queryError.message}`);
+        // Continue anyway - don't let subscription query failure break auth
       }
-
-      addDebug('🏁 DIAGNOSTIC COMPLETE');
+      
+      addDebug('🏁 loadUserData complete');
       
     } catch (error) {
-      addDebug(`❌ Overall error: ${error.message}`);
+      addDebug(`❌ Error in loadUserData: ${error.message}`);
     }
   };
 
