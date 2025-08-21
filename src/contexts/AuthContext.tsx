@@ -110,8 +110,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     
     addDebug('🏁 loadUserData complete (database queries bypassed)');
     
+    // 🚨 CRITICAL FIX: Set loading to false directly here
+    addDebug('🎯 FORCING loading to false from loadUserData');
+    setLoading(false);
+    
   } catch (error) {
     addDebug(`❌ Error in loadUserData: ${error.message}`);
+    // Even on error, set loading to false
+    addDebug('🎯 FORCING loading to false due to error');
+    setLoading(false);
   }
 };
 
