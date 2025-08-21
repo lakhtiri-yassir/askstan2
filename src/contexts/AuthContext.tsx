@@ -1,4 +1,4 @@
-// src/contexts/AuthContext.tsx - COMPLETE PROPERLY FIXED VERSION
+// src/contexts/AuthContext.tsx - FIXED with SessionStorage and Proper Hook Order
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
@@ -61,10 +61,48 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Helper function to add debug messages
   const addDebug = (message: string) => {
-    setDebugLog(prev => [...prev.slice(-4), `${new Date().toLocaleTimeString()}: ${message}`]);
+    setDebugLog(prev => [...prev.slice(-15), `${new Date().toLocaleTimeString()}: ${message}`]);
   };
 
-  // PROPER FIX: loadUserData function that actually loads subscription data
+  // CRITICAL FIX: Get user from sessionStorage directly
+  const getUserFromSessionStorage = (): User | null => {
+    try {
+      addDebug('🔍 Checking sessionStorage for user...');
+      
+      // Supabase stores session data in localStorage with key pattern
+      const keys = Object.keys(localStorage);
+      const supabaseKey = keys.find(key => 
+        key.startsWith('sb-') && key.includes('-auth-token')
+      );
+      
+      if (!supabaseKey) {
+        addDebug('❌ No Supabase auth key found in localStorage');
+        return null;
+      }
+      
+      const sessionData = localStorage.getItem(supabaseKey);
+      if (!sessionData) {
+        addDebug('❌ No session data found in localStorage');
+        return null;
+      }
+      
+      const parsed = JSON.parse(sessionData);
+      const user = parsed?.user;
+      
+      if (user && user.id && user.email) {
+        addDebug(`✅ Found user in sessionStorage: ${user.email}`);
+        return user as User;
+      } else {
+        addDebug('❌ Invalid user data in sessionStorage');
+        return null;
+      }
+    } catch (error: any) {
+      addDebug(`❌ Error reading sessionStorage: ${error.message}`);
+      return null;
+    }
+  };
+
+  // FIXED: loadUserData function with proper subscription loading
   const loadUserData = async (authUser: User) => {
     try {
       addDebug(`🔄 Loading data for: ${authUser.email}`);
@@ -82,29 +120,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setProfile(basicProfile);
       addDebug('✅ Profile created');
 
-      // CRITICAL FIX: Try subscription query with better error handling
+      // Load subscription data
       addDebug('🔍 Loading subscription data...');
       
       try {
-        // Use a more direct query approach
         addDebug(`🎯 Querying subscriptions for user: ${authUser.id}`);
         
         const { data: subscriptions, error: subError } = await Promise.race([
           supabase
             .from('subscriptions')
-            .select(`
-              id,
-              user_id,
-              stripe_customer_id,
-              stripe_subscription_id,
-              plan_type,
-              status,
-              current_period_start,
-              current_period_end,
-              cancel_at_period_end,
-              created_at,
-              updated_at
-            `)
+            .select('*')
             .eq('user_id', authUser.id),
           new Promise<any>((_, reject) => 
             setTimeout(() => reject(new Error('Subscription query timeout after 8 seconds')), 8000)
@@ -114,19 +139,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (subError) {
           addDebug(`❌ Subscription query error: ${subError.message}`);
           addDebug(`❌ Error code: ${subError.code || 'unknown'}`);
-          addDebug(`❌ Error details: ${JSON.stringify(subError.details || {})}`);
           setSubscription(null);
         } else {
           addDebug(`✅ Subscription query successful`);
           addDebug(`📊 Found ${subscriptions?.length || 0} subscription records`);
           
           if (subscriptions && subscriptions.length > 0) {
-            // Log all subscriptions found
             subscriptions.forEach((sub, index) => {
               addDebug(`📋 Sub ${index + 1}: ${sub.status} - ${sub.plan_type}`);
             });
             
-            // Find active or trialing subscription
             const activeSub = subscriptions.find(sub => 
               sub.status === 'active' || sub.status === 'trialing'
             );
@@ -155,25 +177,35 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       addDebug(`❌ Error in loadUserData: ${error.message}`);
       setSubscription(null);
     } finally {
-      // Always set loading to false when done
       addDebug('🎯 Setting loading to false (loadUserData complete)');
       setLoading(false);
     }
   };
 
-  // Initialize auth
+  // CRITICAL FIX: Proper hook order - this must be the FIRST useEffect
   useEffect(() => {
     let mounted = true;
 
-    const initialize = async () => {
+    const initializeAuth = async () => {
       try {
-        addDebug('🔍 Initializing auth...');
+        addDebug('🚀 Initializing auth (FIRST useEffect)...');
         
-        // CRITICAL FIX: Skip getSession() entirely and use getUser() instead
-        addDebug('🚀 Bypassing getSession, using getUser directly...');
+        // Step 1: Try to get user from sessionStorage first
+        const sessionUser = getUserFromSessionStorage();
+        
+        if (sessionUser && mounted) {
+          addDebug(`👤 Found user in sessionStorage: ${sessionUser.email}`);
+          setUser(sessionUser);
+          
+          // Load user data immediately
+          await loadUserData(sessionUser);
+          return; // Exit early - we found the user
+        }
+        
+        // Step 2: If no user in sessionStorage, try Supabase auth
+        addDebug('🔍 No user in sessionStorage, trying Supabase auth...');
         
         try {
-          // Use getUser() instead of getSession() - it's more reliable
           const { data: { user }, error } = await Promise.race([
             supabase.auth.getUser(),
             new Promise<any>((_, reject) => 
@@ -188,35 +220,30 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
           if (mounted) {
             if (user) {
-              addDebug(`👤 Found user via getUser: ${user.email}`);
+              addDebug(`👤 Found user via Supabase: ${user.email}`);
               setUser(user);
-              
-              // NOW call loadUserData with the user we found
               await loadUserData(user);
-              addDebug('🔄 loadUserData completed via getUser');
             } else {
-              addDebug('🚫 No user found via getUser');
+              addDebug('🚫 No user found anywhere');
               setUser(null);
               setProfile(null);
               setSubscription(null);
-              addDebug('🎯 Setting loading to false (no user)');
+              addDebug('🎯 Setting loading to false (no user found)');
               setLoading(false);
             }
           }
-        } catch (userError: any) {
-          addDebug(`❌ getUser failed: ${userError.message}`);
-          
-          // FALLBACK: Try to check if user is signed in via auth state
-          addDebug('🔄 Fallback: checking auth state listener...');
+        } catch (authError: any) {
+          addDebug(`❌ Supabase auth failed: ${authError.message}`);
           
           if (mounted) {
             setUser(null);
             setProfile(null);
             setSubscription(null);
-            addDebug('🎯 Setting loading to false (auth check failed)');
+            addDebug('🎯 Setting loading to false (auth failed)');
             setLoading(false);
           }
         }
+        
       } catch (error: any) {
         addDebug(`❌ Init error: ${error.message}`);
         if (mounted) {
@@ -226,57 +253,75 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     };
 
-    // Safety timeout - never let loading stay true forever
+    // Start initialization immediately
+    initializeAuth();
+
+    // Cleanup
+    return () => {
+      mounted = false;
+    };
+  }, []); // Empty dependency array - this runs FIRST
+
+  // SECOND useEffect: Safety timeout
+  useEffect(() => {
     const safetyTimeout = setTimeout(() => {
-      if (mounted && loading) {
+      if (loading) {
         addDebug('⏰ Safety timeout - forcing loading false');
         setLoading(false);
       }
-    }, 15000); // 15 second max
+    }, 20000); // 20 second max
 
-    initialize();
+    return () => clearTimeout(safetyTimeout);
+  }, [loading]);
 
-    // Listen for auth state changes
-    const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (!mounted) return;
+  // THIRD useEffect: Auth state listener (only after initialization)
+  useEffect(() => {
+    let mounted = true;
 
-        addDebug(`🔄 Auth change: ${event}`);
+    // Only set up listener after initial load is done
+    if (!loading) {
+      addDebug('🔗 Setting up auth state listener...');
+      
+      const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange(
+        async (event, session) => {
+          if (!mounted) return;
 
-        switch (event) {
-          case 'SIGNED_OUT':
-            addDebug('👋 User signed out');
-            setUser(null);
-            setProfile(null);
-            setSubscription(null);
-            setLoading(false);
-            break;
-            
-          case 'SIGNED_IN':
-            if (session?.user) {
-              addDebug(`🔑 User signed in: ${session.user.email}`);
-              setUser(session.user);
-              await loadUserData(session.user);
-            }
-            break;
-            
-          case 'TOKEN_REFRESHED':
-            if (session?.user && (!user || user.id !== session.user.id)) {
-              addDebug(`🔄 Token refreshed: ${session.user.email}`);
-              setUser(session.user);
-              await loadUserData(session.user);
-            }
-            break;
+          addDebug(`🔄 Auth change: ${event}`);
+
+          switch (event) {
+            case 'SIGNED_OUT':
+              addDebug('👋 User signed out');
+              setUser(null);
+              setProfile(null);
+              setSubscription(null);
+              break;
+              
+            case 'SIGNED_IN':
+              if (session?.user) {
+                addDebug(`🔑 User signed in: ${session.user.email}`);
+                setUser(session.user);
+                setLoading(true); // Set loading for new sign-in
+                await loadUserData(session.user);
+              }
+              break;
+              
+            case 'TOKEN_REFRESHED':
+              if (session?.user && (!user || user.id !== session.user.id)) {
+                addDebug(`🔄 Token refreshed: ${session.user.email}`);
+                setUser(session.user);
+                await loadUserData(session.user);
+              }
+              break;
+          }
         }
-      }
-    );
+      );
 
-    return () => {
-      mounted = false;
-      clearTimeout(safetyTimeout);
-      authSub.unsubscribe();
-    };
-  }, []);
+      return () => {
+        mounted = false;
+        authSub.unsubscribe();
+      };
+    }
+  }, [loading, user]); // Only run after loading is done
 
   const signIn = async (email: string, password: string): Promise<void> => {
     const { error } = await supabase.auth.signInWithPassword({
@@ -323,6 +368,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const refreshSubscription = async (): Promise<void> => {
     if (user) {
+      setLoading(true);
       await loadUserData(user);
     }
   };
@@ -380,8 +426,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           </div>
           
           <div style={{ background: 'black', padding: '10px' }}>
-            <div style={{ color: 'yellow', fontWeight: 'bold' }}>ACTIVITY LOG (Last 8 messages):</div>
-            {debugLog.slice(-8).map((log, i) => (
+            <div style={{ color: 'yellow', fontWeight: 'bold' }}>ACTIVITY LOG (Last 15 messages):</div>
+            {debugLog.slice(-15).map((log, i) => (
               <div key={i} style={{ 
                 fontSize: '12px', 
                 marginBottom: '3px',
@@ -398,11 +444,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
           <div style={{ marginTop: '10px', background: 'darkblue', padding: '10px', color: 'white' }}>
             <div style={{ fontWeight: 'bold', color: 'yellow' }}>🎯 WHAT TO LOOK FOR:</div>
-            <div>1. Should see "👤 Found user via getUser"</div>
-            <div>2. Should see "🔍 Loading subscription data..."</div>
+            <div>1. Should see "🔍 Checking sessionStorage for user..."</div>
+            <div>2. Should see "✅ Found user in sessionStorage: [email]"</div>
             <div>3. Should see subscription query results</div>
-            <div>4. Should see "🎯 Setting loading to false (loadUserData complete)"</div>
-            <div>5. Loading should turn GREEN only after trying to load subscription</div>
+            <div>4. Should see user email in CURRENT STATE</div>
+            <div>5. Loading should turn GREEN after trying subscription</div>
           </div>
         </div>
       )}
