@@ -1,8 +1,31 @@
-// src/contexts/AuthContext.tsx - FIXED VERSION with proper timeout handling and correct imports
+// src/contexts/AuthContext.tsx - SIMPLIFIED: Clean debug panel
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
-import { UserProfile, Subscription } from '../types/supabase';
+
+interface UserProfile {
+  id: string;
+  email: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  email_verified: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+interface Subscription {
+  id: string;
+  user_id: string;
+  stripe_customer_id: string;
+  stripe_subscription_id: string;
+  plan_type: string;
+  status: string;
+  current_period_start?: string | null;
+  current_period_end?: string | null;
+  cancel_at_period_end?: boolean;
+  created_at: string;
+  updated_at: string;
+}
 
 interface AuthContextType {
   user: User | null;
@@ -41,130 +64,33 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setDebugLog(prev => [...prev.slice(-4), `${new Date().toLocaleTimeString()}: ${message}`]);
   };
 
-  // FIXED: Optimized user data loading with timeout handling
+  // Optimized user data loading - runs queries in parallel
   const loadUserData = async (authUser: User) => {
-    try {
-      addDebug(`🔄 Loading data for: ${authUser.email}`);
-      
-      // Create timeout wrapper for individual queries
-      const withTimeout = <T>(promise: Promise<T>, timeoutMs: number, queryName: string): Promise<T> => {
-        return new Promise((resolve, reject) => {
-          const timeout = setTimeout(() => {
-            reject(new Error(`${queryName} query timeout after ${timeoutMs}ms`));
-          }, timeoutMs);
-          
-          promise
-            .then(resolve)
-            .catch(reject)
-            .finally(() => clearTimeout(timeout));
-        });
-      };
+  try {
+    addDebug(`🔄 Loading data for: ${authUser.email}`);
+    
+    // Simple subscription query with timeout
+    const { data: subscriptionData, error } = await Promise.race([
+      supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('user_id', authUser.id)
+        .in('status', ['active', 'trialing'])
+        .limit(1)
+        .maybeSingle(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Query timeout')), 5000))
+    ]);
 
-      // Run ALL queries in parallel with individual timeouts (3 seconds each)
-      const [profileResult, subscriptionResult, allSubsResult] = await Promise.allSettled([
-        // Profile query with timeout
-        withTimeout(
-          supabase
-            .from('user_profiles')
-            .select('*')
-            .eq('id', authUser.id)
-            .single(),
-          3000,
-          'Profile'
-        ),
-        
-        // Active subscription query with timeout
-        withTimeout(
-          supabase
-            .from('subscriptions')
-            .select('*')
-            .eq('user_id', authUser.id)
-            .in('status', ['active', 'trialing'])
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle(),
-          3000,
-          'Subscription'
-        ),
-        
-        // All subscriptions for debug with timeout
-        withTimeout(
-          supabase
-            .from('subscriptions')
-            .select('id, status, plan_type, created_at')
-            .eq('user_id', authUser.id)
-            .limit(5),
-          3000,
-          'AllSubscriptions'
-        )
-      ]);
-
-      // Process profile result with detailed error handling
-      let profileData: UserProfile | null = null;
-      if (profileResult.status === 'fulfilled') {
-        const { data, error } = profileResult.value;
-        if (error) {
-          addDebug(`⚠️ Profile error: ${error.message}`);
-          // Continue without profile - not critical for auth
-        } else {
-          profileData = data;
-          addDebug(`✅ Profile loaded`);
-        }
-      } else {
-        const errorMessage = profileResult.reason instanceof Error ? profileResult.reason.message : 'Unknown error';
-        addDebug(`❌ Profile query failed: ${errorMessage}`);
-        // Continue without profile - not critical for auth
-      }
-
-      // Process subscription result with detailed error handling
-      let subscriptionData: Subscription | null = null;
-      if (subscriptionResult.status === 'fulfilled') {
-        const { data, error } = subscriptionResult.value;
-        if (error) {
-          addDebug(`⚠️ Sub error: ${error.message}`);
-          // Continue without subscription data
-        } else {
-          subscriptionData = data;
-          addDebug(`✅ Subscription: ${data?.status || 'none'}`);
-        }
-      } else {
-        const errorMessage = subscriptionResult.reason instanceof Error ? subscriptionResult.reason.message : 'Unknown error';
-        addDebug(`❌ Subscription query failed: ${errorMessage}`);
-        // Continue without subscription - user might not have one
-      }
-
-      // Process all subscriptions for debug with error handling
-      if (allSubsResult.status === 'fulfilled') {
-        const { data: allSubs, error } = allSubsResult.value;
-        if (error) {
-          addDebug(`⚠️ Debug query error: ${error.message}`);
-        } else if (allSubs && allSubs.length > 0) {
-          addDebug(`🔍 Found ${allSubs.length} total subs`);
-        } else {
-          addDebug(`🔍 No subscriptions found`);
-        }
-      } else {
-        const errorMessage = allSubsResult.reason instanceof Error ? allSubsResult.reason.message : 'Unknown error';
-        addDebug(`❌ Debug query failed: ${errorMessage}`);
-      }
-
-      // Update states - always set states even if queries failed
-      setProfile(profileData);
+    if (error) {
+      addDebug(`❌ DB Error: ${error.message}`);
+    } else {
+      addDebug(`✅ Subscription: ${subscriptionData?.status || 'none'}`);
       setSubscription(subscriptionData);
-      
-      addDebug(`✅ Loading complete - ${subscriptionData?.status || 'no sub'}`);
-
-    } catch (error) {
-      // This catch block should now rarely be hit due to Promise.allSettled + timeouts
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      addDebug(`❌ Critical error in loadUserData: ${errorMessage}`);
-      setProfile(null);
-      setSubscription(null);
-    } finally {
-      // CRITICAL: Always complete the loading process
-      addDebug(`🏁 loadUserData finished`);
     }
-  };
+  } catch (error) {
+    addDebug(`❌ Timeout: ${error.message}`);
+  }
+};
 
   // Initialize auth
   useEffect(() => {
@@ -197,8 +123,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           setLoading(false);
         }
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        addDebug(`❌ Init error: ${errorMessage}`);
+        addDebug(`❌ Init error: ${error.message}`);
         if (mounted) {
           addDebug('✅ Setting loading to false (error)');
           setLoading(false);
@@ -255,7 +180,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       clearTimeout(safetyTimeout);
       authSub.unsubscribe();
     };
-  }, []); // Empty dependency array to avoid infinite loops
+  }, []);
 
   const signIn = async (email: string, password: string): Promise<void> => {
     const { error } = await supabase.auth.signInWithPassword({
@@ -281,8 +206,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       addDebug('✅ Signed out, redirecting...');
       window.location.href = '/';
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      addDebug(`❌ Sign out error: ${errorMessage}`);
+      addDebug(`❌ Sign out error: ${error.message}`);
       window.location.href = '/';
     }
   };
@@ -378,11 +302,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
           <div style={{ marginTop: '10px', background: 'darkblue', padding: '10px', color: 'white' }}>
             <div style={{ fontWeight: 'bold', color: 'yellow' }}>🎯 WHAT TO LOOK FOR:</div>
-            <div>1. Loading should turn GREEN within 3-4 seconds (not 10)</div>
-            <div>2. You should see "✅ Loading complete" and "🏁 loadUserData finished"</div>
+            <div>1. Loading should turn GREEN within 10 seconds</div>
+            <div>2. You should see "✅ Setting loading to false" in the log</div>
             <div>3. User email should appear (not "NO USER")</div>
-            <div>4. If timeout errors appear = database connection issue</div>
-            <div>5. Safety timeout should NOT trigger with this fix</div>
+            <div>4. If stuck at "Loading data for: [email]" = database query problem</div>
+            <div>5. If no "✅ Setting loading to false" = initialization problem</div>
           </div>
         </div>
       )}
