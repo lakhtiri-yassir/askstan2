@@ -101,38 +101,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // ROOT FIX: Create a new Supabase client with better configuration
-  const createOptimizedSupabaseClient = () => {
-    addDebug('🔧 Creating optimized Supabase client...');
-    
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-    
-    // Create client with optimized settings for better performance
-    const { createClient } = require('@supabase/supabase-js');
-    
-    const optimizedClient = createClient(supabaseUrl, supabaseKey, {
-      auth: {
-        autoRefreshToken: false, // Disable auto refresh to avoid conflicts
-        persistSession: false,   // Don't persist, we handle this manually
-        detectSessionInUrl: false // Don't detect session in URL
-      },
-      global: {
-        headers: {
-          'x-client-info': 'optimized-client',
-          'Prefer': 'return=minimal' // Request minimal response for better performance
-        }
-      },
-      db: {
-        schema: 'public' // Explicitly set schema
-      }
-    });
-    
-    addDebug('✅ Optimized client created');
-    return optimizedClient;
-  };
-
-  // ROOT FIX: Improved subscription loading with proper client
+  // ROOT FIX: Optimized subscription loading with better query structure
   const loadUserData = async (authUser: User) => {
     try {
       addDebug(`🔄 Loading data for: ${authUser.email}`);
@@ -150,28 +119,29 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setProfile(basicProfile);
       addDebug('✅ Profile created');
 
-      // ROOT FIX: Use optimized client and proper query structure
-      addDebug('🔍 Loading subscription with optimized approach...');
+      // ROOT FIX: Use existing supabase client with optimized query
+      addDebug('🔍 Loading subscription with optimized query...');
       
       try {
-        // Create optimized client for this specific query
-        const optimizedSupabase = createOptimizedSupabaseClient();
-        
         addDebug(`🎯 Querying subscriptions for user: ${authUser.id}`);
         
-        // ROOT FIX: Use more specific and optimized query
-        const subscriptionQuery = optimizedSupabase
+        // ROOT FIX: Use AbortController for proper timeout handling
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+          controller.abort();
+          addDebug('⏰ Query aborted due to timeout');
+        }, 6000);
+        
+        // ROOT FIX: Optimized query with specific columns and better structure
+        const subscriptionPromise = supabase
           .from('subscriptions')
           .select('id, user_id, plan_type, status, created_at, updated_at, stripe_customer_id, stripe_subscription_id, current_period_start, current_period_end, cancel_at_period_end')
           .eq('user_id', authUser.id)
           .order('created_at', { ascending: false })
-          .limit(1);
+          .limit(1)
+          .abortSignal(controller.signal);
         
-        // ROOT FIX: Use AbortController for proper timeout handling
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
-        
-        const { data: subscriptions, error } = await subscriptionQuery.abortSignal(controller.signal);
+        const { data: subscriptions, error } = await subscriptionPromise;
         
         clearTimeout(timeoutId);
         
@@ -180,7 +150,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             addDebug('❌ Query aborted due to timeout');
           } else {
             addDebug(`❌ Query error: ${error.message}`);
-            addDebug(`❌ Error code: ${error.code}`);
+            addDebug(`❌ Error code: ${error.code || 'unknown'}`);
+            addDebug(`❌ Error details: ${JSON.stringify(error.details || {})}`);
           }
           setSubscription(null);
         } else {
@@ -206,6 +177,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (queryError.name === 'AbortError') {
           addDebug('⏰ Query was aborted due to timeout');
         } else {
+          addDebug(`🔍 Error type: ${queryError.name || 'Unknown'}`);
           addDebug(`🔍 Error details: ${queryError.stack || 'No stack trace'}`);
         }
         
