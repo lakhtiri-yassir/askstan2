@@ -66,7 +66,37 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // FIXED: Use existing session instead of new Supabase calls
   const loadUserData = async (authUser: User) => {
+    
   try {
+    addDebug(`🔄 Loading data for: ${authUser.email}`);
+    
+    // CRITICAL TEST: Check if Supabase URL is reachable
+    addDebug('🌐 Testing Supabase network connectivity...');
+    
+    try {
+      const response = await Promise.race([
+        fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/`, {
+          method: 'HEAD',
+          headers: {
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+          }
+        }),
+        new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('Network timeout')), 3000)
+        )
+      ]);
+      
+      addDebug(`✅ Network test: ${response.status} - Supabase is reachable`);
+    } catch (networkError: any) {
+      addDebug(`❌ Network test failed: ${networkError.message}`);
+      
+      // If network fails, skip all Supabase calls
+      setSubscription(null);
+      addDebug('💳 Subscription set to null (network issue)');
+      setLoading(false);
+      return;
+    }
     addDebug(`🔄 Loading data for: ${authUser.email}`);
     
     // Create profile first
