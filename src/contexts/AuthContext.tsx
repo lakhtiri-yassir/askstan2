@@ -64,80 +64,103 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setDebugLog(prev => [...prev.slice(-4), `${new Date().toLocaleTimeString()}: ${message}`]);
   };
 
-  // FINAL DIAGNOSTIC - pinpoints exact connection issue
+  // TARGETED RLS/NETWORK DIAGNOSTIC
   const loadUserData = async (authUser: User) => {
     try {
       addDebug(`🔄 Loading data for: ${authUser.email}`);
       addDebug(`🔑 User ID: ${authUser.id.slice(0, 8)}...`);
       
-      // Test 1: Basic database connection with short timeout
-      addDebug('🔍 Step 1: Testing database connection...');
+      // Test 1: Check auth status first
+      addDebug('🔍 Step 1: Checking Supabase auth status...');
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
       
-      const connectionTest = new Promise(async (resolve, reject) => {
-        try {
-          const { error } = await supabase
-            .from('subscriptions')
-            .select('count(*)')
-            .limit(1);
-          
-          if (error) {
-            reject(new Error(`DB Error: ${error.message} (Code: ${error.code})`));
-          } else {
-            resolve('SUCCESS');
-          }
-        } catch (err) {
-          reject(err);
-        }
-      });
+      if (!currentUser) {
+        addDebug('❌ No authenticated user in Supabase');
+        return;
+      } else {
+        addDebug(`✅ Supabase auth user confirmed: ${currentUser.email}`);
+      }
 
-      const timeout = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Connection timeout after 3 seconds')), 3000);
-      });
-
+      // Test 2: Try a simple query without RLS first
+      addDebug('🔍 Step 2: Testing basic Supabase connection...');
       try {
-        await Promise.race([connectionTest, timeout]);
-        addDebug('✅ STEP 1 SUCCESS: Database connection works');
+        const response = await Promise.race([
+          fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/`, {
+            headers: {
+              'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+            }
+          }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Fetch timeout')), 3000))
+        ]);
         
-        // If connection works, try subscription query
-        addDebug('🔍 Step 2: Querying user subscriptions...');
-        const { data: subs, error: subError } = await supabase
-          .from('subscriptions')
-          .select('*')
-          .eq('user_id', authUser.id);
+        if (response.ok) {
+          addDebug('✅ Direct Supabase API connection works');
+        } else {
+          addDebug(`❌ API returned status: ${response.status}`);
+        }
+      } catch (fetchError) {
+        addDebug(`❌ Direct API test failed: ${fetchError.message}`);
+        addDebug('🔧 This suggests network/firewall blocking Supabase');
+        return;
+      }
+
+      // Test 3: Try subscription query with detailed RLS info
+      addDebug('🔍 Step 3: Testing subscription query with RLS...');
+      try {
+        const { data: subs, error: subError } = await Promise.race([
+          supabase
+            .from('subscriptions')
+            .select('*')
+            .eq('user_id', authUser.id),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('RLS Query timeout')), 5000))
+        ]);
 
         if (subError) {
-          addDebug(`❌ STEP 2 FAILED: ${subError.message}`);
-          addDebug(`❌ Error Code: ${subError.code} (likely RLS issue)`);
-        } else {
-          addDebug(`✅ STEP 2 SUCCESS: Found ${subs?.length || 0} subscriptions`);
-          if (subs && subs.length > 0) {
-            const activeSub = subs.find(s => ['active', 'trialing'].includes(s.status));
-            setSubscription(activeSub || subs[0]);
-            addDebug(`✅ Set subscription: ${activeSub?.status || subs[0]?.status}`);
+          addDebug(`❌ Subscription query error: ${subError.message}`);
+          addDebug(`❌ Error code: ${subError.code}`);
+          addDebug(`❌ Error details: ${subError.details || 'none'}`);
+          
+          if (subError.code === 'PGRST301' || subError.message.includes('permission')) {
+            addDebug('🔧 DIAGNOSIS: Row Level Security (RLS) is blocking the query');
+            addDebug('🔧 SOLUTION: Check RLS policies on subscriptions table');
+          } else if (subError.code === '42P01') {
+            addDebug('🔧 DIAGNOSIS: subscriptions table does not exist');
           } else {
-            addDebug('ℹ️ No subscriptions found for this user');
+            addDebug('🔧 DIAGNOSIS: Unknown database error');
+          }
+        } else {
+          addDebug(`✅ Subscription query SUCCESS: Found ${subs?.length || 0} records`);
+          
+          if (subs && subs.length > 0) {
+            subs.forEach((sub, i) => {
+              addDebug(`📋 Sub ${i + 1}: ${sub.status} (${sub.plan_type})`);
+            });
+            
+            const activeSub = subs.find(s => ['active', 'trialing'].includes(s.status));
+            if (activeSub) {
+              setSubscription(activeSub);
+              addDebug(`✅ Active subscription set: ${activeSub.status}`);
+            } else {
+              addDebug('⚠️ No active subscription found');
+            }
+          } else {
+            addDebug('ℹ️ User has no subscription records');
           }
         }
+      } catch (queryError) {
+        addDebug(`❌ Query timeout/error: ${queryError.message}`);
         
-      } catch (connectionError) {
-        addDebug(`❌ STEP 1 FAILED: ${connectionError.message}`);
-        
-        if (connectionError.message.includes('timeout')) {
-          addDebug('🔧 DIAGNOSIS: Supabase connection is timing out');
-          addDebug('🔧 LIKELY CAUSES:');
-          addDebug('   - Invalid Supabase URL or API key');
-          addDebug('   - Network/firewall blocking connection');
-          addDebug('   - Supabase project is paused/inactive');
-        } else {
-          addDebug('🔧 DIAGNOSIS: Database permission/RLS error');
-          addDebug('🔧 LIKELY CAUSES:');
-          addDebug('   - Row Level Security blocking queries');
-          addDebug('   - Missing table permissions');
+        if (queryError.message.includes('timeout')) {
+          addDebug('🔧 DIAGNOSIS: RLS policy is hanging/blocking query');
+          addDebug('🔧 SOLUTION: Check RLS policies allow authenticated users');
         }
       }
 
+      addDebug('🏁 DIAGNOSTIC COMPLETE');
+      
     } catch (error) {
-      addDebug(`❌ OUTER ERROR: ${error.message}`);
+      addDebug(`❌ Overall error: ${error.message}`);
     }
   };
 
