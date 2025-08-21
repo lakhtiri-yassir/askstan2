@@ -106,7 +106,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       };
       setProfile(basicProfile);
       
-      // Try to load subscription data with timeout
+      // CRITICAL FIX: Always attempt to load subscription data, with better error handling
       try {
         console.log(`🔍 Loading subscription for user: ${authUser.id}`);
         
@@ -118,7 +118,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             .order('created_at', { ascending: false })
             .limit(1),
           new Promise<any>((_, reject) => 
-            setTimeout(() => reject(new Error('Subscription query timeout')), 5000)
+            setTimeout(() => reject(new Error('Subscription query timeout')), 8000) // Increased timeout
           )
         ]);
         
@@ -129,14 +129,36 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           const sub = subscriptions[0];
           console.log(`✅ Found subscription: ${sub.status} - ${sub.plan_type}`);
           setSubscription(sub);
+          
+          // Log the hasActiveSubscription status for debugging
+          const isActive = sub.status === 'active' || sub.status === 'trialing';
+          console.log(`🎯 Subscription active status: ${isActive}`);
         } else {
-          console.log('ℹ️ No subscription found');
+          console.log('ℹ️ No subscription found - user needs to subscribe');
           setSubscription(null);
         }
         
       } catch (subError) {
         console.warn('Subscription loading failed:', subError);
         setSubscription(null);
+        
+        // Try one more time with a direct query
+        try {
+          console.log('🔄 Retrying subscription query...');
+          const { data: retryData } = await supabase
+            .from('subscriptions')
+            .select('*')
+            .eq('user_id', authUser.id)
+            .order('created_at', { ascending: false })
+            .limit(1);
+            
+          if (retryData && retryData.length > 0) {
+            console.log('✅ Retry successful, found subscription:', retryData[0].status);
+            setSubscription(retryData[0]);
+          }
+        } catch (retryError) {
+          console.warn('Subscription retry failed:', retryError);
+        }
       }
       
       console.log('✅ User data loading complete');
@@ -189,6 +211,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (mounted) {
           if (currentUser) {
             setUser(currentUser);
+            // CRITICAL FIX: Always load user data (including subscription) 
+            // regardless of how the user was obtained (storage or Supabase)
+            console.log('📊 Loading user data and subscription status...');
             await loadUserData(currentUser);
           }
           

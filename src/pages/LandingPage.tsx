@@ -21,12 +21,13 @@ import askstanBanner from '../img/askstanbanner.png';
 
 export const LandingPage: React.FC = () => {
   const navigate = useNavigate();
-  const { user, hasActiveSubscription, loading, initialized } = useAuth();
+  const { user, hasActiveSubscription, subscription, loading, initialized } = useAuth();
 
   // CRITICAL FIX: Handle auth-based redirects properly using React Router
   useEffect(() => {
     // Only redirect once auth is fully initialized and not loading
     if (!initialized || loading) {
+      console.log('🔄 LandingPage: Waiting for auth initialization', { initialized, loading });
       return;
     }
 
@@ -34,11 +35,18 @@ export const LandingPage: React.FC = () => {
     if (user) {
       console.log('🔍 LandingPage: User detected, checking subscription status', {
         hasActiveSubscription,
-        userEmail: user.email
+        userEmail: user.email,
+        subscriptionStatus: subscription?.status || 'none'
       });
 
-      // Small delay to ensure subscription data is fully loaded
+      // INCREASED DELAY: Give more time for subscription data to load
+      // This fixes the issue where subscription status hasn't loaded yet
       const redirectTimer = setTimeout(() => {
+        console.log('⏰ LandingPage: Redirect timer triggered', {
+          hasActiveSubscription,
+          subscriptionStatus: subscription?.status || 'none'
+        });
+
         if (hasActiveSubscription) {
           console.log('✅ User has active subscription, redirecting to dashboard');
           navigate('/dashboard', { replace: true });
@@ -46,13 +54,13 @@ export const LandingPage: React.FC = () => {
           console.log('💳 User needs subscription, redirecting to plans');
           navigate('/plans', { replace: true });
         }
-      }, 500); // Small delay to ensure subscription status is determined
+      }, 1000); // Increased from 500ms to 1000ms to ensure subscription data loads
 
       return () => clearTimeout(redirectTimer);
     } else {
       console.log('ℹ️ LandingPage: No user, showing landing page');
     }
-  }, [user, hasActiveSubscription, initialized, loading, navigate]);
+  }, [user, hasActiveSubscription, subscription, initialized, loading, navigate]);
 
   const capabilities = [
     {
