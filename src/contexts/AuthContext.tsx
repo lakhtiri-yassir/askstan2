@@ -1,6 +1,7 @@
-// src/contexts/AuthContext.tsx - ROOT PROBLEM FIX
+// src/contexts/AuthContext.tsx - COMPLETELY REBUILT FOR PROPER FLOW
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User } from '@supabase/supabase-js';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
 interface UserProfile {
@@ -33,6 +34,7 @@ interface AuthContextType {
   subscription: Subscription | null;
   hasActiveSubscription: boolean;
   loading: boolean;
+  initialized: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   signUp: (email: string, password: string, fullName?: string) => Promise<void>;
@@ -54,59 +56,46 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
-  const [debugLog, setDebugLog] = useState<string[]>(['🚀 Starting auth...']);
+  const [initialized, setInitialized] = useState(false);
 
-  // Proper subscription check
-  const hasActiveSubscription = subscription?.status === 'active' || subscription?.status === 'trialing';
+  // Proper subscription check - matches the rest of the app
+  const hasActiveSubscription = Boolean(
+    subscription && (subscription.status === 'active' || subscription.status === 'trialing')
+  );
 
-  // Helper function to add debug messages
-  const addDebug = (message: string) => {
-    setDebugLog(prev => [...prev.slice(-15), `${new Date().toLocaleTimeString()}: ${message}`]);
-  };
-
-  // Get user from sessionStorage
-  const getUserFromSessionStorage = (): User | null => {
+  // Get user from sessionStorage (most reliable method)
+  const getUserFromStorage = (): User | null => {
     try {
-      addDebug('🔍 Checking sessionStorage for user...');
-      
       const keys = Object.keys(localStorage);
       const supabaseKey = keys.find(key => 
         key.startsWith('sb-') && key.includes('-auth-token')
       );
       
-      if (!supabaseKey) {
-        addDebug('❌ No Supabase auth key found');
-        return null;
-      }
+      if (!supabaseKey) return null;
       
       const sessionData = localStorage.getItem(supabaseKey);
-      if (!sessionData) {
-        addDebug('❌ No session data found');
-        return null;
-      }
+      if (!sessionData) return null;
       
       const parsed = JSON.parse(sessionData);
       const user = parsed?.user;
       
       if (user && user.id && user.email) {
-        addDebug(`✅ Found user: ${user.email}`);
         return user as User;
-      } else {
-        addDebug('❌ Invalid user data');
-        return null;
       }
-    } catch (error: any) {
-      addDebug(`❌ SessionStorage error: ${error.message}`);
+      
+      return null;
+    } catch (error) {
+      console.error('Error reading user from storage:', error);
       return null;
     }
   };
 
-  // ROOT FIX: Optimized subscription loading with better query structure
-  const loadUserData = async (authUser: User) => {
+  // Load user profile and subscription data
+  const loadUserData = async (authUser: User): Promise<void> => {
     try {
-      addDebug(`🔄 Loading data for: ${authUser.email}`);
+      console.log(`🔄 Loading data for: ${authUser.email}`);
       
-      // Create profile immediately
+      // Create basic profile from auth user data
       const basicProfile: UserProfile = {
         id: authUser.id,
         email: authUser.email || '',
@@ -117,182 +106,203 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         updated_at: new Date().toISOString()
       };
       setProfile(basicProfile);
-      addDebug('✅ Profile created');
-
-      // ROOT FIX: Use existing supabase client with optimized query
-      addDebug('🔍 Loading subscription with optimized query...');
       
+      // Try to load subscription data with timeout
       try {
-        addDebug(`🎯 Querying subscriptions for user: ${authUser.id}`);
+        console.log(`🔍 Loading subscription for user: ${authUser.id}`);
         
-        // ROOT FIX: Use AbortController for proper timeout handling
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => {
-          controller.abort();
-          addDebug('⏰ Query aborted due to timeout');
-        }, 6000);
-        
-        // ROOT FIX: Optimized query with specific columns and better structure
-        const subscriptionPromise = supabase
-          .from('subscriptions')
-          .select('id, user_id, plan_type, status, created_at, updated_at, stripe_customer_id, stripe_subscription_id, current_period_start, current_period_end, cancel_at_period_end')
-          .eq('user_id', authUser.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .abortSignal(controller.signal);
-        
-        const { data: subscriptions, error } = await subscriptionPromise;
-        
-        clearTimeout(timeoutId);
+        const { data: subscriptions, error } = await Promise.race([
+          supabase
+            .from('subscriptions')
+            .select('*')
+            .eq('user_id', authUser.id)
+            .order('created_at', { ascending: false })
+            .limit(1),
+          new Promise<any>((_, reject) => 
+            setTimeout(() => reject(new Error('Subscription query timeout')), 5000)
+          )
+        ]);
         
         if (error) {
-          if (error.name === 'AbortError') {
-            addDebug('❌ Query aborted due to timeout');
-          } else {
-            addDebug(`❌ Query error: ${error.message}`);
-            addDebug(`❌ Error code: ${error.code || 'unknown'}`);
-            addDebug(`❌ Error details: ${JSON.stringify(error.details || {})}`);
-          }
+          console.warn('Subscription query error:', error.message);
           setSubscription(null);
+        } else if (subscriptions && subscriptions.length > 0) {
+          const sub = subscriptions[0];
+          console.log(`✅ Found subscription: ${sub.status} - ${sub.plan_type}`);
+          setSubscription(sub);
         } else {
-          addDebug(`✅ Query successful!`);
-          addDebug(`📊 Found ${subscriptions?.length || 0} subscription records`);
-          
-          if (subscriptions && subscriptions.length > 0) {
-            const subscription = subscriptions[0]; // Get the most recent one
-            addDebug(`📋 Subscription: ${subscription.status} - ${subscription.plan_type}`);
-            
-            // Set subscription regardless of status - let the app decide what to do with it
-            setSubscription(subscription);
-            addDebug(`✅ Subscription set: ${subscription.status}`);
-          } else {
-            setSubscription(null);
-            addDebug('ℹ️ No subscription records found');
-          }
+          console.log('ℹ️ No subscription found');
+          setSubscription(null);
         }
         
-      } catch (queryError: any) {
-        addDebug(`❌ Query exception: ${queryError.message}`);
-        
-        if (queryError.name === 'AbortError') {
-          addDebug('⏰ Query was aborted due to timeout');
-        } else {
-          addDebug(`🔍 Error type: ${queryError.name || 'Unknown'}`);
-          addDebug(`🔍 Error details: ${queryError.stack || 'No stack trace'}`);
-        }
-        
+      } catch (subError) {
+        console.warn('Subscription loading failed:', subError);
         setSubscription(null);
       }
       
-      addDebug('🏁 loadUserData complete');
+      console.log('✅ User data loading complete');
       
-    } catch (error: any) {
-      addDebug(`❌ Error in loadUserData: ${error.message}`);
+    } catch (error) {
+      console.error('Error loading user data:', error);
       setSubscription(null);
-    } finally {
-      addDebug('🎯 Setting loading to false');
-      setLoading(false);
     }
   };
 
-  // Initialize auth
+  // Auto-redirect logic based on current route and auth state
+  const handleAutoRedirect = () => {
+    const location = window.location.pathname;
+    
+    // Skip redirects for specific pages
+    const skipRedirectPages = [
+      '/signin', '/signup', '/forgot-password', '/reset-password',
+      '/terms', '/privacy', '/admin'
+    ];
+    
+    if (skipRedirectPages.some(page => location.startsWith(page))) {
+      return;
+    }
+    
+    if (!user) {
+      // User not signed in
+      if (location !== '/') {
+        console.log('🔄 No user, redirecting to landing page');
+        window.location.href = '/';
+      }
+      return;
+    }
+    
+    // User is signed in - determine where they should go
+    if (hasActiveSubscription) {
+      // User has active subscription
+      if (location === '/' || location === '/plans') {
+        console.log('✅ User has subscription, redirecting to dashboard');
+        window.location.href = '/dashboard';
+      }
+    } else {
+      // User signed in but no active subscription
+      if (location === '/' || location === '/dashboard' || location === '/settings') {
+        console.log('💳 User needs subscription, redirecting to plans');
+        window.location.href = '/plans';
+      }
+    }
+  };
+
+  // Initialize authentication
   useEffect(() => {
     let mounted = true;
 
     const initialize = async () => {
       try {
-        addDebug('🚀 Initializing auth...');
+        console.log('🚀 Initializing authentication...');
+        setLoading(true);
         
-        // Try sessionStorage first
-        const sessionUser = getUserFromSessionStorage();
+        // Try to get user from storage first (fastest)
+        let currentUser = getUserFromStorage();
         
-        if (sessionUser && mounted) {
-          addDebug(`👤 User found: ${sessionUser.email}`);
-          setUser(sessionUser);
-          await loadUserData(sessionUser);
-          return;
+        if (!currentUser) {
+          // Fallback to Supabase auth
+          console.log('🔍 No user in storage, checking Supabase auth...');
+          try {
+            const { data: { user }, error } = await Promise.race([
+              supabase.auth.getUser(),
+              new Promise<any>((_, reject) => 
+                setTimeout(() => reject(new Error('Auth timeout')), 5000)
+              )
+            ]);
+            
+            if (user && !error) {
+              currentUser = user;
+              console.log(`✅ Found user via Supabase: ${user.email}`);
+            }
+          } catch (authError) {
+            console.warn('Supabase auth check failed:', authError);
+          }
+        } else {
+          console.log(`✅ Found user in storage: ${currentUser.email}`);
         }
         
-        // Fallback to Supabase auth
-        addDebug('🔍 Trying Supabase auth...');
-        
-        try {
-          const { data: { user }, error } = await Promise.race([
-            supabase.auth.getUser(),
-            new Promise<any>((_, reject) => 
-              setTimeout(() => reject(new Error('Auth timeout')), 5000)
-            )
-          ]);
-          
-          if (user && mounted) {
-            addDebug(`👤 Supabase user: ${user.email}`);
-            setUser(user);
-            await loadUserData(user);
-          } else if (mounted) {
-            addDebug('🚫 No user found');
-            setUser(null);
-            setProfile(null);
-            setSubscription(null);
-            setLoading(false);
-          }
-        } catch (authError: any) {
-          addDebug(`❌ Auth failed: ${authError.message}`);
-          if (mounted) {
-            setUser(null);
-            setProfile(null);
-            setSubscription(null);
-            setLoading(false);
-          }
+        if (currentUser && mounted) {
+          setUser(currentUser);
+          await loadUserData(currentUser);
+        } else if (mounted) {
+          console.log('🚫 No user found');
+          setUser(null);
+          setProfile(null);
+          setSubscription(null);
         }
         
-      } catch (error: any) {
-        addDebug(`❌ Init error: ${error.message}`);
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+        if (mounted) {
+          setUser(null);
+          setProfile(null);
+          setSubscription(null);
+        }
+      } finally {
         if (mounted) {
           setLoading(false);
+          setInitialized(true);
+          console.log('✅ Auth initialization complete');
         }
       }
     };
 
     initialize();
 
-    // Safety timeout
-    const safetyTimeout = setTimeout(() => {
-      if (mounted && loading) {
-        addDebug('⏰ Safety timeout');
-        setLoading(false);
-      }
-    }, 15000);
-
     return () => {
       mounted = false;
-      clearTimeout(safetyTimeout);
     };
   }, []);
 
-  // Auth state listener
+  // Handle auto-redirects when auth state changes
   useEffect(() => {
-    if (loading) return;
-    
-    addDebug('🔗 Setting up auth listener...');
+    if (initialized && !loading) {
+      // Small delay to ensure state is fully updated
+      const timer = setTimeout(() => {
+        handleAutoRedirect();
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [user, hasActiveSubscription, initialized, loading]);
+
+  // Auth state listener for sign-in/sign-out events
+  useEffect(() => {
+    if (!initialized) return;
+
+    console.log('🔗 Setting up auth state listener...');
     
     const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        addDebug(`🔄 Auth change: ${event}`);
+        console.log(`🔄 Auth event: ${event}`);
 
         switch (event) {
           case 'SIGNED_OUT':
-            addDebug('👋 User signed out');
+            console.log('👋 User signed out');
             setUser(null);
             setProfile(null);
             setSubscription(null);
+            window.location.href = '/';
             break;
             
           case 'SIGNED_IN':
             if (session?.user) {
-              addDebug(`🔑 User signed in: ${session.user.email}`);
+              console.log(`🔑 User signed in: ${session.user.email}`);
               setUser(session.user);
               setLoading(true);
               await loadUserData(session.user);
+              setLoading(false);
+            }
+            break;
+            
+          case 'TOKEN_REFRESHED':
+            if (session?.user) {
+              console.log(`🔄 Token refreshed: ${session.user.email}`);
+              // Update user if it changed
+              if (!user || user.id !== session.user.id) {
+                setUser(session.user);
+                await loadUserData(session.user);
+              }
             }
             break;
         }
@@ -300,8 +310,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     );
 
     return () => authSub.unsubscribe();
-  }, [loading]);
+  }, [initialized, user]);
 
+  // Sign in function
   const signIn = async (email: string, password: string): Promise<void> => {
     const { error } = await supabase.auth.signInWithPassword({
       email: email.trim().toLowerCase(),
@@ -311,22 +322,33 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (error) {
       throw new Error(error.message);
     }
+    
+    // Redirect will be handled by auth state listener
   };
 
+  // Sign out function
   const signOut = async (): Promise<void> => {
     try {
-      addDebug('👋 Signing out...');
+      console.log('👋 Signing out...');
+      
+      // Clear local state immediately
       setUser(null);
       setProfile(null);
       setSubscription(null);
+      
+      // Sign out from Supabase
       await supabase.auth.signOut();
+      
+      // Redirect to landing page
       window.location.href = '/';
-    } catch (error: any) {
-      addDebug(`❌ Sign out error: ${error.message}`);
+    } catch (error) {
+      console.error('Sign out error:', error);
+      // Force redirect even if sign out fails
       window.location.href = '/';
     }
   };
 
+  // Sign up function
   const signUp = async (email: string, password: string, fullName?: string): Promise<void> => {
     const { error } = await supabase.auth.signUp({
       email: email.trim().toLowerCase(),
@@ -339,12 +361,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (error) {
       throw new Error(error.message);
     }
+    
+    // Redirect will be handled by auth state listener
   };
 
+  // Refresh subscription data
   const refreshSubscription = async (): Promise<void> => {
     if (user) {
       setLoading(true);
       await loadUserData(user);
+      setLoading(false);
     }
   };
 
@@ -355,74 +381,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       subscription,
       hasActiveSubscription,
       loading,
+      initialized,
       signIn,
       signOut,
       signUp,
       refreshSubscription,
     }}>
-      {/* DEBUG PANEL */}
-      {true && (
-        <div style={{
-          position: 'fixed',
-          top: '0px',
-          left: '0px',
-          background: 'darkblue',
-          color: 'white',
-          padding: '15px',
-          fontSize: '14px',
-          zIndex: 99999,
-          fontFamily: 'monospace',
-          border: '3px solid yellow',
-          maxWidth: '100vw',
-          overflow: 'auto'
-        }}>
-          <div style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '10px' }}>
-            🔧 ROOT PROBLEM FIX - OPTIMIZED QUERIES 🔧
-          </div>
-          
-          <div style={{ marginBottom: '10px', background: 'black', padding: '10px' }}>
-            <div style={{ color: 'yellow', fontWeight: 'bold' }}>CURRENT STATE:</div>
-            <div>✉️ User: {user?.email || '❌ NO USER'}</div>
-            <div>💳 Subscription: {subscription?.status || '❌ NO SUBSCRIPTION'}</div>
-            <div>🎯 Has Active Sub: <span style={{ 
-              color: hasActiveSubscription ? 'lime' : 'red',
-              fontWeight: 'bold',
-              fontSize: '16px'
-            }}>
-              {hasActiveSubscription ? '✅ TRUE' : '❌ FALSE'}
-            </span></div>
-            <div>⏳ Loading: <span style={{ 
-              color: loading ? 'red' : 'lime',
-              fontWeight: 'bold'
-            }}>
-              {loading ? '🔴 LOADING' : '🟢 READY'}
-            </span></div>
-          </div>
-          
-          <div style={{ background: 'black', padding: '10px' }}>
-            <div style={{ color: 'yellow', fontWeight: 'bold' }}>ACTIVITY LOG:</div>
-            {debugLog.slice(-12).map((log, i) => (
-              <div key={i} style={{ 
-                fontSize: '12px', 
-                marginBottom: '2px',
-                color: log.includes('❌') ? '#ff4444' : 
-                      log.includes('✅') ? '#44ff44' : 
-                      log.includes('🔧') ? '#ffaa00' : '#ffffff'
-              }}>
-                {log}
-              </div>
-            ))}
-          </div>
-
-          <div style={{ marginTop: '10px', background: 'darkgreen', padding: '10px' }}>
-            <div style={{ color: 'lime', fontWeight: 'bold' }}>ROOT FIXES APPLIED:</div>
-            <div>🔧 Optimized Supabase client configuration</div>
-            <div>🔧 Proper AbortController timeout handling</div>
-            <div>🔧 Specific query with minimal response</div>
-            <div>🔧 Better error handling and diagnostics</div>
-          </div>
-        </div>
-      )}
       {children}
     </AuthContext.Provider>
   );
