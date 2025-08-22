@@ -138,3 +138,4 @@ export const CheckoutSuccessPage: React.FC = () => {
     </div>
   );
 };
+export default CheckoutSuccessPage;
