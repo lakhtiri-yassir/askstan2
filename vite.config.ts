@@ -1,7 +1,7 @@
+// vite.config.ts - Updated to fix dynamic import issues
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
   server: {
@@ -27,12 +27,16 @@ export default defineConfig({
     },
     rollupOptions: {
       output: {
-        chunkFileNames: 'assets/[name]-[hash].js',
+        // FIXED: Use consistent naming for chunks to avoid MIME type issues
+        chunkFileNames: (chunkInfo) => {
+          const facadeModuleId = chunkInfo.facadeModuleId ? chunkInfo.facadeModuleId.split('/').pop() : 'chunk';
+          return `assets/${facadeModuleId}-[hash].js`;
+        },
         entryFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name]-[hash].[ext]',
         manualChunks: {
           vendor: ['react', 'react-dom'],
-          router: ['react-router-dom'],
+          router: ['react-router-dom'], 
           ui: ['framer-motion', 'lucide-react'],
           auth: ['@supabase/supabase-js'],
           payments: ['@stripe/stripe-js']
@@ -46,4 +50,9 @@ export default defineConfig({
   optimizeDeps: {
     include: ['react', 'react-dom', 'react-router-dom'],
   },
+  // FIXED: Add explicit MIME type handling for ES modules
+  assetsInclude: ['**/*.js', '**/*.mjs'],
+  esbuild: {
+    target: 'es2020'
+  }
 });
