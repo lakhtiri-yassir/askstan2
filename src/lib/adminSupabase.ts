@@ -97,26 +97,62 @@ export const adminService = {
     }
   },
 
-  // Grant subscription to user (bypasses RLS)
+  // Grant subscription to user (handle existing subscriptions properly)
   async grantSubscription(userId: string, planType: 'monthly' | 'yearly' = 'monthly') {
     console.log('🎁 Admin: Granting subscription to user:', userId);
     
     try {
-      const { error } = await adminSupabase
+      // First, check if user already has a subscription
+      const { data: existingSub, error: checkError } = await adminSupabase
         .from('subscriptions')
-        .upsert({
-          user_id: userId,
-          plan_type: planType,
-          status: 'active',
-          current_period_start: new Date().toISOString(),
-          current_period_end: new Date(Date.now() + (planType === 'monthly' ? 30 : 365) * 24 * 60 * 60 * 1000).toISOString(),
-          cancel_at_period_end: false,
-          updated_at: new Date().toISOString()
-        });
+        .select('*')
+        .eq('user_id', userId)
+        .single();
 
-      if (error) {
-        console.error('❌ Error granting subscription:', error);
-        throw error;
+      if (checkError && checkError.code !== 'PGRST116') {
+        // PGRST116 is "not found" error, which is fine
+        console.error('❌ Error checking existing subscription:', checkError);
+        throw checkError;
+      }
+
+      if (existingSub) {
+        console.log('📝 Updating existing subscription for user:', userId);
+        // Update existing subscription
+        const { error } = await adminSupabase
+          .from('subscriptions')
+          .update({
+            plan_type: planType,
+            status: 'active',
+            current_period_start: new Date().toISOString(),
+            current_period_end: new Date(Date.now() + (planType === 'monthly' ? 30 : 365) * 24 * 60 * 60 * 1000).toISOString(),
+            cancel_at_period_end: false,
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', userId);
+
+        if (error) {
+          console.error('❌ Error updating subscription:', error);
+          throw error;
+        }
+      } else {
+        console.log('📝 Creating new subscription for user:', userId);
+        // Create new subscription
+        const { error } = await adminSupabase
+          .from('subscriptions')
+          .insert({
+            user_id: userId,
+            plan_type: planType,
+            status: 'active',
+            current_period_start: new Date().toISOString(),
+            current_period_end: new Date(Date.now() + (planType === 'monthly' ? 30 : 365) * 24 * 60 * 60 * 1000).toISOString(),
+            cancel_at_period_end: false,
+            updated_at: new Date().toISOString()
+          });
+
+        if (error) {
+          console.error('❌ Error creating subscription:', error);
+          throw error;
+        }
       }
 
       console.log('✅ Subscription granted successfully');
