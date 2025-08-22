@@ -1,6 +1,5 @@
-// src/lib/supabase.ts - FIXED: Proper Supabase client imports and configuration
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '../types/supabase';
+// src/lib/supabase.ts - DEFINITIVE FIX: Compatible with Supabase v2.53.0
+import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -9,18 +8,14 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables. Please check your .env file.');
 }
 
-// Create the Supabase client with proper typing
-export const supabase: SupabaseClient<Database> = createClient<Database>(
-  supabaseUrl,
-  supabaseAnonKey,
-  {
-    auth: {
-      autoRefreshToken: true,
-      persistSession: true,
-      detectSessionInUrl: true
-    }
+// Create the Supabase client
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true
   }
-);
+});
 
 // Type definitions for our services
 export interface UserProfile {
