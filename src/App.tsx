@@ -17,6 +17,7 @@ const SignInPage = lazy(() => import('./pages/auth/SignInPage'));
 const PlansPage = lazy(() => import('./pages/subscription/PlansPage'));
 const CheckoutSuccessPage = lazy(() => import('./pages/checkout/CheckoutSuccessPage'));
 const SettingsPage = lazy(() => import('./pages/settings/SettingsPage'));
+const DashboardPage = lazy(() => import('./pages/dashboard/DashboardPage'));
 
 // Admin pages that exist
 const AdminLoginPage = lazy(() => import('./pages/admin/AdminLoginPage'));
@@ -81,7 +82,7 @@ const AppRoutes = () => (
         <Route path="/reset-password" element={<ComingSoonPage />} />
         <Route path="/terms" element={<ComingSoonPage />} />
         <Route path="/privacy" element={<ComingSoonPage />} />
-        <Route path="/dashboard" element={<ComingSoonPage />} />
+        <Route path="/dashboard" element={<DashboardPage />} />
         
         {/* Pages that exist */}
         <Route 
