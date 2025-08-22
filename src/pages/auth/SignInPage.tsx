@@ -9,7 +9,7 @@ import { Input } from '../../components/ui/Input';
 
 const SignInPage: React.FC = () => {
   const navigate = useNavigate();
-  const { signIn, user, initialized, loading, hasActiveSubscription } = useAuth();
+  const { signIn, user, initialized, loading, hasActiveSubscription, subscriptionLoading } = useAuth();
   
   const [formData, setFormData] = useState({
     email: '',
@@ -26,26 +26,37 @@ const SignInPage: React.FC = () => {
     }
   }, []);
 
-  // FIXED: Smart redirect logic based on subscription status
+  // FIXED: Smart redirect logic with subscription loading wait
   useEffect(() => {
     // Only attempt redirect when auth is fully initialized and not loading
     if (!initialized || loading) {
       return;
     }
 
-    // If user is already signed in, redirect based on subscription status
+    // If user is already signed in, wait for subscription loading to complete
     if (user) {
       console.log('🔍 SignIn: User already signed in, checking subscription status');
       
-      if (hasActiveSubscription) {
-        console.log('✅ SignIn: User has subscription, redirecting to dashboard');
-        navigate('/dashboard', { replace: true });
-      } else {
-        console.log('💳 SignIn: User needs subscription, redirecting to plans');
-        navigate('/plans', { replace: true });
+      // If subscription is still loading, wait for it to complete
+      if (subscriptionLoading) {
+        console.log('⏳ SignIn: Waiting for subscription data to load...');
+        return;
       }
+
+      // Add a small delay to ensure all data is properly loaded
+      const redirectTimer = setTimeout(() => {
+        if (hasActiveSubscription) {
+          console.log('✅ SignIn: User has subscription, redirecting to dashboard');
+          navigate('/dashboard', { replace: true });
+        } else {
+          console.log('💳 SignIn: User needs subscription, redirecting to plans');
+          navigate('/plans', { replace: true });
+        }
+      }, 500); // 500ms delay to ensure data is fully loaded
+
+      return () => clearTimeout(redirectTimer);
     }
-  }, [user, initialized, loading, hasActiveSubscription, navigate]);
+  }, [user, initialized, loading, hasActiveSubscription, subscriptionLoading, navigate]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -109,12 +120,14 @@ const SignInPage: React.FC = () => {
   };
 
   // Show redirecting state if user is signed in and we're about to redirect
-  if (user && initialized && !loading) {
+  if (user && initialized && !loading && (!subscriptionLoading || hasActiveSubscription !== undefined)) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 font-medium">Redirecting...</p>
+          <p className="text-gray-600 font-medium">
+            {subscriptionLoading ? 'Checking subscription...' : 'Redirecting...'}
+          </p>
         </div>
       </div>
     );
