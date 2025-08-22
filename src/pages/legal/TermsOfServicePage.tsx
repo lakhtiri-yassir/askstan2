@@ -102,3 +102,4 @@ export const TermsOfServicePage: React.FC = () => {
     </div>
   );
 };
+export default TermsOfServicePage;

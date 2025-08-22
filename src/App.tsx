@@ -1,4 +1,4 @@
-// src/App.tsx - MINIMAL FIX: Only include pages that actually exist
+// src/App.tsx - COMPLETE ROUTING FIX: All pages with proper protection
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
@@ -8,22 +8,28 @@ import { ProtectedRoute } from './components/layout/ProtectedRoute';
 import { AdminProtectedRoute } from './components/layout/AdminProtectedRoute';
 import { LoadingSpinner } from './components/ui/LoadingSpinner';
 
-// FIXED: Only import pages that actually exist
+// FIXED: Import all existing pages
 const LandingPage = lazy(() => import('./pages/LandingPage'));
 const SignUpPage = lazy(() => import('./pages/auth/SignUpPage'));
 const SignInPage = lazy(() => import('./pages/auth/SignInPage'));
+const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('./pages/auth/ResetPasswordPage'));
 
-// Only include pages that exist
+// Subscription and main app pages
 const PlansPage = lazy(() => import('./pages/subscription/PlansPage'));
 const CheckoutSuccessPage = lazy(() => import('./pages/checkout/CheckoutSuccessPage'));
 const SettingsPage = lazy(() => import('./pages/settings/SettingsPage'));
 const DashboardPage = lazy(() => import('./pages/dashboard/DashboardPage'));
 
-// Admin pages that exist
+// Legal pages
+const TermsOfServicePage = lazy(() => import('./pages/legal/TermsOfServicePage'));
+const PrivacyPolicyPage = lazy(() => import('./pages/legal/PrivacyPolicyPage'));
+
+// Admin pages
 const AdminLoginPage = lazy(() => import('./pages/admin/AdminLoginPage'));
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
 
-// Simple placeholder for missing pages
+// Simple placeholder for any missing pages
 const ComingSoonPage = () => (
   <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center p-4">
     <div className="text-center">
@@ -60,6 +66,8 @@ const AdminRoutes = () => (
             </AdminProtectedRoute>
           } 
         />
+        {/* Catch-all for admin routes */}
+        <Route path="*" element={<AdminLoginPage />} />
       </Routes>
     </Suspense>
   </div>
@@ -76,15 +84,14 @@ const AppRoutes = () => (
         <Route path="/" element={<LandingPage />} />
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/signin" element={<SignInPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         
-        {/* Placeholder for missing pages */}
-        <Route path="/forgot-password" element={<ComingSoonPage />} />
-        <Route path="/reset-password" element={<ComingSoonPage />} />
-        <Route path="/terms" element={<ComingSoonPage />} />
-        <Route path="/privacy" element={<ComingSoonPage />} />
-        <Route path="/dashboard" element={<DashboardPage />} />
+        {/* Legal pages - public access */}
+        <Route path="/terms" element={<TermsOfServicePage />} />
+        <Route path="/privacy" element={<PrivacyPolicyPage />} />
         
-        {/* Pages that exist */}
+        {/* Protected Routes - require authentication only */}
         <Route 
           path="/plans" 
           element={
@@ -101,6 +108,18 @@ const AppRoutes = () => (
             </ProtectedRoute>
           } 
         />
+        
+        {/* CRITICAL FIX: Dashboard route now requires subscription */}
+        <Route 
+          path="/dashboard" 
+          element={
+            <ProtectedRoute requireSubscription>
+              <DashboardPage />
+            </ProtectedRoute>
+          } 
+        />
+        
+        {/* Settings page - requires subscription */}
         <Route 
           path="/settings" 
           element={
@@ -110,7 +129,10 @@ const AppRoutes = () => (
           } 
         />
         
-        {/* Fallback Route */}
+        {/* Placeholder routes for any missing functionality */}
+        <Route path="/verify-email" element={<ComingSoonPage />} />
+        
+        {/* Fallback Route - redirect to landing page */}
         <Route path="*" element={<LandingPage />} />
       </Routes>
     </Suspense>
