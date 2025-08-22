@@ -1,9 +1,9 @@
-// src/pages/dashboard/DashboardPage.tsx - Restored Original Layout with Banner in Chatbot
+// src/pages/dashboard/DashboardPage.tsx - FIXED: Larger chatbot container, always show banner
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { MessageSquare, Sparkles, Settings, AlertCircle, CheckCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { chatbotConfig, setUserDataForChatbot, shouldLoadChatbot } from '../../config/chatbot';
+import { chatbotConfig, setUserDataForChatbot, shouldLoadChatbot, removeChatbot } from '../../config/chatbot';
 import { useLocation } from 'react-router-dom';
 import askstanBanner from '../../img/askstanbanner.png';
 
@@ -51,7 +51,7 @@ class DashboardErrorBoundary extends React.Component<
 }
 
 export const DashboardPage: React.FC = () => {
-  const { user, profile, subscriptionStatus } = useAuth();
+  const { user, profile, subscription } = useAuth();
   const [chatbotLoaded, setChatbotLoaded] = useState(false);
   const [chatbotError, setChatbotError] = useState<string | null>(null);
   const chatbotLoadedRef = useRef(false);
@@ -59,7 +59,7 @@ export const DashboardPage: React.FC = () => {
 
   const displayName = profile?.display_name || user?.email?.split('@')[0] || 'User';
 
-  // Load chatbot only on dashboard
+  // FIXED: Improved chatbot loading with cleanup
   useEffect(() => {
     if (!shouldLoadChatbot(location.pathname)) {
       return;
@@ -94,13 +94,6 @@ export const DashboardPage: React.FC = () => {
           document.body.appendChild(newScript);
         });
 
-        // Add HTML content to chatbot container
-        const chatbotContainer = document.getElementById('chatbot-container');
-        if (chatbotContainer && script.innerHTML) {
-          const htmlContent = script.innerHTML.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
-          chatbotContainer.innerHTML = htmlContent;
-        }
-
         chatbotLoadedRef.current = true;
         setChatbotLoaded(true);
         
@@ -114,14 +107,24 @@ export const DashboardPage: React.FC = () => {
     // Small delay to ensure DOM is ready
     setTimeout(loadChatbot, 1000);
 
-    // Cleanup function
+    // CLEANUP: Remove chatbot when component unmounts or user leaves dashboard
     return () => {
-      const chatbotContainer = document.getElementById('chatbot-container');
-      if (chatbotContainer) {
-        chatbotContainer.innerHTML = '';
-      }
+      console.log('🧹 Cleaning up chatbot...');
+      removeChatbot();
+      chatbotLoadedRef.current = false;
+      setChatbotLoaded(false);
     };
   }, [location.pathname, user, profile]);
+
+  // CLEANUP: Remove chatbot when user changes (sign out)
+  useEffect(() => {
+    if (!user) {
+      console.log('🧹 User signed out, cleaning up chatbot...');
+      removeChatbot();
+      chatbotLoadedRef.current = false;
+      setChatbotLoaded(false);
+    }
+  }, [user]);
 
   return (
     <DashboardErrorBoundary>
@@ -133,7 +136,7 @@ export const DashboardPage: React.FC = () => {
           transition={{ duration: 0.6 }}
           className="bg-white/90 backdrop-blur-lg shadow-lg border-b border-gray-200 py-8"
         >
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <h1 className="text-4xl font-bold text-gray-900 mb-4">
               Welcome back, {displayName}! 👋
             </h1>
@@ -144,15 +147,15 @@ export const DashboardPage: React.FC = () => {
             <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-green-100 to-blue-100 rounded-full">
               <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
               <span className="text-sm font-medium text-green-800">
-                {subscriptionStatus?.status === 'active' ? 'Premium Active' : 'Account Active'}
+                {subscription?.status === 'active' ? 'Premium Active' : 'Account Active'}
               </span>
             </div>
           </div>
         </motion.div>
 
         {/* Main Dashboard Content */}
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* AI Coach Section */}
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* AI Coach Section - LARGER CONTAINER */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -175,122 +178,119 @@ export const DashboardPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Chatbot Container with Large Banner */}
-            <div 
-              id="chatbot-container" 
-              className="relative w-full bg-white"
-              style={{ minHeight: '500px' }}
-            >
-              {/* Large AskStan Banner as Default Content */}
-              <div className="flex flex-col items-center justify-center text-center p-8 h-full min-h-[500px]">
+            {/* FIXED: Larger Chatbot Container with Always-Visible Banner */}
+            <div className="relative w-full bg-white" style={{ minHeight: '700px' }}>
+              {/* ALWAYS VISIBLE: AskStan Banner */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-8">
                 <motion.div
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.8, delay: 0.3 }}
+                  className="flex flex-col items-center"
                 >
                   <img
                     src={askstanBanner}
                     alt="AskStan! AI Social Media Coach"
-                    className="w-72 h-72 md:w-80 md:h-80 lg:w-96 lg:h-96 object-contain mb-6 mx-auto"
+                    className="w-64 h-64 md:w-72 md:h-72 lg:w-80 lg:h-80 object-contain mb-6 mx-auto drop-shadow-lg"
                   />
                   
-                  <div className="max-w-md mx-auto">
+                  <div className="max-w-lg mx-auto">
                     <h3 className="text-2xl font-bold text-gray-900 mb-3">
                       Your AI Coach is Ready!
                     </h3>
                     <p className="text-gray-600 mb-4">
-                      Start a conversation with Stan to get personalized social media strategies, 
-                      content ideas, and growth tips tailored just for you.
+                      Stan is here to help you grow your social media presence. Click the chat widget to start your conversation and get personalized insights for LinkedIn, content strategy, and audience engagement.
                     </p>
                     
-                    {chatbotError && (
-                      <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
-                        <p className="text-red-700 text-sm">{chatbotError}</p>
+                    {/* Status Indicators */}
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-sm">
+                      <div className="flex items-center text-green-600">
+                        <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
+                        <span>AI Coach Online</span>
                       </div>
-                    )}
-                    
-                    {!chatbotLoaded && !chatbotError && (
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-                        <p className="text-blue-700 text-sm">Loading your AI coach...</p>
+                      <div className="flex items-center text-blue-600">
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        <span>LinkedIn Expert Ready</span>
                       </div>
-                    )}
-                    
-                    <div className="text-xs text-gray-500">
-                      Powered by Advanced AI Technology
+                      <div className="flex items-center text-purple-600">
+                        <MessageSquare className="w-4 h-4 mr-2" />
+                        <span>24/7 Available</span>
+                      </div>
                     </div>
                   </div>
                 </motion.div>
               </div>
+
+              {/* Chatbot Integration Area */}
+              <div 
+                id="chatbot-container" 
+                className="relative w-full h-full z-10"
+                style={{ minHeight: '700px' }}
+              >
+                {/* Chatbot will load here via JavaScript */}
+              </div>
+
+              {/* Error State */}
+              {chatbotError && (
+                <div className="absolute bottom-4 right-4 bg-red-100 border border-red-300 text-red-700 px-4 py-2 rounded-lg text-sm">
+                  <AlertCircle className="w-4 h-4 inline mr-2" />
+                  {chatbotError}
+                </div>
+              )}
+
+              {/* Loading State */}
+              {!chatbotLoaded && !chatbotError && (
+                <div className="absolute bottom-4 left-4 bg-blue-100 border border-blue-300 text-blue-700 px-4 py-2 rounded-lg text-sm">
+                  <div className="flex items-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                    Loading AI Coach...
+                  </div>
+                </div>
+              )}
             </div>
           </motion.div>
 
-          {/* Quick Stats */}
+          {/* Quick Actions Section */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.4 }}
-            className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"
+            className="grid grid-cols-1 md:grid-cols-3 gap-6"
           >
-            <div className="bg-white/80 backdrop-blur-lg rounded-xl shadow-lg p-6 text-center border border-gray-200">
-              <div className="text-3xl font-bold text-blue-600 mb-2">24/7</div>
-              <div className="text-gray-600">AI Support Available</div>
+            <div className="bg-white/80 backdrop-blur-lg rounded-xl p-6 shadow-lg border border-gray-200">
+              <div className="flex items-center mb-4">
+                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                  <Sparkles className="w-6 h-6 text-blue-600" />
+                </div>
+                <h3 className="font-semibold text-gray-900">Content Ideas</h3>
+              </div>
+              <p className="text-gray-600 text-sm">
+                Get personalized content suggestions for your social media platforms.
+              </p>
             </div>
-            
-            <div className="bg-white/80 backdrop-blur-lg rounded-xl shadow-lg p-6 text-center border border-gray-200">
-              <div className="text-3xl font-bold text-green-600 mb-2">∞</div>
-              <div className="text-gray-600">Unlimited Conversations</div>
-            </div>
-            
-            <div className="bg-white/80 backdrop-blur-lg rounded-xl shadow-lg p-6 text-center border border-gray-200">
-              <div className="text-3xl font-bold text-purple-600 mb-2">🚀</div>
-              <div className="text-gray-600">Growth Accelerated</div>
-            </div>
-          </motion.div>
 
-          {/* Features Overview */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.6 }}
-            className="bg-white/80 backdrop-blur-lg rounded-xl shadow-lg p-6 border border-gray-200"
-          >
-            <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
-              <Sparkles className="w-6 h-6 text-yellow-500 mr-2" />
-              What You Can Do
-            </h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="flex items-start space-x-3">
-                <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-                <div>
-                  <h4 className="font-semibold text-gray-900">Content Strategy</h4>
-                  <p className="text-sm text-gray-600">Get personalized content plans for all platforms</p>
+            <div className="bg-white/80 backdrop-blur-lg rounded-xl p-6 shadow-lg border border-gray-200">
+              <div className="flex items-center mb-4">
+                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                  <MessageSquare className="w-6 h-6 text-green-600" />
                 </div>
+                <h3 className="font-semibold text-gray-900">LinkedIn Strategy</h3>
               </div>
-              
-              <div className="flex items-start space-x-3">
-                <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
-                <div>
-                  <h4 className="font-semibold text-gray-900">Growth Analytics</h4>
-                  <p className="text-sm text-gray-600">Track and optimize your social media performance</p>
+              <p className="text-gray-600 text-sm">
+                Optimize your LinkedIn profile and develop winning networking strategies.
+              </p>
+            </div>
+
+            <div className="bg-white/80 backdrop-blur-lg rounded-xl p-6 shadow-lg border border-gray-200">
+              <div className="flex items-center mb-4">
+                <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
+                  <Settings className="w-6 h-6 text-purple-600" />
                 </div>
+                <h3 className="font-semibold text-gray-900">Growth Analytics</h3>
               </div>
-              
-              <div className="flex items-start space-x-3">
-                <div className="w-2 h-2 bg-purple-500 rounded-full mt-2"></div>
-                <div>
-                  <h4 className="font-semibold text-gray-900">Content Creation</h4>
-                  <p className="text-sm text-gray-600">Generate engaging posts and captions</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start space-x-3">
-                <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2"></div>
-                <div>
-                  <h4 className="font-semibold text-gray-900">Audience Insights</h4>
-                  <p className="text-sm text-gray-600">Understand and grow your target audience</p>
-                </div>
-              </div>
+              <p className="text-gray-600 text-sm">
+                Track your progress and get insights on your social media growth.
+              </p>
             </div>
           </motion.div>
         </div>

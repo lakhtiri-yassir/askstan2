@@ -1,15 +1,15 @@
-// src/pages/auth/SignInPage.tsx - FIXED: Simplified redirect logic
+// src/pages/auth/SignInPage.tsx - FIXED: Centered layout, email memory, home button
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Mail, Lock, ArrowRight } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Home } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 
 const SignInPage: React.FC = () => {
   const navigate = useNavigate();
-  const { signIn, user, initialized, loading } = useAuth();
+  const { signIn, user, initialized, loading, hasActiveSubscription } = useAuth();
   
   const [formData, setFormData] = useState({
     email: '',
@@ -18,20 +18,34 @@ const SignInPage: React.FC = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // FIXED: Simplified redirect logic - just check if user exists
+  // Load saved email from localStorage on component mount
+  useEffect(() => {
+    const savedEmail = localStorage.getItem('askstan_last_email');
+    if (savedEmail) {
+      setFormData(prev => ({ ...prev, email: savedEmail }));
+    }
+  }, []);
+
+  // FIXED: Smart redirect logic based on subscription status
   useEffect(() => {
     // Only attempt redirect when auth is fully initialized and not loading
     if (!initialized || loading) {
       return;
     }
 
-    // If user is already signed in, redirect to plans page
-    // ProtectedRoute will handle subscription-based redirects from there
+    // If user is already signed in, redirect based on subscription status
     if (user) {
-      console.log('🔍 SignIn: User already signed in, redirecting to plans page');
-      navigate('/plans', { replace: true });
+      console.log('🔍 SignIn: User already signed in, checking subscription status');
+      
+      if (hasActiveSubscription) {
+        console.log('✅ SignIn: User has subscription, redirecting to dashboard');
+        navigate('/dashboard', { replace: true });
+      } else {
+        console.log('💳 SignIn: User needs subscription, redirecting to plans');
+        navigate('/plans', { replace: true });
+      }
     }
-  }, [user, initialized, loading, navigate]);
+  }, [user, initialized, loading, hasActiveSubscription, navigate]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -76,11 +90,14 @@ const SignInPage: React.FC = () => {
 
     try {
       console.log('🔐 SignIn: Attempting sign in...');
+      
+      // Save email to localStorage for future use
+      localStorage.setItem('askstan_last_email', formData.email);
+      
       await signIn(formData.email, formData.password);
       console.log('✅ SignIn: Sign in successful');
       
       // Note: Redirect will be handled by the useEffect when user state updates
-      // Default redirect is to /plans, and ProtectedRoute will handle further routing
       
     } catch (error: any) {
       console.error('❌ SignIn: Sign in error:', error);
@@ -105,7 +122,17 @@ const SignInPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center p-4">
-      <div className="max-w-md w-full">
+      {/* Go Back to Home Button */}
+      <Link
+        to="/"
+        className="absolute top-6 left-6 flex items-center text-gray-600 hover:text-blue-600 transition-colors group"
+      >
+        <Home className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" />
+        <span className="font-medium">Back to Home</span>
+      </Link>
+
+      {/* CENTERED CONTAINER */}
+      <div className="w-full max-w-md mx-auto">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -117,12 +144,12 @@ const SignInPage: React.FC = () => {
           <p className="text-gray-600">Sign in to continue your social media growth journey</p>
         </motion.div>
 
-        {/* Sign In Form */}
+        {/* Sign In Form - Properly Centered */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="bg-white rounded-2xl shadow-xl p-8"
+          className="bg-white rounded-2xl shadow-xl p-8 w-full"
         >
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
@@ -135,6 +162,8 @@ const SignInPage: React.FC = () => {
                 icon={<Mail className="w-5 h-5" />}
                 error={errors.email}
                 disabled={isSubmitting}
+                autoComplete="email"
+                name="email"
               />
             </div>
 
@@ -148,6 +177,8 @@ const SignInPage: React.FC = () => {
                 icon={<Lock className="w-5 h-5" />}
                 error={errors.password}
                 disabled={isSubmitting}
+                autoComplete="current-password"
+                name="password"
               />
             </div>
 
