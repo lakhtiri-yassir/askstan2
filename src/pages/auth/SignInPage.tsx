@@ -242,6 +242,7 @@ const SignInPage: React.FC = () => {
             </p>
           </div>
         </motion.div>
+        </div>
       </div>
     </div>
   );
