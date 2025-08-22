@@ -205,7 +205,7 @@ const UserRow: React.FC<{
   );
 };
 
-export const AdminDashboard: React.FC = () => {
+const AdminDashboard: React.FC = () => {
   const { admin, signOut } = useAdminAuth();
   const [users, setUsers] = useState<AdminUserView[]>([]);
   const [stats, setStats] = useState<AdminStats>({
