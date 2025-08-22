@@ -1,17 +1,17 @@
-// src/pages/LandingPage.tsx - MODIFIED: Add session clear option
+// src/pages/LandingPage.tsx - ADDED: Session clear functionality while keeping original design
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRight, Zap, Target, TrendingUp, Star, MessageCircle } from 'lucide-react';
+import { ArrowRight, Zap, Target, TrendingUp, Star, MessageCircle, RotateCcw } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/Button';
 
 const LandingPage: React.FC = () => {
   const { user, hasActiveSubscription, signOut, addDebugLog } = useAuth();
   const navigate = useNavigate();
-  const [showDebugOptions, setShowDebugOptions] = useState(false);
+  const [showClearButton, setShowClearButton] = useState(false);
 
-  // OPTION 1: Automatically clear session for users with subscription issues
+  // Show clear session button if user has subscription loading issues
   useEffect(() => {
     if (user) {
       addDebugLog('🔍 LandingPage: User detected, checking subscription status', {
@@ -19,81 +19,62 @@ const LandingPage: React.FC = () => {
         userEmail: user.email
       });
 
-      // AUTO-CLEAR: Uncomment the lines below to automatically clear session
-      // when user has subscription loading issues
-      /*
+      // Show clear session button after 3 seconds if subscription hasn't loaded
       const timer = setTimeout(() => {
         if (!hasActiveSubscription) {
-          addDebugLog('🧹 LandingPage: Auto-clearing session due to subscription issues');
-          handleSignOut();
+          setShowClearButton(true);
         }
-      }, 2000); // Wait 2 seconds for subscription to load
+      }, 3000);
 
       return () => clearTimeout(timer);
-      */
     }
   }, [user, hasActiveSubscription, addDebugLog]);
 
-  // Manual session clear function
-  const handleSignOut = async () => {
+  // Clear session function
+  const handleClearSession = async () => {
     try {
-      addDebugLog('🧹 LandingPage: Manually clearing session');
+      addDebugLog('🧹 LandingPage: Clearing session storage');
       await signOut();
-      // Force page refresh to ensure clean state
+      // Force clear all storage
+      localStorage.clear();
+      sessionStorage.clear();
+      // Reload page to ensure clean state
       window.location.reload();
     } catch (error) {
-      addDebugLog('❌ Sign out error', error);
+      addDebugLog('❌ Clear session error', error);
       // Force clear even if signOut fails
       localStorage.clear();
+      sessionStorage.clear();
       window.location.reload();
     }
-  };
-
-  // Toggle debug options (for development)
-  const handleLogoClick = () => {
-    setShowDebugOptions(!showDebugOptions);
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50">
-      {/* Debug Panel - Only show when activated */}
-      {showDebugOptions && user && (
-        <div className="fixed top-4 right-4 bg-white rounded-lg shadow-lg p-4 z-50 border border-gray-200">
-          <div className="text-sm space-y-2">
-            <div className="font-medium text-gray-800">Debug Options</div>
-            <div className="text-xs text-gray-600">
-              User: {user.email}<br/>
-              Has Subscription: {hasActiveSubscription ? 'Yes' : 'No'}
-            </div>
-            <Button
-              onClick={handleSignOut}
-              size="sm"
-              variant="outline"
-              className="w-full text-red-600 border-red-200 hover:bg-red-50"
-            >
-              Clear Session & Refresh
-            </Button>
-            <Button
-              onClick={() => setShowDebugOptions(false)}
-              size="sm"
-              variant="outline"
-              className="w-full"
-            >
-              Hide Debug
-            </Button>
-          </div>
-        </div>
+      {/* Clear Session Button - Fixed position, only show when needed */}
+      {showClearButton && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="fixed bottom-6 right-6 z-50"
+        >
+          <Button
+            onClick={handleClearSession}
+            className="bg-red-500 hover:bg-red-600 text-white shadow-lg flex items-center space-x-2"
+            size="sm"
+          >
+            <RotateCcw className="w-4 h-4" />
+            <span>Clear Session</span>
+          </Button>
+        </motion.div>
       )}
 
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            {/* Logo - Click to toggle debug options */}
-            <div 
-              className="flex items-center cursor-pointer select-none"
-              onClick={handleLogoClick}
-            >
+            {/* Logo */}
+            <div className="flex items-center">
               <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-yellow-500 rounded-lg flex items-center justify-center mr-3">
                 <MessageCircle className="w-5 h-5 text-white" />
               </div>
@@ -122,7 +103,7 @@ const LandingPage: React.FC = () => {
                     </Link>
                   )}
                   <Button
-                    onClick={handleSignOut}
+                    onClick={handleClearSession}
                     variant="outline"
                     size="sm"
                   >
@@ -145,6 +126,15 @@ const LandingPage: React.FC = () => {
                 </>
               )}
             </nav>
+
+            {/* Mobile menu button */}
+            <div className="md:hidden">
+              <button className="text-gray-700 hover:text-blue-600 transition-colors">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -277,6 +267,92 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
+      {/* Testimonials Section */}
+      <section className="py-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+              Trusted by Thousands of Creators
+            </h2>
+            <p className="text-xl text-gray-600">
+              See what our users are saying about their growth journey
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              {
+                name: "Sarah Johnson",
+                role: "Content Creator",
+                content: "AskStan! helped me grow my Instagram following by 300% in just 3 months. The AI insights are incredible!",
+                rating: 5
+              },
+              {
+                name: "Mike Chen",
+                role: "Small Business Owner",
+                content: "The strategic planning feature completely transformed how I approach social media for my business.",
+                rating: 5
+              },
+              {
+                name: "Emily Rodriguez",
+                role: "Influencer",
+                content: "I've tried many tools, but AskStan!'s personalized coaching is on another level. Highly recommend!",
+                rating: 5
+              }
+            ].map((testimonial, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.1 * index }}
+                className="bg-white p-6 rounded-xl shadow-sm border border-gray-100"
+              >
+                <div className="flex mb-4">
+                  {[...Array(testimonial.rating)].map((_, i) => (
+                    <Star key={i} className="w-5 h-5 text-yellow-400 fill-current" />
+                  ))}
+                </div>
+                <p className="text-gray-700 mb-4">"{testimonial.content}"</p>
+                <div>
+                  <p className="font-semibold text-gray-900">{testimonial.name}</p>
+                  <p className="text-gray-600 text-sm">{testimonial.role}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing Preview */}
+      <section className="py-20 bg-white/50">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+            Simple, Transparent Pricing
+          </h2>
+          <p className="text-xl text-gray-600 mb-8">
+            Choose the plan that works best for your growth goals
+          </p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-2xl mx-auto">
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+              <h3 className="text-xl font-semibold mb-2">Monthly</h3>
+              <p className="text-3xl font-bold text-blue-600 mb-4">$4.99<span className="text-lg text-gray-600">/month</span></p>
+              <p className="text-gray-600">Perfect for getting started</p>
+            </div>
+            <div className="bg-gradient-to-r from-blue-600 to-yellow-600 p-6 rounded-xl text-white relative">
+              <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                <span className="bg-yellow-400 text-blue-900 px-3 py-1 rounded-full text-sm font-semibold">
+                  Best Value
+                </span>
+              </div>
+              <h3 className="text-xl font-semibold mb-2">Yearly</h3>
+              <p className="text-3xl font-bold mb-4">$49.99<span className="text-lg opacity-90">/year</span></p>
+              <p className="opacity-90">Save 17% with annual billing</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* CTA Section */}
       <section className="py-20 bg-gradient-to-r from-blue-600 to-yellow-600 text-white">
         <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
@@ -306,21 +382,41 @@ const LandingPage: React.FC = () => {
       {/* Footer */}
       <footer className="bg-gray-900 text-white py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <div className="flex items-center justify-center mb-4">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-yellow-500 rounded-lg flex items-center justify-center mr-3">
-                <MessageCircle className="w-5 h-5 text-white" />
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div className="col-span-1 md:col-span-2">
+              <div className="flex items-center mb-4">
+                <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-yellow-500 rounded-lg flex items-center justify-center mr-3">
+                  <MessageCircle className="w-5 h-5 text-white" />
+                </div>
+                <span className="text-xl font-bold">AskStan!</span>
               </div>
-              <span className="text-xl font-bold">AskStan!</span>
+              <p className="text-gray-400 mb-4 max-w-md">
+                Empowering creators and businesses to grow their social media presence with AI-powered coaching and personalized strategies.
+              </p>
             </div>
-            <p className="text-gray-400 mb-4">
-              Empowering creators and businesses to grow their social media presence with AI.
-            </p>
-            <div className="flex justify-center space-x-6 text-sm text-gray-400">
-              <Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
-              <Link to="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
-              <Link to="/contact" className="hover:text-white transition-colors">Contact</Link>
+            
+            <div>
+              <h4 className="font-semibold mb-4">Product</h4>
+              <ul className="space-y-2 text-gray-400">
+                <li><Link to="/features" className="hover:text-white transition-colors">Features</Link></li>
+                <li><Link to="/plans" className="hover:text-white transition-colors">Pricing</Link></li>
+                <li><Link to="/demo" className="hover:text-white transition-colors">Demo</Link></li>
+              </ul>
             </div>
+            
+            <div>
+              <h4 className="font-semibold mb-4">Company</h4>
+              <ul className="space-y-2 text-gray-400">
+                <li><Link to="/about" className="hover:text-white transition-colors">About</Link></li>
+                <li><Link to="/contact" className="hover:text-white transition-colors">Contact</Link></li>
+                <li><Link to="/privacy" className="hover:text-white transition-colors">Privacy</Link></li>
+                <li><Link to="/terms" className="hover:text-white transition-colors">Terms</Link></li>
+              </ul>
+            </div>
+          </div>
+          
+          <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
+            <p>&copy; 2024 AskStan!. All rights reserved.</p>
           </div>
         </div>
       </footer>

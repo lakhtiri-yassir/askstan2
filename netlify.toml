@@ -1,4 +1,5 @@
-// netlify.toml - Add this file to your project root to fix deployment issues
+# netlify.toml - Fixed TOML format (no JavaScript comments)
+
 [build]
   publish = "dist"
   command = "npm run build"
@@ -36,13 +37,11 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
 
-# Fix for dynamic imports and chunk loading
 [[headers]]
   for = "/assets/*.js"
   [headers.values]
     Content-Type = "application/javascript"
 
-# Development proxy settings for local testing
 [dev]
   command = "npm run dev"
   port = 5173
