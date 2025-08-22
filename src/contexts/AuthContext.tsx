@@ -132,79 +132,33 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       };
       setProfile(basicProfile);
       
-      // CRITICAL FIX: Enhanced subscription loading with step-by-step debugging
-      addDebugLog(`🔍 Starting subscription query for user: ${authUser.id}`);
+      // SIMPLIFIED: Direct subscription loading without complex tests
+      addDebugLog(`🔍 Starting direct subscription query for user: ${authUser.id}`);
       
       try {
-        addDebugLog('🔍 Step 1: Preparing Supabase query...');
+        addDebugLog('🔍 Executing direct Supabase query...');
         
-        // Test basic Supabase connection first
-        addDebugLog('🔍 Step 2: Testing Supabase connection...');
-        
-        try {
-          // Simple connection test
-          const connectionTest = await supabase.from('subscriptions').select('count');
-          addDebugLog('✅ Supabase connection test passed', connectionTest);
-        } catch (connectionError) {
-          addDebugLog('❌ Supabase connection test failed', {
-            message: connectionError.message,
-            name: connectionError.name,
-            code: connectionError.code
-          });
-          throw connectionError;
-        }
-        
-        addDebugLog('🔍 Step 3: Executing subscription query...');
-        
-        const subscriptionPromise = supabase
+        const result = await supabase
           .from('subscriptions')
           .select('*')
           .eq('user_id', authUser.id)
           .order('created_at', { ascending: false });
 
-        const timeoutPromise = new Promise<never>((_, reject) => 
-          setTimeout(() => {
-            addDebugLog('⏰ Query timeout triggered after 3 seconds');
-            reject(new Error('Subscription query timeout after 3 seconds'));
-          }, 3000)
-        );
-
-        addDebugLog('🔍 Step 4: Waiting for query result...');
-        
-        const result = await Promise.race([
-          subscriptionPromise,
-          timeoutPromise
-        ]);
-
-        addDebugLog('🔍 Step 5: Processing query result...');
-        
         const { data: subscriptions, error } = result;
         
-        addDebugLog('📊 Query completed successfully', { 
+        addDebugLog('📊 Query result', { 
           subscriptionCount: subscriptions?.length || 0,
           hasError: !!error
         });
         
         if (error) {
-          addDebugLog('❌ Subscription query returned error', {
+          addDebugLog('❌ Query error', {
             message: error.message,
-            details: error.details,
-            hint: error.hint,
             code: error.code
           });
           setSubscription(null);
         } else if (subscriptions && subscriptions.length > 0) {
           addDebugLog(`📋 Found ${subscriptions.length} subscription(s)`);
-          
-          // Log all found subscriptions
-          subscriptions.forEach((sub, index) => {
-            addDebugLog(`📄 Subscription ${index + 1}`, {
-              id: sub.id,
-              status: sub.status,
-              plan_type: sub.plan_type,
-              user_id: sub.user_id
-            });
-          });
           
           // Find active or trialing subscription first
           let activeSubscription = subscriptions.find(sub => 
@@ -212,41 +166,36 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           );
           
           // If no active/trialing found, use the most recent one
-          if (!activeSubscription && subscriptions.length > 0) {
+          if (!activeSubscription) {
             activeSubscription = subscriptions[0];
-            addDebugLog('⚠️ No active/trialing subscription, using most recent', {
+            addDebugLog('⚠️ Using most recent subscription', {
               status: activeSubscription.status
             });
           }
           
-          if (activeSubscription) {
-            addDebugLog(`✅ Selected subscription`, {
-              id: activeSubscription.id,
-              status: activeSubscription.status,
-              plan_type: activeSubscription.plan_type
-            });
-            
-            setSubscription(activeSubscription);
-            
-            // Log hasActiveSubscription calculation
-            const isActive = activeSubscription.status === 'active' || activeSubscription.status === 'trialing';
-            addDebugLog(`🎯 Subscription active calculation`, {
-              status: activeSubscription.status,
-              isActive: activeSubscription.status === 'active',
-              isTrialing: activeSubscription.status === 'trialing',
-              result: isActive
-            });
-          }
+          addDebugLog(`✅ Setting subscription`, {
+            id: activeSubscription.id,
+            status: activeSubscription.status,
+            plan_type: activeSubscription.plan_type
+          });
+          
+          setSubscription(activeSubscription);
+          
+          // Log hasActiveSubscription calculation
+          const isActive = activeSubscription.status === 'active' || activeSubscription.status === 'trialing';
+          addDebugLog(`🎯 Active calculation`, {
+            status: activeSubscription.status,
+            result: isActive
+          });
         } else {
-          addDebugLog('ℹ️ No subscriptions found (empty result)');
+          addDebugLog('ℹ️ No subscriptions found');
           setSubscription(null);
         }
         
       } catch (subError) {
-        addDebugLog('❌ Subscription loading failed at step', {
+        addDebugLog('❌ Subscription loading failed', {
           message: subError.message,
-          name: subError.name,
-          stack: subError.stack?.substring(0, 500) // Truncate stack trace
+          name: subError.name
         });
         setSubscription(null);
       }
@@ -474,7 +423,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // DEBUGGING: Enhanced manual subscription check function
+  // DEBUGGING: Simplified manual subscription check function
   const debugSubscriptionStatus = async (): Promise<void> => {
     if (!user) {
       addDebugLog('❌ No user for subscription debug');
@@ -486,91 +435,66 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     addDebugLog(`🐛 User Email: ${user.email}`);
     
     try {
-      addDebugLog('🐛 Step 1: Testing basic Supabase access...');
+      addDebugLog('🐛 Direct subscription query (bypassing connection tests)...');
       
-      // Test 1: Basic connection
-      try {
-        const basicTest = await supabase.from('subscriptions').select('count');
-        addDebugLog('✅ Basic Supabase connection works', basicTest);
-      } catch (basicError) {
-        addDebugLog('❌ Basic Supabase connection failed', {
-          message: basicError.message,
-          code: basicError.code
-        });
-        return;
-      }
-      
-      addDebugLog('🐛 Step 2: Testing table access without filters...');
-      
-      // Test 2: Can we access the table at all?
-      try {
-        const { data: testData, error: testError } = await supabase
-          .from('subscriptions')
-          .select('*')
-          .limit(1);
-        
-        addDebugLog('🐛 Table access test result', {
-          hasData: !!testData,
-          dataCount: testData?.length || 0,
-          hasError: !!testError,
-          errorMessage: testError?.message || null
-        });
-      } catch (accessError) {
-        addDebugLog('❌ Table access test failed', {
-          message: accessError.message,
-          name: accessError.name
-        });
-      }
-      
-      addDebugLog('🐛 Step 3: Querying for user-specific subscriptions...');
-      
-      // Test 3: User-specific query
+      // Skip connection tests and go directly to the query
       const startTime = Date.now();
-      const { data: allSubs, error } = await supabase
+      
+      const result = await supabase
         .from('subscriptions')
         .select('*')
         .eq('user_id', user.id);
       
       const queryTime = Date.now() - startTime;
+      addDebugLog(`🐛 Query completed in ${queryTime}ms`);
       
-      addDebugLog(`🐛 User query completed in ${queryTime}ms`);
+      const { data: allSubs, error } = result;
       
       if (error) {
-        addDebugLog('❌ User query error', {
+        addDebugLog('❌ Direct query error', {
           message: error.message,
           details: error.details,
           hint: error.hint,
           code: error.code
         });
       } else {
-        addDebugLog('✅ User query successful', {
+        addDebugLog('✅ Direct query successful', {
           resultCount: allSubs?.length || 0
         });
         
         if (allSubs && allSubs.length > 0) {
+          addDebugLog(`📋 Found ${allSubs.length} subscription(s):`);
+          
           allSubs.forEach((sub, index) => {
-            addDebugLog(`📄 Found subscription ${index + 1}`, {
+            addDebugLog(`📄 Subscription ${index + 1}`, {
               id: sub.id,
               status: sub.status,
               plan_type: sub.plan_type,
               user_id: sub.user_id,
               created_at: sub.created_at
             });
+            
+            // Test active calculation for each subscription
+            const isActive = sub.status === 'active' || sub.status === 'trialing';
+            addDebugLog(`🎯 Is subscription ${index + 1} active?`, {
+              status: sub.status,
+              isActive: sub.status === 'active',
+              isTrialing: sub.status === 'trialing',
+              result: isActive
+            });
           });
+          
+          // Set the subscription in context manually for testing
+          const activeSub = allSubs.find(sub => sub.status === 'active' || sub.status === 'trialing') || allSubs[0];
+          if (activeSub) {
+            addDebugLog('🔧 Manually setting subscription in context...', {
+              id: activeSub.id,
+              status: activeSub.status
+            });
+            setSubscription(activeSub);
+          }
         } else {
           addDebugLog('ℹ️ No subscriptions found for this user');
-          
-          // Try to find subscriptions for any user to see if data exists
-          addDebugLog('🐛 Step 4: Checking if any subscriptions exist in table...');
-          try {
-            const { count } = await supabase
-              .from('subscriptions')
-              .select('*', { count: 'exact', head: true });
-            
-            addDebugLog('🐛 Total subscriptions in table', { count });
-          } catch (countError) {
-            addDebugLog('❌ Count query failed', countError);
-          }
         }
       }
       
@@ -581,13 +505,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         hasActiveSubscription: hasActiveSubscription
       });
       
-      addDebugLog('✅ Debug subscription check completed');
+      addDebugLog('✅ Debug completed');
       
     } catch (debugError) {
-      addDebugLog('❌ Debug subscription check failed', {
+      addDebugLog('❌ Debug failed', {
         message: debugError.message,
-        name: debugError.name,
-        stack: debugError.stack?.substring(0, 200)
+        name: debugError.name
       });
     }
   };
