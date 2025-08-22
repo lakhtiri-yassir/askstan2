@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRight, Star, Check, Sparkles, TrendingUp, Users, MessageSquare, RotateCcw } from 'lucide-react';
+import { ArrowRight, Star, Check, Sparkles, TrendingUp, Users, MessageSquare, MessageCircle, RotateCcw } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/Button';
 import askstanBanner from '../img/askstanbanner.png';
