@@ -119,6 +119,33 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const loadUserData = async (authUser: User): Promise<void> => {
     try {
       addDebugLog(`🔄 Loading data for: ${authUser.email}`);
+      addDebugLog(`🔍 Auth user session info`, {
+        userId: authUser.id,
+        hasAccessToken: !!authUser.access_token,
+        hasRefreshToken: !!authUser.refresh_token,
+        tokenExpiry: authUser.expires_at,
+        currentTime: Math.floor(Date.now() / 1000),
+        isTokenExpired: authUser.expires_at ? authUser.expires_at < Math.floor(Date.now() / 1000) : 'unknown'
+      });
+      
+      // CRITICAL FIX: Check if we need to refresh the session first
+      if (authUser.expires_at && authUser.expires_at < Math.floor(Date.now() / 1000)) {
+        addDebugLog('⚠️ Access token expired, refreshing session...');
+        try {
+          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+          if (refreshError) {
+            addDebugLog('❌ Session refresh failed', refreshError);
+            throw refreshError;
+          }
+          if (refreshData.user) {
+            addDebugLog('✅ Session refreshed successfully');
+            authUser = refreshData.user; // Use refreshed user
+          }
+        } catch (refreshError) {
+          addDebugLog('❌ Session refresh error', refreshError);
+          throw refreshError;
+        }
+      }
       
       // Create basic profile from auth user data
       const basicProfile: UserProfile = {
@@ -132,11 +159,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       };
       setProfile(basicProfile);
       
-      // SIMPLIFIED: Direct subscription loading without complex tests
-      addDebugLog(`🔍 Starting direct subscription query for user: ${authUser.id}`);
+      // CRITICAL FIX: Ensure we have a valid session before querying
+      addDebugLog('🔍 Getting current session before subscription query...');
+      const { data: sessionData } = await supabase.auth.getSession();
+      
+      if (!sessionData.session) {
+        addDebugLog('❌ No valid session found, cannot query subscriptions');
+        setSubscription(null);
+        return;
+      }
+      
+      addDebugLog('✅ Valid session confirmed', {
+        hasSession: !!sessionData.session,
+        sessionUserId: sessionData.session.user.id,
+        matchesAuthUser: sessionData.session.user.id === authUser.id
+      });
+      
+      // SIMPLIFIED: Direct subscription loading with session validation
+      addDebugLog(`🔍 Starting subscription query for user: ${authUser.id}`);
       
       try {
-        addDebugLog('🔍 Executing direct Supabase query...');
+        addDebugLog('🔍 Executing subscription query...');
         
         const result = await supabase
           .from('subscriptions')
@@ -154,11 +197,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (error) {
           addDebugLog('❌ Query error', {
             message: error.message,
-            code: error.code
+            code: error.code,
+            details: error.details,
+            hint: error.hint
           });
           setSubscription(null);
         } else if (subscriptions && subscriptions.length > 0) {
           addDebugLog(`📋 Found ${subscriptions.length} subscription(s)`);
+          
+          // Log each subscription found
+          subscriptions.forEach((sub, index) => {
+            addDebugLog(`📄 Subscription ${index + 1}`, {
+              id: sub.id,
+              status: sub.status,
+              plan_type: sub.plan_type
+            });
+          });
           
           // Find active or trialing subscription first
           let activeSubscription = subscriptions.find(sub => 
@@ -185,6 +239,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           const isActive = activeSubscription.status === 'active' || activeSubscription.status === 'trialing';
           addDebugLog(`🎯 Active calculation`, {
             status: activeSubscription.status,
+            isActive: activeSubscription.status === 'active',
+            isTrialing: activeSubscription.status === 'trialing',
             result: isActive
           });
         } else {
