@@ -83,69 +83,162 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setDebugLogs(prev => [...prev.slice(-49), logEntry]); // Keep last 50 logs
   };
 
+  // Storage keys for caching subscription data
+  const SUBSCRIPTION_STORAGE_KEY = 'askstan-subscription-cache';
+  const SUBSCRIPTION_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+  // Get cached subscription from sessionStorage
+  const getCachedSubscription = (userId: string): Subscription | null => {
+    try {
+      const cached = sessionStorage.getItem(SUBSCRIPTION_STORAGE_KEY);
+      if (!cached) return null;
+
+      const parsedCache = JSON.parse(cached);
+      
+      // Check if cache is for the same user and not expired
+      if (parsedCache.userId !== userId) {
+        addDebugLog('🗑️ Clearing subscription cache for different user');
+        sessionStorage.removeItem(SUBSCRIPTION_STORAGE_KEY);
+        return null;
+      }
+      
+      const cacheAge = Date.now() - parsedCache.timestamp;
+      if (cacheAge > SUBSCRIPTION_CACHE_DURATION) {
+        addDebugLog('⏰ Subscription cache expired, clearing');
+        sessionStorage.removeItem(SUBSCRIPTION_STORAGE_KEY);
+        return null;
+      }
+      
+      addDebugLog('✅ Using cached subscription', {
+        status: parsedCache.subscription?.status,
+        cacheAge: Math.round(cacheAge / 1000) + 's',
+        plan: parsedCache.subscription?.plan_type
+      });
+      
+      return parsedCache.subscription;
+    } catch (error) {
+      addDebugLog('❌ Error reading subscription cache', error);
+      sessionStorage.removeItem(SUBSCRIPTION_STORAGE_KEY);
+      return null;
+    }
+  };
+
+  // Cache subscription in sessionStorage
+  const cacheSubscription = (userId: string, subscription: Subscription | null): void => {
+    try {
+      const cacheData = {
+        userId,
+        subscription,
+        timestamp: Date.now()
+      };
+      
+      sessionStorage.setItem(SUBSCRIPTION_STORAGE_KEY, JSON.stringify(cacheData));
+      addDebugLog('💾 Cached subscription', {
+        status: subscription?.status || 'null',
+        plan: subscription?.plan_type || 'none'
+      });
+    } catch (error) {
+      addDebugLog('❌ Error caching subscription', error);
+    }
+  };
+
+  // Clear subscription cache (for sign out, etc.)
+  const clearSubscriptionCache = (): void => {
+    sessionStorage.removeItem(SUBSCRIPTION_STORAGE_KEY);
+    addDebugLog('🗑️ Cleared subscription cache');
+  };
+
   // Proper subscription check - matches the rest of the app
   const hasActiveSubscription = Boolean(
     subscription && (subscription.status === 'active' || subscription.status === 'trialing')
   );
 
-  // Get user from localStorage (most reliable method)
-  const getUserFromStorage = (): User | null => {
+  // Get user from localStorage and ensure valid session
+  const getUserFromStorage = async (): Promise<User | null> => {
     try {
+      addDebugLog('🔍 Checking for stored user...');
+      
+      // First, try to get the current session from Supabase
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        addDebugLog('❌ Session check failed', sessionError);
+        return null;
+      }
+      
+      if (sessionData.session?.user) {
+        addDebugLog('✅ Valid session found in Supabase', {
+          userId: sessionData.session.user.id,
+          email: sessionData.session.user.email
+        });
+        return sessionData.session.user;
+      }
+      
+      addDebugLog('ℹ️ No valid session found, checking localStorage...');
+      
+      // Fallback: check localStorage but immediately validate
       const keys = Object.keys(localStorage);
       const supabaseKey = keys.find(key => 
         key.startsWith('sb-') && key.includes('-auth-token')
       );
       
-      if (!supabaseKey) return null;
-      
-      const sessionData = localStorage.getItem(supabaseKey);
-      if (!sessionData) return null;
-      
-      const parsed = JSON.parse(sessionData);
-      const user = parsed?.user;
-      
-      if (user && user.id && user.email) {
-        return user as User;
+      if (!supabaseKey) {
+        addDebugLog('ℹ️ No auth token in localStorage');
+        return null;
       }
       
-      return null;
+      const sessionData_stored = localStorage.getItem(supabaseKey);
+      if (!sessionData_stored) {
+        addDebugLog('ℹ️ No session data in localStorage');
+        return null;
+      }
+      
+      const parsed = JSON.parse(sessionData_stored);
+      const storedUser = parsed?.user;
+      
+      if (!storedUser?.id || !storedUser?.email) {
+        addDebugLog('⚠️ Invalid stored user data');
+        return null;
+      }
+      
+      addDebugLog('🔍 Found stored user, validating session...', {
+        userId: storedUser.id,
+        email: storedUser.email
+      });
+      
+      // CRITICAL: Validate the stored session by refreshing it
+      try {
+        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+        
+        if (refreshError || !refreshData.session?.user) {
+          addDebugLog('❌ Session refresh failed, stored session is invalid', refreshError);
+          // Clear invalid session
+          localStorage.removeItem(supabaseKey);
+          return null;
+        }
+        
+        addDebugLog('✅ Session refreshed successfully', {
+          userId: refreshData.session.user.id,
+          email: refreshData.session.user.email
+        });
+        
+        return refreshData.session.user;
+        
+      } catch (refreshError) {
+        addDebugLog('❌ Session refresh exception', refreshError);
+        return null;
+      }
+      
     } catch (error) {
-      console.error('Error reading user from storage:', error);
+      addDebugLog('❌ Error in getUserFromStorage', error);
       return null;
     }
   };
 
-  // Load user profile and subscription data
+  // Load user profile and subscription data with caching
   const loadUserData = async (authUser: User): Promise<void> => {
     try {
       addDebugLog(`🔄 Loading data for: ${authUser.email}`);
-      addDebugLog(`🔍 Auth user session info`, {
-        userId: authUser.id,
-        hasAccessToken: !!authUser.access_token,
-        hasRefreshToken: !!authUser.refresh_token,
-        tokenExpiry: authUser.expires_at,
-        currentTime: Math.floor(Date.now() / 1000),
-        isTokenExpired: authUser.expires_at ? authUser.expires_at < Math.floor(Date.now() / 1000) : 'unknown'
-      });
-      
-      // CRITICAL FIX: Check if we need to refresh the session first
-      if (authUser.expires_at && authUser.expires_at < Math.floor(Date.now() / 1000)) {
-        addDebugLog('⚠️ Access token expired, refreshing session...');
-        try {
-          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-          if (refreshError) {
-            addDebugLog('❌ Session refresh failed', refreshError);
-            throw refreshError;
-          }
-          if (refreshData.user) {
-            addDebugLog('✅ Session refreshed successfully');
-            authUser = refreshData.user; // Use refreshed user
-          }
-        } catch (refreshError) {
-          addDebugLog('❌ Session refresh error', refreshError);
-          throw refreshError;
-        }
-      }
       
       // Create basic profile from auth user data
       const basicProfile: UserProfile = {
@@ -159,28 +252,40 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       };
       setProfile(basicProfile);
       
-      // CRITICAL FIX: Ensure we have a valid session before querying
-      addDebugLog('🔍 Getting current session before subscription query...');
+      // OPTIMIZATION: Try to get subscription from cache first
+      addDebugLog('🔍 Checking subscription cache...');
+      const cachedSubscription = getCachedSubscription(authUser.id);
+      
+      if (cachedSubscription !== null) {
+        // Found valid cached subscription
+        setSubscription(cachedSubscription);
+        
+        const isActive = cachedSubscription && (cachedSubscription.status === 'active' || cachedSubscription.status === 'trialing');
+        addDebugLog('🎯 Using cached subscription status', {
+          status: cachedSubscription?.status || 'null',
+          isActive
+        });
+        
+        addDebugLog('✅ User data loading complete (from cache)');
+        return; // Skip database query entirely
+      }
+      
+      // No cache found, need to query database
+      addDebugLog('💾 No valid cache, querying database...');
+      
+      // Ensure we have a valid session before querying
       const { data: sessionData } = await supabase.auth.getSession();
       
       if (!sessionData.session) {
         addDebugLog('❌ No valid session found, cannot query subscriptions');
         setSubscription(null);
+        cacheSubscription(authUser.id, null); // Cache the null result
         return;
       }
       
-      addDebugLog('✅ Valid session confirmed', {
-        hasSession: !!sessionData.session,
-        sessionUserId: sessionData.session.user.id,
-        matchesAuthUser: sessionData.session.user.id === authUser.id
-      });
-      
-      // SIMPLIFIED: Direct subscription loading with session validation
-      addDebugLog(`🔍 Starting subscription query for user: ${authUser.id}`);
+      addDebugLog('✅ Valid session confirmed, querying subscriptions...');
       
       try {
-        addDebugLog('🔍 Executing subscription query...');
-        
         const result = await supabase
           .from('subscriptions')
           .select('*')
@@ -189,7 +294,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
         const { data: subscriptions, error } = result;
         
-        addDebugLog('📊 Query result', { 
+        addDebugLog('📊 Database query result', { 
           subscriptionCount: subscriptions?.length || 0,
           hasError: !!error
         });
@@ -197,22 +302,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (error) {
           addDebugLog('❌ Query error', {
             message: error.message,
-            code: error.code,
-            details: error.details,
-            hint: error.hint
+            code: error.code
           });
           setSubscription(null);
+          cacheSubscription(authUser.id, null); // Cache the null result
         } else if (subscriptions && subscriptions.length > 0) {
           addDebugLog(`📋 Found ${subscriptions.length} subscription(s)`);
-          
-          // Log each subscription found
-          subscriptions.forEach((sub, index) => {
-            addDebugLog(`📄 Subscription ${index + 1}`, {
-              id: sub.id,
-              status: sub.status,
-              plan_type: sub.plan_type
-            });
-          });
           
           // Find active or trialing subscription first
           let activeSubscription = subscriptions.find(sub => 
@@ -234,18 +329,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           });
           
           setSubscription(activeSubscription);
+          cacheSubscription(authUser.id, activeSubscription); // Cache the result
           
           // Log hasActiveSubscription calculation
           const isActive = activeSubscription.status === 'active' || activeSubscription.status === 'trialing';
           addDebugLog(`🎯 Active calculation`, {
             status: activeSubscription.status,
-            isActive: activeSubscription.status === 'active',
-            isTrialing: activeSubscription.status === 'trialing',
             result: isActive
           });
         } else {
           addDebugLog('ℹ️ No subscriptions found');
           setSubscription(null);
+          cacheSubscription(authUser.id, null); // Cache the null result
         }
         
       } catch (subError) {
@@ -254,6 +349,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           name: subError.name
         });
         setSubscription(null);
+        cacheSubscription(authUser.id, null); // Cache the null result to prevent retries
       }
       
       addDebugLog('✅ User data loading complete');
@@ -283,12 +379,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           }
         }, 10000); // 10 second max timeout
         
-        // Try to get user from storage first (fastest)
-        let currentUser = getUserFromStorage();
+        // Try to get user from storage first and validate session
+        let currentUser = await getUserFromStorage();
         
         if (!currentUser) {
-          // Fallback to Supabase auth
-          addDebugLog('🔍 No user in storage, checking Supabase auth...');
+          // Fallback to Supabase auth check
+          addDebugLog('🔍 No valid stored user, checking Supabase directly...');
           try {
             const { data: { user }, error } = await Promise.race([
               supabase.auth.getUser(),
@@ -299,7 +395,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             
             if (user && !error) {
               currentUser = user;
-              addDebugLog(`✅ Found user via Supabase: ${user.email}`);
+              addDebugLog(`✅ Found user via direct Supabase check: ${user.email}`);
             } else {
               addDebugLog('ℹ️ No authenticated user found');
             }
@@ -307,7 +403,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             addDebugLog('Auth check failed', authError);
           }
         } else {
-          addDebugLog(`✅ Found user in storage: ${currentUser.email}`);
+          addDebugLog(`✅ Valid user session confirmed: ${currentUser.email}`);
         }
         
         if (mounted) {
@@ -413,7 +509,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // Redirect will be handled by the calling component
   };
 
-  // FIXED: Improved sign out function
+  // FIXED: Improved sign out function with cache clearing
   const signOut = async (): Promise<void> => {
     try {
       addDebugLog('👋 Signing out...');
@@ -422,6 +518,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setUser(null);
       setProfile(null);
       setSubscription(null);
+      
+      // Clear subscription cache
+      clearSubscriptionCache();
       
       // Sign out from Supabase - this should clear all session data
       const { error } = await supabase.auth.signOut({ scope: 'global' });
@@ -449,6 +548,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setUser(null);
       setProfile(null);
       setSubscription(null);
+      clearSubscriptionCache();
     }
   };
 
