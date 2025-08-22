@@ -14,7 +14,7 @@ import {
   UserX
 } from 'lucide-react';
 import { useAdminAuth } from '../../contexts/AdminAuthContext';
-import { supabase } from '../../lib/supabase';
+import { adminService } from '../../lib/adminSupabase';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
@@ -216,105 +216,33 @@ function AdminDashboard() {
     }
   };
 
-  // Load users with simplified approach (temporarily using existing structure while we fix RLS)
+  // Load users with admin service (bypasses RLS)
   const loadUsers = async () => {
     try {
       setLoading(true);
-      console.log('🔍 Loading users...');
+      console.log('🔍 Loading users with admin service...');
 
-      // Get users with their subscriptions using the current approach
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .select(`
-          id,
-          email,
-          display_name,
-          email_verified,
-          created_at,
-          updated_at,
-          subscriptions (
-            id,
-            plan_type,
-            status,
-            current_period_start,
-            current_period_end,
-            cancel_at_period_end,
-            created_at
-          )
-        `)
-        .order('created_at', { ascending: false });
+      // Use admin service to get all users (bypasses RLS)
+      const [usersData, statsData] = await Promise.all([
+        adminService.getAllUsers(),
+        adminService.getStats()
+      ]);
 
-      if (error) {
-        console.error('❌ Error loading users:', error);
-        // For now, show empty state instead of throwing
-        setUsers([]);
-        setStats({
-          totalUsers: 0,
-          activeSubscriptions: 0,
-          trialingUsers: 0,
-          cancelledSubscriptions: 0
-        });
-        return;
-      }
-
-      console.log('📊 Raw data:', data);
-
-      // Transform data
-      const transformedUsers: User[] = data.map(user => {
-        let activeSubscription = null;
-        if (user.subscriptions && user.subscriptions.length > 0) {
-          activeSubscription = user.subscriptions.find(sub => 
-            sub.status === 'active' || sub.status === 'trialing'
-          );
-          if (!activeSubscription) {
-            activeSubscription = user.subscriptions.sort((a, b) => 
-              new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-            )[0];
-          }
-        }
-
-        return {
-          id: user.id,
-          email: user.email,
-          display_name: user.display_name,
-          email_verified: user.email_verified,
-          created_at: user.created_at,
-          updated_at: user.updated_at,
-          subscription: activeSubscription
-        };
-      });
-
-      setUsers(transformedUsers);
-      console.log('✅ Transformed users:', transformedUsers.length);
-
-      // Calculate stats
-      const totalUsers = transformedUsers.length;
-      const activeSubscriptions = transformedUsers.filter(u => 
-        hasActiveSubscription(u.subscription)
-      ).length;
-      const trialingUsers = transformedUsers.filter(u => 
-        u.subscription?.status === 'trialing'
-      ).length;
-      const cancelledSubscriptions = transformedUsers.filter(u => 
-        u.subscription?.status === 'cancelled'
-      ).length;
-
-      setStats({
-        totalUsers,
-        activeSubscriptions,
-        trialingUsers,
-        cancelledSubscriptions
-      });
-
-      console.log('📊 Stats calculated:', {
-        totalUsers,
-        activeSubscriptions,
-        trialingUsers,
-        cancelledSubscriptions
+      setUsers(usersData);
+      setStats(statsData);
+      
+      console.log('✅ Admin dashboard data loaded:', {
+        users: usersData.length,
+        stats: statsData
       });
 
     } catch (error) {
-      console.error('❌ Failed to load users:', error);
+      console.error('❌ Failed to load admin data:', error);
+      
+      // Show detailed error information
+      alert(`Failed to load dashboard data: ${error.message}`);
+      
+      // Set empty state
       setUsers([]);
       setStats({
         totalUsers: 0,
@@ -327,42 +255,22 @@ function AdminDashboard() {
     }
   };
 
-  // Handle subscription updates
+  // Handle subscription updates using admin service
   const handleUpdateSubscription = async (userId: string, action: 'activate' | 'cancel') => {
     try {
       setUpdatingUser(userId);
 
       if (action === 'activate') {
-        const { error } = await supabase
-          .from('subscriptions')
-          .upsert({
-            user_id: userId,
-            plan_type: 'monthly',
-            status: 'active',
-            current_period_start: new Date().toISOString(),
-            current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-            cancel_at_period_end: false,
-            updated_at: new Date().toISOString()
-          });
-
-        if (error) throw error;
+        await adminService.grantSubscription(userId, 'monthly');
       } else {
-        const { error } = await supabase
-          .from('subscriptions')
-          .update({
-            status: 'cancelled',
-            cancel_at_period_end: true,
-            updated_at: new Date().toISOString()
-          })
-          .eq('user_id', userId);
-
-        if (error) throw error;
+        await adminService.cancelSubscription(userId);
       }
 
+      // Reload data to reflect changes
       await loadUsers();
     } catch (error) {
       console.error(`Failed to ${action} subscription:`, error);
-      alert(`Failed to ${action} subscription. Please try again.`);
+      alert(`Failed to ${action} subscription: ${error.message}`);
     } finally {
       setUpdatingUser(null);
     }
