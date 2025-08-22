@@ -121,18 +121,19 @@ const SignInPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 relative">
       {/* Go Back to Home Button */}
       <Link
         to="/"
-        className="absolute top-6 left-6 flex items-center text-gray-600 hover:text-blue-600 transition-colors group"
+        className="absolute top-6 left-6 flex items-center text-gray-600 hover:text-blue-600 transition-colors group z-10"
       >
         <Home className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" />
         <span className="font-medium">Back to Home</span>
       </Link>
 
-      {/* CENTERED CONTAINER */}
-      <div className="w-full max-w-md mx-auto">
+      {/* PROPERLY CENTERED CONTAINER */}
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}

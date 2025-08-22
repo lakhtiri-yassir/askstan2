@@ -1,4 +1,4 @@
-// src/components/layout/Header.tsx - FIXED: Proper sign out with redirect
+// src/components/layout/Header.tsx - FIXED: Wait for subscription loading before showing navigation
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -10,7 +10,7 @@ import askstanLogo from '../../img/askstanlogo.png';
 
 export const Header: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
-  const { user, hasActiveSubscription, loading, signOut } = useAuth();
+  const { user, hasActiveSubscription, loading, subscriptionLoading, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -67,7 +67,13 @@ export const Header: React.FC = () => {
             ) : user ? (
               // User is logged in
               <>
-                {hasActiveSubscription ? (
+                {/* FIXED: Wait for subscription loading to complete before showing navigation */}
+                {subscriptionLoading ? (
+                  <div className="flex items-center">
+                    <LoadingSpinner size="sm" />
+                    <span className="ml-2 text-sm text-gray-600">Checking subscription...</span>
+                  </div>
+                ) : hasActiveSubscription ? (
                   <Link
                     to="/dashboard"
                     className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
@@ -146,7 +152,13 @@ export const Header: React.FC = () => {
               ) : user ? (
                 // User is logged in - mobile menu
                 <div className="space-y-4">
-                  {hasActiveSubscription ? (
+                  {/* FIXED: Mobile navigation also waits for subscription loading */}
+                  {subscriptionLoading ? (
+                    <div className="flex items-center justify-center py-4">
+                      <LoadingSpinner size="sm" />
+                      <span className="ml-2 text-sm text-gray-600">Checking subscription...</span>
+                    </div>
+                  ) : hasActiveSubscription ? (
                     <Link
                       to="/dashboard"
                       className="block text-gray-700 hover:text-blue-600 font-medium transition-colors py-2"
