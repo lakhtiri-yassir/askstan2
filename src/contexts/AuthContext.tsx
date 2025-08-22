@@ -423,7 +423,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // DEBUGGING: Simplified manual subscription check function
+  // DEBUGGING: Ultra-simplified subscription check with timeout
   const debugSubscriptionStatus = async (): Promise<void> => {
     if (!user) {
       addDebugLog('❌ No user for subscription debug');
@@ -435,30 +435,37 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     addDebugLog(`🐛 User Email: ${user.email}`);
     
     try {
-      addDebugLog('🐛 Direct subscription query (bypassing connection tests)...');
+      addDebugLog('🐛 Starting query with 5-second timeout...');
       
-      // Skip connection tests and go directly to the query
-      const startTime = Date.now();
-      
-      const result = await supabase
+      // Create query with aggressive timeout
+      const queryPromise = supabase
         .from('subscriptions')
         .select('*')
         .eq('user_id', user.id);
       
-      const queryTime = Date.now() - startTime;
-      addDebugLog(`🐛 Query completed in ${queryTime}ms`);
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => {
+          addDebugLog('⏰ Query timed out after 5 seconds');
+          reject(new Error('Query timeout'));
+        }, 5000);
+      });
+      
+      addDebugLog('🐛 Executing query...');
+      
+      const result = await Promise.race([queryPromise, timeoutPromise]);
+      
+      addDebugLog('🐛 Query completed, processing result...');
       
       const { data: allSubs, error } = result;
       
       if (error) {
-        addDebugLog('❌ Direct query error', {
+        addDebugLog('❌ Query returned error', {
           message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code
+          code: error.code,
+          details: error.details
         });
       } else {
-        addDebugLog('✅ Direct query successful', {
+        addDebugLog('✅ Query successful', {
           resultCount: allSubs?.length || 0
         });
         
@@ -466,46 +473,36 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           addDebugLog(`📋 Found ${allSubs.length} subscription(s):`);
           
           allSubs.forEach((sub, index) => {
+            const isActive = sub.status === 'active' || sub.status === 'trialing';
             addDebugLog(`📄 Subscription ${index + 1}`, {
               id: sub.id,
               status: sub.status,
               plan_type: sub.plan_type,
-              user_id: sub.user_id,
-              created_at: sub.created_at
-            });
-            
-            // Test active calculation for each subscription
-            const isActive = sub.status === 'active' || sub.status === 'trialing';
-            addDebugLog(`🎯 Is subscription ${index + 1} active?`, {
-              status: sub.status,
-              isActive: sub.status === 'active',
-              isTrialing: sub.status === 'trialing',
-              result: isActive
+              isActive: isActive
             });
           });
           
-          // Set the subscription in context manually for testing
+          // Find and set active subscription
           const activeSub = allSubs.find(sub => sub.status === 'active' || sub.status === 'trialing') || allSubs[0];
-          if (activeSub) {
-            addDebugLog('🔧 Manually setting subscription in context...', {
-              id: activeSub.id,
-              status: activeSub.status
-            });
-            setSubscription(activeSub);
-          }
+          
+          addDebugLog('🔧 Setting subscription in context...', {
+            id: activeSub.id,
+            status: activeSub.status
+          });
+          
+          setSubscription(activeSub);
+          
+          // Force re-calculation of hasActiveSubscription
+          const newHasActive = activeSub.status === 'active' || activeSub.status === 'trialing';
+          addDebugLog('🎯 Active status should be', {
+            status: activeSub.status,
+            result: newHasActive
+          });
+          
         } else {
-          addDebugLog('ℹ️ No subscriptions found for this user');
+          addDebugLog('ℹ️ No subscriptions found');
         }
       }
-      
-      // Check current context state
-      addDebugLog('🐛 Current context state', {
-        hasSubscription: !!subscription,
-        subscriptionStatus: subscription?.status || 'none',
-        hasActiveSubscription: hasActiveSubscription
-      });
-      
-      addDebugLog('✅ Debug completed');
       
     } catch (debugError) {
       addDebugLog('❌ Debug failed', {
@@ -513,6 +510,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         name: debugError.name
       });
     }
+    
+    addDebugLog('🐛 Debug completed');
   };
 
   // Add debugSubscriptionStatus to context for manual testing

@@ -159,7 +159,7 @@ const AuthDebugPanel: React.FC = () => {
               {/* Action Buttons */}
               <div className="p-4 border-b border-gray-200">
                 <h4 className="font-medium text-gray-800 mb-3">Debug Actions</h4>
-                <div className="flex space-x-2">
+                <div className="flex flex-wrap gap-2">
                   <button
                     onClick={handleDebugSubscription}
                     className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded transition-colors"
@@ -172,6 +172,27 @@ const AuthDebugPanel: React.FC = () => {
                   >
                     <RefreshCw className="w-3 h-3 mr-1" />
                     Refresh
+                  </button>
+                  <button
+                    onClick={() => {
+                      addDebugLog('🔧 Manual override: Setting fake active subscription');
+                      // Create a fake subscription for testing
+                      const fakeSubscription = {
+                        id: 'fake-sub-123',
+                        user_id: user?.id || '',
+                        status: 'active',
+                        plan_type: 'monthly',
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                      };
+                      // Manually trigger subscription setting (we'll need to expose this)
+                      console.log('Setting fake subscription:', fakeSubscription);
+                      // For now, just navigate to dashboard manually
+                      window.location.href = '/dashboard';
+                    }}
+                    className="px-3 py-1 bg-purple-500 hover:bg-purple-600 text-white text-sm rounded transition-colors"
+                  >
+                    Force Dashboard
                   </button>
                   <button
                     onClick={clearLogs}
