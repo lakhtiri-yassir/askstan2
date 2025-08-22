@@ -1,14 +1,60 @@
-import { createClient } from '@supabase/supabase-js';
-import { Database, UserProfile, Subscription, ChatSession } from '../types/supabase';
+// src/lib/supabase.ts - FIXED: Proper Supabase client imports and configuration
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '../types/supabase';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL!;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY!;
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables. Please check your .env file.');
 }
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
+// Create the Supabase client with proper typing
+export const supabase: SupabaseClient<Database> = createClient<Database>(
+  supabaseUrl,
+  supabaseAnonKey,
+  {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: true
+    }
+  }
+);
+
+// Type definitions for our services
+export interface UserProfile {
+  id: string;
+  email: string;
+  display_name?: string | null;
+  avatar_url?: string | null;
+  email_verified: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Subscription {
+  id: string;
+  user_id: string;
+  stripe_customer_id?: string | null;
+  stripe_subscription_id?: string | null;
+  plan_type: 'monthly' | 'yearly';
+  status: 'active' | 'cancelled' | 'expired' | 'past_due' | 'trialing';
+  current_period_start?: string | null;
+  current_period_end?: string | null;
+  cancel_at_period_end?: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChatSession {
+  id: string;
+  user_id: string;
+  title: string;
+  external_session_id?: string | null;
+  created_at: string;
+  updated_at: string;
+}
 
 // User Profile Service
 export const userService = {
@@ -16,7 +62,7 @@ export const userService = {
     console.log('Creating profile safely for user:', userId, email);
     
     try {
-      // Use the safe profile creation function
+      // Try using the safe profile creation function first
       const { data, error } = await supabase.rpc('create_user_profile_safe', {
         user_id: userId,
         user_email: email
@@ -31,7 +77,7 @@ export const userService = {
           .insert({
             id: userId,
             email: email,
-            email_verified: true  // Always set to true
+            email_verified: true
           })
           .select()
           .single();
@@ -138,7 +184,11 @@ export const chatService = {
     return data || [];
   },
   
-  async createChatSession(sessionData: Database['public']['Tables']['chat_sessions']['Insert']): Promise<ChatSession> {
+  async createChatSession(sessionData: {
+    user_id: string;
+    title?: string;
+    external_session_id?: string | null;
+  }): Promise<ChatSession> {
     const { data, error } = await supabase
       .from('chat_sessions')
       .insert(sessionData)
@@ -163,3 +213,6 @@ export const checkSupabaseConnection = async (): Promise<boolean> => {
     return false;
   }
 };
+
+// Export default for backward compatibility
+export default supabase;

@@ -20,7 +20,7 @@
   },
   "dependencies": {
     "@stripe/stripe-js": "^7.8.0",
-    "@supabase/supabase-js": "^2.53.0",
+    "@supabase/supabase-js": "^2.45.4",
     "@types/react-router-dom": "^5.3.3",
     "framer-motion": "^12.23.12",
     "lucide-react": "^0.536.0",
