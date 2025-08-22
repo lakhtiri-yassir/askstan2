@@ -1,4 +1,4 @@
-// src/components/layout/ProtectedRoute.tsx - DEFINITIVE FIX: Remove subscriptionStatus reference
+// src/components/layout/ProtectedRoute.tsx - FIXED: Enhanced subscription handling
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -19,6 +19,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     user, 
     loading, 
     hasActiveSubscription, 
+    subscriptionLoading,
     initialized
   } = useAuth();
   const location = useLocation();
@@ -28,6 +29,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     initialized, 
     user: !!user, 
     hasActiveSubscription,
+    subscriptionLoading,
     requireSubscription,
     path: location.pathname 
   });
@@ -57,10 +59,27 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to="/verify-email" replace />;
   }
 
-  // FIXED: Check subscription requirement using hasActiveSubscription directly
-  if (requireSubscription && !hasActiveSubscription) {
-    console.log("💳 Subscription required but not active, redirecting to plans");
-    return <Navigate to="/plans" replace />;
+  // FIXED: Handle subscription requirement with proper loading states
+  if (requireSubscription) {
+    // If subscription is still loading, show loading state
+    if (subscriptionLoading) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-yellow-50">
+          <div className="text-center">
+            <LoadingSpinner size="lg" />
+            <p className="mt-4 text-gray-600 font-medium">
+              Checking subscription status...
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    // If subscription is not loading and user doesn't have active subscription, redirect to plans
+    if (!subscriptionLoading && !hasActiveSubscription) {
+      console.log("💳 Subscription required but not active, redirecting to plans");
+      return <Navigate to="/plans" replace />;
+    }
   }
 
   // All checks passed - render the protected content

@@ -1,4 +1,4 @@
-// src/pages/auth/SignInPage.tsx - FIXED: Proper redirect timing and logic
+// src/pages/auth/SignInPage.tsx - FIXED: Simplified redirect logic
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -9,7 +9,7 @@ import { Input } from '../../components/ui/Input';
 
 const SignInPage: React.FC = () => {
   const navigate = useNavigate();
-  const { signIn, user, hasActiveSubscription, initialized, loading } = useAuth();
+  const { signIn, user, initialized, loading } = useAuth();
   
   const [formData, setFormData] = useState({
     email: '',
@@ -18,34 +18,20 @@ const SignInPage: React.FC = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // FIXED: Improved redirect logic with proper timing
+  // FIXED: Simplified redirect logic - just check if user exists
   useEffect(() => {
     // Only attempt redirect when auth is fully initialized and not loading
     if (!initialized || loading) {
       return;
     }
 
-    // If user is already signed in, redirect them appropriately
+    // If user is already signed in, redirect to plans page
+    // ProtectedRoute will handle subscription-based redirects from there
     if (user) {
-      console.log('🔍 SignIn: User already signed in, redirecting based on subscription', {
-        hasActiveSubscription,
-        userEmail: user.email
-      });
-
-      // Use a timeout to ensure subscription data is fully loaded
-      const redirectTimer = setTimeout(() => {
-        if (hasActiveSubscription) {
-          console.log('✅ SignIn: User has active subscription, redirecting to dashboard');
-          navigate('/dashboard', { replace: true });
-        } else {
-          console.log('💳 SignIn: User needs subscription, redirecting to plans');
-          navigate('/plans', { replace: true });
-        }
-      }, 100); // Small delay to ensure subscription status is determined
-
-      return () => clearTimeout(redirectTimer);
+      console.log('🔍 SignIn: User already signed in, redirecting to plans page');
+      navigate('/plans', { replace: true });
     }
-  }, [user, hasActiveSubscription, initialized, loading, navigate]);
+  }, [user, initialized, loading, navigate]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -91,10 +77,10 @@ const SignInPage: React.FC = () => {
     try {
       console.log('🔐 SignIn: Attempting sign in...');
       await signIn(formData.email, formData.password);
-      console.log('✅ SignIn: Sign in successful, redirect will be handled by useEffect');
+      console.log('✅ SignIn: Sign in successful');
       
-      // Note: Don't manually redirect here - let the useEffect handle it
-      // once the auth state updates and subscription data loads
+      // Note: Redirect will be handled by the useEffect when user state updates
+      // Default redirect is to /plans, and ProtectedRoute will handle further routing
       
     } catch (error: any) {
       console.error('❌ SignIn: Sign in error:', error);
@@ -105,8 +91,8 @@ const SignInPage: React.FC = () => {
     }
   };
 
-  // Don't render form if user is already signed in and we're about to redirect
-  if (user && initialized) {
+  // Show redirecting state if user is signed in and we're about to redirect
+  if (user && initialized && !loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center">
         <div className="text-center">
@@ -135,106 +121,81 @@ const SignInPage: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.1 }}
-          className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-8 border border-gray-200"
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="bg-white rounded-2xl shadow-xl p-8"
         >
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Email Input */}
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.2 }}
-            >
+            <div>
               <Input
+                label="Email"
                 type="email"
-                placeholder="Enter your email"
                 value={formData.email}
                 onChange={handleInputChange('email')}
-                error={errors.email}
+                placeholder="Enter your email"
                 icon={<Mail className="w-5 h-5" />}
-                label="Email Address"
+                error={errors.email}
+                disabled={isSubmitting}
               />
-            </motion.div>
+            </div>
 
-            {/* Password Input */}
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.3 }}
-            >
+            <div>
               <Input
+                label="Password"
                 type="password"
-                placeholder="Enter your password"
                 value={formData.password}
                 onChange={handleInputChange('password')}
-                error={errors.password}
+                placeholder="Enter your password"
                 icon={<Lock className="w-5 h-5" />}
-                label="Password"
+                error={errors.password}
+                disabled={isSubmitting}
               />
-            </motion.div>
+            </div>
 
-            {/* Submit Error */}
             {errors.submit && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="bg-red-50 border border-red-200 rounded-lg p-3"
-              >
-                <p className="text-red-700 text-sm text-center">{errors.submit}</p>
-              </motion.div>
+              <div className="text-red-600 text-sm text-center bg-red-50 p-3 rounded-lg">
+                {errors.submit}
+              </div>
             )}
 
-            {/* Submit Button */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
+            <Button
+              type="submit"
+              fullWidth
+              size="lg"
+              loading={isSubmitting}
+              disabled={isSubmitting}
+              className="flex items-center justify-center"
             >
-              <Button
-                type="submit"
-                className="w-full"
-                isLoading={isSubmitting}
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? (
-                  'Signing In...'
-                ) : (
-                  <>
-                    Sign In
-                    <ArrowRight className="w-5 h-5 ml-2" />
-                  </>
-                )}
-              </Button>
-            </motion.div>
-
-            {/* Forgot Password Link */}
-            <div className="text-center">
-              <Link
-                to="/forgot-password"
-                className="text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors"
-              >
-                Forgot your password?
-              </Link>
-            </div>
+              {isSubmitting ? (
+                'Signing In...'
+              ) : (
+                <>
+                  Sign In
+                  <ArrowRight className="w-5 h-5 ml-2" />
+                </>
+              )}
+            </Button>
           </form>
-        </motion.div>
 
-        {/* Sign Up Link */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="text-center mt-6"
-        >
-          <p className="text-gray-600">
-            Don't have an account?{' '}
-            <Link
-              to="/signup"
-              className="text-blue-600 hover:text-blue-800 font-medium transition-colors"
+          <div className="mt-6 text-center">
+            <Link 
+              to="/forgot-password" 
+              className="text-blue-600 hover:text-blue-700 text-sm transition-colors"
             >
-              Sign up for free
+              Forgot your password?
             </Link>
-          </p>
+          </div>
+
+          <div className="mt-6 text-center">
+            <p className="text-gray-600 text-sm">
+              Don't have an account?{' '}
+              <Link 
+                to="/signup" 
+                className="text-blue-600 hover:text-blue-700 font-medium transition-colors"
+              >
+                Sign up
+              </Link>
+            </p>
+          </div>
         </motion.div>
       </div>
     </div>
