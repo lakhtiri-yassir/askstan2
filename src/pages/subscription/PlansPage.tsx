@@ -1,4 +1,4 @@
-// src/pages/subscription/PlansPage.tsx - WITHOUT coupon functionality
+// src/pages/subscription/PlansPage.tsx - Fixed imports and export
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Check, Star, ArrowRight, Clock } from 'lucide-react';
@@ -7,7 +7,7 @@ import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
 import { useAuth } from '../../contexts/AuthContext';
 import { subscriptionService } from '../../lib/subscriptionService';
 
-export const PlansPage: React.FC = () => {
+const PlansPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [checkoutInProgress, setCheckoutInProgress] = useState(false);
@@ -154,27 +154,27 @@ export const PlansPage: React.FC = () => {
                 ))}
               </ul>
 
-              <Button
+              <button
                 onClick={() => handleSubscribe(plan.id as 'monthly' | 'yearly')}
                 disabled={isLoading}
-                className={`w-full py-3 font-semibold rounded-xl transition-all duration-300 ${
+                className={`w-full py-3 font-semibold rounded-xl transition-all duration-300 inline-flex items-center justify-center ${
                   plan.popular
                     ? 'bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white'
                     : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white'
                 } ${isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-lg transform hover:-translate-y-1'}`}
               >
                 {isLoading && loadingPlan === plan.id ? (
-                  <div className="flex items-center justify-center">
-                    <LoadingSpinner size="sm" />
-                    <span className="ml-2">Starting subscription...</span>
-                  </div>
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                    <span>Starting subscription...</span>
+                  </>
                 ) : (
-                  <div className="flex items-center justify-center">
+                  <>
                     <span>Get Started Now</span>
                     <ArrowRight className="w-5 h-5 ml-2" />
-                  </div>
+                  </>
                 )}
-              </Button>
+              </button>
             </motion.div>
           ))}
         </div>
@@ -217,3 +217,6 @@ export const PlansPage: React.FC = () => {
     </div>
   );
 };
+
+// Make sure to use default export
+export default PlansPage;
