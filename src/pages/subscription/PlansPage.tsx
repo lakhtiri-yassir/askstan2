@@ -1,4 +1,4 @@
-// src/pages/subscription/PlansPage.tsx
+// src/pages/subscription/PlansPage.tsx - WITHOUT coupon functionality
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Check, Star, ArrowRight, Clock } from 'lucide-react';
@@ -10,8 +10,6 @@ import { subscriptionService } from '../../lib/subscriptionService';
 export const PlansPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
-  
-  // CRITICAL FIX: Add checkout in progress state to prevent double requests
   const [checkoutInProgress, setCheckoutInProgress] = useState(false);
   
   const { user } = useAuth();
@@ -19,7 +17,7 @@ export const PlansPage: React.FC = () => {
   const handleSubscribe = async (planType: 'monthly' | 'yearly') => {
     if (!user) return;
 
-    // CRITICAL FIX: Prevent concurrent checkout requests
+    // Prevent concurrent checkout requests
     if (checkoutInProgress || isLoading) {
       console.log("⏸️ Checkout already in progress");
       return;
@@ -43,7 +41,6 @@ export const PlansPage: React.FC = () => {
     } catch (error) {
       console.error('Subscription error:', error);
       
-      // CRITICAL FIX: Better error handling
       const errorMessage = error instanceof Error ? error.message : 'Failed to start subscription. Please try again.';
       alert(errorMessage);
       
@@ -58,28 +55,34 @@ export const PlansPage: React.FC = () => {
     {
       id: 'monthly',
       name: 'Monthly Plan',
-      price: '$4.99',
+      price: '$19.95',
       period: '/month',
       popular: false,
+      description: 'Perfect for getting started',
       features: [
-        'AI-powered social media coaching',
-        'Multi-platform support',
+        '24/7 AI coaching with Stan',
+        'LinkedIn optimization strategies',
+        'Content creation guidance',
         'Growth analytics dashboard',
-        '24/7 AI chat support'
+        'Multi-platform support',
+        'Unlimited AI conversations'
       ]
     },
     {
       id: 'yearly',
-      name: 'Yearly Plan',
-      price: '$49.99',
+      name: 'Yearly Plan', 
+      price: '$143.95',
       period: '/year',
       popular: true,
-      savings: '17% savings',
+      savings: 'Save $95.45 annually',
+      description: 'Best value - same features, lower cost',
       features: [
-        'All monthly features',
-        'Priority AI responses',
-        'Advanced analytics',
-        'Custom growth strategies'
+        '24/7 AI coaching with Stan',
+        'LinkedIn optimization strategies', 
+        'Content creation guidance',
+        'Growth analytics dashboard',
+        'Multi-platform support',
+        'Unlimited AI conversations'
       ]
     }
   ];
@@ -99,6 +102,9 @@ export const PlansPage: React.FC = () => {
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
             Unlock the power of AI-driven social media coaching and accelerate your online presence
           </p>
+          <p className="text-lg text-gray-500 mt-4">
+            Both plans include the exact same features - yearly is just more affordable!
+          </p>
         </motion.div>
 
         {/* Plans Grid */}
@@ -110,62 +116,61 @@ export const PlansPage: React.FC = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
               className={`relative bg-white rounded-2xl shadow-xl p-8 ${
-                plan.popular ? 'ring-2 ring-blue-500' : ''
+                plan.popular 
+                  ? 'border-2 border-yellow-400 bg-gradient-to-br from-yellow-50 to-orange-50' 
+                  : 'border border-gray-200'
               }`}
             >
               {/* Popular Badge */}
               {plan.popular && (
                 <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                  <div className="bg-gradient-to-r from-blue-500 to-yellow-500 text-white px-4 py-2 rounded-full text-sm font-semibold flex items-center">
-                    <Star className="w-4 h-4 mr-1" />
+                  <div className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-6 py-2 rounded-full text-sm font-bold flex items-center shadow-lg">
+                    <Star className="w-4 h-4 mr-2" />
                     Most Popular
                   </div>
                 </div>
               )}
 
-              {/* Plan Header */}
               <div className="text-center mb-8">
                 <h3 className="text-2xl font-bold text-gray-900 mb-2">{plan.name}</h3>
-                <div className="flex items-center justify-center mb-2">
-                  <span className="text-4xl font-bold text-gray-900">{plan.price}</span>
-                  <span className="text-gray-600 ml-1">{plan.period}</span>
+                <p className="text-gray-600 mb-4">{plan.description}</p>
+                <div className="flex items-center justify-center mb-4">
+                  <span className="text-5xl font-bold text-gray-900">{plan.price}</span>
+                  <span className="text-xl text-gray-600 ml-2">{plan.period}</span>
                 </div>
                 {plan.savings && (
-                  <div className="inline-block bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+                  <div className="inline-block bg-green-100 text-green-800 px-4 py-2 rounded-full text-sm font-semibold">
                     {plan.savings}
                   </div>
                 )}
               </div>
 
-              {/* Features List */}
               <ul className="space-y-4 mb-8">
-                {plan.features.map((feature, idx) => (
-                  <li key={idx} className="flex items-start">
-                    <Check className="w-5 h-5 text-green-500 mt-0.5 mr-3 flex-shrink-0" />
+                {plan.features.map((feature, featureIndex) => (
+                  <li key={featureIndex} className="flex items-center">
+                    <Check className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
                     <span className="text-gray-700">{feature}</span>
                   </li>
                 ))}
               </ul>
 
-              {/* Subscribe Button */}
               <Button
                 onClick={() => handleSubscribe(plan.id as 'monthly' | 'yearly')}
-                disabled={checkoutInProgress || !user}
-                loading={loadingPlan === plan.id}
-                className={`w-full py-3 px-6 rounded-lg font-semibold transition-all duration-200 ${
+                disabled={isLoading}
+                className={`w-full py-3 font-semibold rounded-xl transition-all duration-300 ${
                   plan.popular
-                    ? 'bg-gradient-to-r from-blue-500 to-yellow-500 hover:from-blue-600 hover:to-yellow-600 text-white shadow-lg hover:shadow-xl'
-                    : 'bg-gray-100 hover:bg-gray-200 text-gray-900 border border-gray-300'
-                }`}
+                    ? 'bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white'
+                    : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white'
+                } ${isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-lg transform hover:-translate-y-1'}`}
               >
-                {loadingPlan === plan.id ? (
+                {isLoading && loadingPlan === plan.id ? (
                   <div className="flex items-center justify-center">
-                    <LoadingSpinner size="sm" className="mr-2" />
-                    Creating Session...
+                    <LoadingSpinner size="sm" />
+                    <span className="ml-2">Starting subscription...</span>
                   </div>
                 ) : (
                   <div className="flex items-center justify-center">
-                    Get Started
+                    <span>Get Started Now</span>
                     <ArrowRight className="w-5 h-5 ml-2" />
                   </div>
                 )}
@@ -174,41 +179,41 @@ export const PlansPage: React.FC = () => {
           ))}
         </div>
 
-        {/* 3-Day Trial Notice */}
+        {/* Additional Info */}
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.4 }}
-          className="text-center mt-12"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="text-center mt-12 space-y-4"
         >
-          <div className="inline-flex items-center bg-blue-50 text-blue-800 px-4 py-2 rounded-full text-sm font-medium">
-            <Clock className="w-4 h-4 mr-2" />
-            Start with a 3-day free trial • Cancel anytime
-          </div>
+          <p className="text-gray-600">
+            ✅ Cancel anytime • ✅ Secure payment via Stripe • ✅ Instant access
+          </p>
+          <p className="text-sm text-gray-500">
+            Both plans give you complete access to all AskStan features. Choose yearly to save money!
+          </p>
         </motion.div>
 
-        {/* Login Prompt */}
-        {!user && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-            className="text-center mt-8"
-          >
-            <p className="text-gray-600">
-              Need to sign in first?{' '}
-              <a href="/signin" className="text-blue-600 hover:text-blue-800 font-medium">
-                Sign In
-              </a>
-              {' '}or{' '}
-              <a href="/signup" className="text-blue-600 hover:text-blue-800 font-medium">
-                Create Account
-              </a>
-            </p>
-          </motion.div>
-        )}
+        {/* Money Back Guarantee */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="bg-blue-50 rounded-2xl p-6 text-center mt-8"
+        >
+          <div className="flex items-center justify-center mb-3">
+            <div className="bg-blue-100 rounded-full p-3">
+              <Clock className="w-6 h-6 text-blue-600" />
+            </div>
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            30-Day Money Back Guarantee
+          </h3>
+          <p className="text-gray-600">
+            Not satisfied? Get a full refund within 30 days, no questions asked.
+          </p>
+        </motion.div>
       </div>
     </div>
   );
 };
-export default PlansPage;

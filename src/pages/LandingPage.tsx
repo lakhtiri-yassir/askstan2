@@ -200,7 +200,7 @@ const LandingPage: React.FC = () => {
               <div className="text-center mb-8">
                 <h3 className="text-2xl font-bold mb-2">Monthly Plan</h3>
                 <div className="flex items-center justify-center mb-4">
-                  <span className="text-5xl font-bold">$4.99</span>
+                  <span className="text-5xl font-bold">$19.95</span>
                   <span className="text-xl opacity-90 ml-2">/month</span>
                 </div>
                 <p className="opacity-90">Perfect for getting started</p>
@@ -227,13 +227,17 @@ const LandingPage: React.FC = () => {
                   <Check className="w-5 h-5 text-green-300 mr-3 flex-shrink-0" />
                   <span>Multi-platform support</span>
                 </li>
+                <li className="flex items-center">
+                  <Check className="w-5 h-5 text-green-300 mr-3 flex-shrink-0" />
+                  <span>Unlimited AI conversations</span>
+                </li>
               </ul>
 
               <Button
                 onClick={() => navigate(user ? '/plans' : '/signup')}
                 className="w-full py-3 bg-white text-blue-600 hover:bg-gray-100 font-semibold rounded-xl transition-all duration-300"
               >
-                {user ? 'Select Plan' : 'Start Free Trial'}
+                {user ? 'Select Plan' : 'Get Started'}
               </Button>
             </motion.div>
 
@@ -256,34 +260,42 @@ const LandingPage: React.FC = () => {
               <div className="text-center mb-8 mt-4">
                 <h3 className="text-2xl font-bold mb-2">Yearly Plan</h3>
                 <div className="flex items-center justify-center mb-2">
-                  <span className="text-5xl font-bold">$49.99</span>
+                  <span className="text-5xl font-bold">$143.95</span>
                   <span className="text-xl opacity-90 ml-2">/year</span>
                 </div>
                 <div className="inline-block bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-semibold">
-                  Save 17% annually
+                  Save $95.45 annually
                 </div>
               </div>
 
               <ul className="space-y-4 mb-8">
                 <li className="flex items-center">
                   <Check className="w-5 h-5 text-green-300 mr-3 flex-shrink-0" />
-                  <span>Everything in Monthly Plan</span>
+                  <span>24/7 AI coaching with Stan</span>
                 </li>
                 <li className="flex items-center">
                   <Check className="w-5 h-5 text-green-300 mr-3 flex-shrink-0" />
-                  <span>Priority AI response times</span>
+                  <span>LinkedIn optimization strategies</span>
                 </li>
                 <li className="flex items-center">
                   <Check className="w-5 h-5 text-green-300 mr-3 flex-shrink-0" />
-                  <span>Advanced analytics & reporting</span>
+                  <span>Content creation guidance</span>
                 </li>
                 <li className="flex items-center">
                   <Check className="w-5 h-5 text-green-300 mr-3 flex-shrink-0" />
-                  <span>Custom growth strategies</span>
+                  <span>Growth analytics dashboard</span>
                 </li>
                 <li className="flex items-center">
                   <Check className="w-5 h-5 text-green-300 mr-3 flex-shrink-0" />
-                  <span>Exclusive strategy updates</span>
+                  <span>Multi-platform support</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="w-5 h-5 text-green-300 mr-3 flex-shrink-0" />
+                  <span>Unlimited AI conversations</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="w-5 h-5 text-green-300 mr-3 flex-shrink-0" />
+                  <span className="font-semibold">Same features, better value!</span>
                 </li>
               </ul>
 
@@ -291,7 +303,7 @@ const LandingPage: React.FC = () => {
                 onClick={() => navigate(user ? '/plans' : '/signup')}
                 className="w-full py-3 bg-white text-orange-600 hover:bg-gray-100 font-semibold rounded-xl transition-all duration-300"
               >
-                {user ? 'Select Plan' : 'Start Free Trial'}
+                {user ? 'Select Plan' : 'Get Started'}
               </Button>
             </motion.div>
           </div>

@@ -77,56 +77,62 @@ export const SettingsPage: React.FC = () => {
         );
       
       case 'billing':
-        return (
-          <div className="space-y-6">
-            <h3 className="text-xl font-semibold text-gray-900">Billing & Subscription</h3>
-            {subscription ? (
-              <div className="bg-gradient-to-r from-blue-50 to-yellow-50 p-6 rounded-xl border border-blue-200">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="font-semibold text-gray-900">
-                      {subscription.plan_type === 'yearly' ? 'Yearly Plan' : 'Monthly Plan'}
-                    </h4>
-                    <p className="text-gray-600">
-                      {subscription.plan_type === 'yearly' ? '$49.99/year' : '$4.99/month'}
-                    </p>
-                    <p className={`text-sm mt-1 capitalize ${
-                      subscription.status === 'active' ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      {subscription.status}
-                    </p>
-                  </div>
-                  <Button variant="outline" onClick={handleManageSubscription}>
-                    Manage Subscription
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
-                <div className="text-center">
-                  <h4 className="font-semibold text-gray-900 mb-2">No Active Subscription</h4>
-                  <p className="text-gray-600 mb-4">Upgrade to unlock premium features</p>
-                  <Button onClick={() => window.location.href = '/plans'}>
-                    View Plans
-                  </Button>
-                </div>
-              </div>
-            )}
-            <div className="border-t pt-6">
-              <h4 className="font-semibold text-gray-900 mb-4">Payment Methods</h4>
-              {subscription ? (
-                <div className="bg-gray-50 p-4 rounded-xl">
-                  <p className="text-gray-600">Managed via Stripe Customer Portal</p>
-                  <p className="text-sm text-gray-500">Click "Manage Subscription" to update payment methods</p>
-                </div>
-              ) : (
-                <div className="bg-gray-50 p-4 rounded-xl">
-                  <p className="text-gray-600">No payment methods on file</p>
-                </div>
+  return (
+    <div className="space-y-6">
+      <h3 className="text-xl font-semibold text-gray-900">Billing & Subscription</h3>
+      {subscription ? (
+        <div className="bg-gradient-to-r from-blue-50 to-yellow-50 p-6 rounded-xl border border-blue-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="font-semibold text-gray-900">
+                {subscription.plan_type === 'yearly' ? 'Yearly Plan' : 'Monthly Plan'}
+              </h4>
+              <p className="text-gray-600">
+                {subscription.plan_type === 'yearly' ? '$143.95/year' : '$19.95/month'}
+              </p>
+              <p className={`text-sm mt-1 capitalize ${
+                subscription.status === 'active' ? 'text-green-600' : 'text-red-600'
+              }`}>
+                {subscription.status}
+              </p>
+              {subscription.plan_type === 'yearly' && (
+                <p className="text-sm text-green-600 mt-1">
+                  💰 Saving $95.45 annually
+                </p>
               )}
             </div>
+            <Button variant="outline" onClick={handleManageSubscription}>
+              Manage Subscription
+            </Button>
           </div>
-        );
+        </div>
+      ) : (
+        <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
+          <div className="text-center">
+            <h4 className="font-semibold text-gray-900 mb-2">No Active Subscription</h4>
+            <p className="text-gray-600 mb-4">
+              Choose from our Monthly ($19.95/month) or Yearly ($143.95/year) plans
+            </p>
+            <Button onClick={() => window.location.href = '/plans'}>
+              View Plans
+            </Button>
+          </div>
+        </div>
+      )}
+      <div className="border-t pt-6">
+        <h4 className="font-semibold text-gray-900 mb-4">Payment Methods</h4>
+        {subscription ? (
+          <p className="text-gray-600">
+            Manage your payment methods through the subscription portal above.
+          </p>
+        ) : (
+          <p className="text-gray-600">
+            Payment methods will appear here after you subscribe to a plan.
+          </p>
+        )}
+      </div>
+    </div>
+  );
       
       case 'notifications':
         return (

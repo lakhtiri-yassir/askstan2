@@ -6,45 +6,51 @@ const pendingCheckoutRequests = new Map<string, Promise<string>>();
 
 export const subscriptionService = {
   /**
-   * Get available plans configuration
+   * Get available plans configuration - UPDATED PRICING
    */
   getPlansConfig() {
     return {
       monthly: {
         name: 'Monthly Plan',
-        price: 4.99,
+        price: 19.95,
         priceId: import.meta.env.VITE_STRIPE_PRICE_MONTHLY,
         interval: 'month',
         features: [
-          'AI-powered social media coaching',
-          'Multi-platform support',
+          '24/7 AI coaching with Stan',
+          'LinkedIn optimization strategies', 
+          'Content creation guidance',
           'Growth analytics dashboard',
-          '24/7 AI chat support'
+          'Multi-platform support',
+          'Unlimited AI conversations'
         ]
       },
       yearly: {
         name: 'Yearly Plan',
-        price: 49.99,
+        price: 143.95,
         priceId: import.meta.env.VITE_STRIPE_PRICE_YEARLY,
         interval: 'year',
-        savings: '17% savings',
+        savings: 'Save $95.45 annually',
         features: [
-          'All monthly features',
-          'Priority AI responses',
-          'Advanced analytics',
-          'Custom growth strategies'
+          '24/7 AI coaching with Stan',
+          'LinkedIn optimization strategies',
+          'Content creation guidance', 
+          'Growth analytics dashboard',
+          'Multi-platform support',
+          'Unlimited AI conversations',
+          'Same features as monthly - just cheaper!'
         ]
       }
     };
   },
 
   /**
-   * CRITICAL FIX: Create checkout session with request deduplication
+   * CRITICAL FIX: Create checkout session with request deduplication and coupon handling
    */
   async createCheckoutSession(
     planType: 'monthly' | 'yearly',
     userId: string,
-    userEmail: string
+    userEmail: string,
+    couponCode?: string
   ): Promise<string> {
     // CRITICAL FIX: Prevent concurrent checkout requests
     const requestKey = `checkout-${userId}-${planType}`;
@@ -54,7 +60,7 @@ export const subscriptionService = {
       return pendingCheckoutRequests.get(requestKey)!;
     }
 
-    const checkoutPromise = this._createCheckoutSessionInternal(planType, userId, userEmail);
+    const checkoutPromise = this._createCheckoutSessionInternal(planType, userId, userEmail, couponCode);
     pendingCheckoutRequests.set(requestKey, checkoutPromise);
 
     try {
@@ -72,10 +78,11 @@ export const subscriptionService = {
   async _createCheckoutSessionInternal(
     planType: 'monthly' | 'yearly',
     userId: string,
-    userEmail: string
+    userEmail: string,
+    couponCode?: string
   ): Promise<string> {
     try {
-      console.log('Creating checkout session:', { planType, userId, userEmail });
+      console.log('Creating checkout session:', { planType, userId, userEmail, couponCode });
 
       const plans = this.getPlansConfig();
       const selectedPlan = plans[planType];
@@ -84,12 +91,13 @@ export const subscriptionService = {
         throw new Error(`Price ID not configured for ${planType} plan`);
       }
 
-      // CRITICAL FIX: Pass userEmail to edge function for profile creation fallback
+      // CRITICAL FIX: Pass userEmail and couponCode to edge function
       const { data, error } = await supabase.functions.invoke('create-checkout-session', {
         body: {
           planType,
           userId,
-          userEmail, // <- CRITICAL: Now passing userEmail
+          userEmail,
+          couponCode, // <- CRITICAL: Pass coupon code for validation
           successUrl: `${window.location.origin}/checkout-success?session_id={CHECKOUT_SESSION_ID}`,
           cancelUrl: `${window.location.origin}/plans`,
         }
@@ -144,7 +152,7 @@ export const subscriptionService = {
         .select('*')
         .eq('user_id', userId)
         .eq('status', 'active')
-        .maybeSingle(); // CONSISTENCY FIX: Use maybeSingle instead of single
+        .maybeSingle();
 
       if (error) {
         throw error;
@@ -164,9 +172,15 @@ export const subscriptionService = {
     try {
       console.log('🔄 Processing checkout success for session:', sessionId);
 
+      // Handle free subscriptions (100% coupon case)
+      if (sessionId.startsWith('free_')) {
+        console.log('✅ Free subscription detected - returning immediately');
+        return { status: 'active', plan_type: 'free_coupon' };
+      }
+
       // CRITICAL FIX: Reduced polling attempts and better error handling
       let attempts = 0;
-      const maxAttempts = 10; // Reduced from 15
+      const maxAttempts = 10;
       
       while (attempts < maxAttempts) {
         try {
@@ -184,8 +198,7 @@ export const subscriptionService = {
 
           console.log(`⏳ Attempt ${attempts + 1}/${maxAttempts}: Subscription not yet created, retrying...`);
           
-          // CRITICAL FIX: Shorter delay for better UX
-          await new Promise(resolve => setTimeout(resolve, 1500)); // Reduced from 2000ms
+          await new Promise(resolve => setTimeout(resolve, 1500));
           attempts++;
         } catch (error) {
           console.warn(`Attempt ${attempts + 1} failed:`, error);
@@ -194,7 +207,7 @@ export const subscriptionService = {
         }
       }
 
-      console.warn('⚠️ Subscription not found after polling, manual creation may be needed');
+      console.warn('⚠️ Subscription not found after polling');
       throw new Error('Subscription verification timed out. Please contact support if your payment was processed.');
     } catch (error) {
       console.error('Checkout success handling error:', error);

@@ -53,14 +53,13 @@ serve(async (req) => {
 
     // CRITICAL FIX: Get or create user profile with fallback
     let userProfile;
-    let userError;
     
     // First, try to get existing profile
     const { data: existingProfile, error: fetchError } = await supabase
       .from('user_profiles')
       .select('email, id')
       .eq('id', userId)
-      .maybeSingle(); // Use maybeSingle() instead of single() to handle missing records gracefully
+      .maybeSingle();
     
     if (fetchError) {
       console.error('Error fetching user profile:', fetchError);
@@ -68,11 +67,9 @@ serve(async (req) => {
     }
     
     if (existingProfile) {
-      // Profile exists, use it
       console.log('✅ Found existing user profile:', existingProfile.email);
       userProfile = existingProfile;
     } else {
-      // Profile doesn't exist, create it
       console.log('📝 User profile not found, creating new profile...');
       
       if (!userEmail) {
@@ -105,7 +102,7 @@ serve(async (req) => {
       .from('subscriptions')
       .select('stripe_customer_id')
       .eq('user_id', userId)
-      .maybeSingle(); // Use maybeSingle() for consistency
+      .maybeSingle();
 
     let customer;
     if (existingSubscription?.stripe_customer_id) {
@@ -126,24 +123,113 @@ serve(async (req) => {
       });
     }
 
-    // Validate coupon if provided
+    // CRITICAL FIX: Validate coupon BEFORE creating session if provided
     let validCoupon = null;
+    let is100PercentOff = false;
+    
     if (couponCode) {
       try {
         console.log('🎫 Validating coupon:', couponCode);
         validCoupon = await stripe.coupons.retrieve(couponCode);
         console.log('✅ Coupon valid:', validCoupon.id, `${validCoupon.percent_off}% off`);
+        
+        // Check if it's 100% off
+        is100PercentOff = validCoupon.percent_off === 100;
+        console.log('💯 Is 100% off coupon:', is100PercentOff);
+        
       } catch (couponError) {
         console.log('❌ Invalid coupon:', couponError.message);
         throw new Error(`Invalid coupon code: ${couponCode}`);
       }
     }
 
-    // Check if coupon provides 100% off
-    const is100PercentOff = validCoupon && validCoupon.percent_off === 100;
-    console.log('💯 Is 100% off coupon:', is100PercentOff);
+    // CRITICAL FIX: Handle 100% coupons by creating subscription directly (no checkout needed)
+    if (is100PercentOff && validCoupon) {
+      console.log('🆓 Creating FREE subscription (100% off coupon - bypassing checkout entirely)');
+      
+      try {
+        // Create the subscription directly in Stripe - no checkout needed
+        const subscription = await stripe.subscriptions.create({
+          customer: customer.id,
+          items: [{
+            price: priceId,
+          }],
+          coupon: validCoupon.id,
+          metadata: {
+            user_id: userId,
+            plan_type: planType,
+            coupon_applied: couponCode,
+            source: 'free_coupon_direct_creation'
+          },
+          // Ensure it starts immediately and is active
+          proration_behavior: 'none'
+        });
+        
+        console.log('✅ Free Stripe subscription created:', {
+          id: subscription.id,
+          status: subscription.status,
+          customer: subscription.customer
+        });
+        
+        // Create subscription record in database
+        const { error: dbError } = await supabase
+          .from('subscriptions')
+          .upsert({
+            user_id: userId,
+            stripe_customer_id: customer.id,
+            stripe_subscription_id: subscription.id,
+            status: subscription.status,
+            plan_type: planType,
+            price_id: priceId,
+            current_period_start: subscription.current_period_start,
+            current_period_end: subscription.current_period_end,
+            metadata: {
+              coupon_applied: couponCode,
+              discount: '100%',
+              source: 'free_coupon_direct_creation'
+            }
+          });
+        
+        if (dbError) {
+          console.error('❌ Failed to create subscription record:', dbError);
+          throw new Error(`Database error: ${dbError.message}`);
+        }
+        
+        console.log('✅ Free subscription created successfully in database');
+        
+        // Return success URL directly - no checkout session needed
+        const appUrl = Deno.env.get('VITE_APP_URL');
+        const directSuccessUrl = `${appUrl}/checkout-success?session_id=free_${subscription.id}&plan=${planType}&coupon=${couponCode}`;
+        
+        return new Response(
+          JSON.stringify({ 
+            url: directSuccessUrl,
+            sessionId: `free_${subscription.id}`,
+            subscriptionId: subscription.id,
+            paymentRequired: false,
+            couponApplied: true,
+            discount: '100%',
+            status: 'active',
+            message: 'Subscription activated instantly with 100% discount!'
+          }), 
+          {
+            headers: { 
+              ...corsHeaders, 
+              'Content-Type': 'application/json' 
+            },
+            status: 200
+          }
+        );
+        
+      } catch (subscriptionError) {
+        console.error('❌ Failed to create free subscription:', subscriptionError);
+        throw new Error(`Failed to create free subscription: ${subscriptionError.message}`);
+      }
+    }
 
-    // Create checkout session configuration
+    // NORMAL CHECKOUT FLOW (for regular payments or non-100% coupons)
+    console.log('💳 Creating standard checkout session...');
+    
     const appUrl = Deno.env.get('VITE_APP_URL');
     const successUrl = `${appUrl}/checkout-success?session_id={CHECKOUT_SESSION_ID}&plan=${planType}&coupon=${couponCode || ''}`;
     const cancelUrl = `${appUrl}/plans`;
@@ -161,7 +247,7 @@ serve(async (req) => {
         user_id: userId,
         plan_type: planType,
         coupon_code: couponCode || '',
-        source: 'askstan_app'
+        source: 'askstan_checkout'
       },
       subscription_data: {
         metadata: {
@@ -170,95 +256,17 @@ serve(async (req) => {
           coupon_applied: couponCode || 'none'
         }
       },
-      // Allow promotion codes in checkout UI
-      allow_promotion_codes: true,
+      allow_promotion_codes: true, // Allow users to enter coupon codes in checkout UI
     };
 
-    // Add coupon if provided
-    if (validCoupon) {
+    // Add coupon if provided and it's not 100% off (since 100% off is handled above)
+    if (validCoupon && !is100PercentOff) {
       sessionConfig.discounts = [{
         coupon: validCoupon.id
       }];
     }
 
-    // ENHANCED: If 100% off coupon, create subscription directly without payment
-    if (is100PercentOff) {
-      console.log('🆓 Creating free subscription (100% off coupon - no payment required)');
-      
-      try {
-        // Create the subscription directly without checkout
-        const subscription = await stripe.subscriptions.create({
-          customer: customer.id,
-          items: [{
-            price: priceId,
-          }],
-          coupon: validCoupon.id,
-          metadata: {
-            user_id: userId,
-            plan_type: planType,
-            coupon_applied: couponCode,
-            source: 'free_coupon_subscription'
-          }
-        });
-        
-        console.log('✅ Free Stripe subscription created:', subscription.id);
-        
-        // Create subscription record in database
-        const { error: dbError } = await supabase
-          .from('subscriptions')
-          .upsert({
-            user_id: userId,
-            stripe_customer_id: customer.id,
-            stripe_subscription_id: subscription.id,
-            status: subscription.status,
-            plan_type: planType,
-            price_id: priceId,
-            current_period_start: subscription.current_period_start,
-            current_period_end: subscription.current_period_end,
-            metadata: {
-              coupon_applied: couponCode,
-              discount: '100%',
-              source: 'free_coupon_subscription'
-            }
-          });
-        
-        if (dbError) {
-          console.error('❌ Failed to create subscription record:', dbError);
-          throw new Error(`Database error: ${dbError.message}`);
-        }
-        
-        console.log('✅ Free subscription created successfully in database');
-        
-        // Return direct success - no checkout needed
-        const directSuccessUrl = successUrl.replace('{CHECKOUT_SESSION_ID}', `free_${subscription.id}`);
-        
-        return new Response(
-          JSON.stringify({ 
-            url: directSuccessUrl,
-            sessionId: `free_${subscription.id}`,
-            subscriptionId: subscription.id,
-            paymentRequired: false,
-            couponApplied: true,
-            discount: '100%',
-            status: 'active',
-            message: 'Subscription activated with 100% discount - no payment required!'
-          }), 
-          {
-            headers: { 
-              ...corsHeaders, 
-              'Content-Type': 'application/json' 
-            },
-            status: 200
-          }
-        );
-        
-      } catch (subscriptionError) {
-        console.error('❌ Failed to create free subscription:', subscriptionError);
-        throw new Error(`Failed to create free subscription: ${subscriptionError.message}`);
-      }
-    }
-
-    console.log('💳 Creating standard checkout session:', {
+    console.log('Creating checkout session with config:', {
       customerId: customer.id,
       priceId,
       hasValidCoupon: !!validCoupon,
