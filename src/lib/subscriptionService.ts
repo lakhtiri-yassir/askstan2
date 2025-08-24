@@ -1,12 +1,11 @@
-// src/lib/subscriptionService.ts
+// src/lib/subscriptionService.ts - FRONTEND COUPON VALIDATION
 import { supabase } from './supabase';
 
-// CRITICAL FIX: Add request deduplication to prevent concurrent checkout requests
 const pendingCheckoutRequests = new Map<string, Promise<string>>();
 
 export const subscriptionService = {
   /**
-   * Get available plans configuration - UPDATED PRICING
+   * Get available plans configuration
    */
   getPlansConfig() {
     return {
@@ -17,7 +16,7 @@ export const subscriptionService = {
         interval: 'month',
         features: [
           '24/7 AI coaching with Stan',
-          'LinkedIn optimization strategies', 
+          'LinkedIn optimization strategies',
           'Content creation guidance',
           'Growth analytics dashboard',
           'Multi-platform support',
@@ -36,15 +35,37 @@ export const subscriptionService = {
           'Content creation guidance', 
           'Growth analytics dashboard',
           'Multi-platform support',
-          'Unlimited AI conversations',
-          'Same features as monthly - just cheaper!'
+          'Unlimited AI conversations'
         ]
       }
     };
   },
 
   /**
-   * CRITICAL FIX: Create checkout session with request deduplication and coupon handling
+   * CRITICAL FIX: Validate coupon on frontend first
+   */
+  async validateCoupon(couponCode: string): Promise<{ valid: boolean; discount?: string; error?: string }> {
+    try {
+      const { data, error } = await supabase.functions.invoke('validate-coupon', {
+        body: { couponCode: couponCode.trim().toUpperCase() }
+      });
+
+      if (error) {
+        return { valid: false, error: error.message };
+      }
+
+      return { 
+        valid: data.valid, 
+        discount: data.discount,
+        error: data.error 
+      };
+    } catch (err) {
+      return { valid: false, error: 'Failed to validate coupon' };
+    }
+  },
+
+  /**
+   * CRITICAL FIX: Create checkout with upfront coupon validation
    */
   async createCheckoutSession(
     planType: 'monthly' | 'yearly',
@@ -52,7 +73,6 @@ export const subscriptionService = {
     userEmail: string,
     couponCode?: string
   ): Promise<string> {
-    // CRITICAL FIX: Prevent concurrent checkout requests
     const requestKey = `checkout-${userId}-${planType}`;
     
     if (pendingCheckoutRequests.has(requestKey)) {
@@ -67,13 +87,12 @@ export const subscriptionService = {
       const result = await checkoutPromise;
       return result;
     } finally {
-      // Clean up completed request
       pendingCheckoutRequests.delete(requestKey);
     }
   },
 
   /**
-   * Internal checkout session creation
+   * Internal checkout session creation with coupon pre-validation
    */
   async _createCheckoutSessionInternal(
     planType: 'monthly' | 'yearly',
@@ -91,13 +110,26 @@ export const subscriptionService = {
         throw new Error(`Price ID not configured for ${planType} plan`);
       }
 
-      // CRITICAL FIX: Pass userEmail and couponCode to edge function
+      // CRITICAL FIX: Validate coupon on frontend first
+      let validatedCoupon = null;
+      if (couponCode) {
+        const validation = await this.validateCoupon(couponCode);
+        if (!validation.valid) {
+          throw new Error(validation.error || 'Invalid coupon code');
+        }
+        validatedCoupon = {
+          code: couponCode.trim().toUpperCase(),
+          discount: validation.discount,
+          is100Percent: validation.discount === '100%'
+        };
+      }
+
       const { data, error } = await supabase.functions.invoke('create-checkout-session', {
         body: {
           planType,
           userId,
           userEmail,
-          couponCode, // <- CRITICAL: Pass coupon code for validation
+          couponCode: validatedCoupon?.code,
           successUrl: `${window.location.origin}/checkout-success?session_id={CHECKOUT_SESSION_ID}`,
           cancelUrl: `${window.location.origin}/plans`,
         }
@@ -178,7 +210,6 @@ export const subscriptionService = {
         return { status: 'active', plan_type: 'free_coupon' };
       }
 
-      // CRITICAL FIX: Reduced polling attempts and better error handling
       let attempts = 0;
       const maxAttempts = 10;
       
