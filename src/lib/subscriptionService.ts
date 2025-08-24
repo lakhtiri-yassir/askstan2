@@ -84,11 +84,12 @@ export const subscriptionService = {
         throw new Error(`Price ID not configured for ${planType} plan`);
       }
 
+      // CRITICAL FIX: Pass userEmail to edge function for profile creation fallback
       const { data, error } = await supabase.functions.invoke('create-checkout-session', {
         body: {
           planType,
           userId,
-          userEmail,
+          userEmail, // <- CRITICAL: Now passing userEmail
           successUrl: `${window.location.origin}/checkout-success?session_id={CHECKOUT_SESSION_ID}`,
           cancelUrl: `${window.location.origin}/plans`,
         }
@@ -143,9 +144,9 @@ export const subscriptionService = {
         .select('*')
         .eq('user_id', userId)
         .eq('status', 'active')
-        .single();
+        .maybeSingle(); // CONSISTENCY FIX: Use maybeSingle instead of single
 
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         throw error;
       }
 
