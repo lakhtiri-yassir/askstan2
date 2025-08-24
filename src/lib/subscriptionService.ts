@@ -1,4 +1,4 @@
-// src/lib/subscriptionService.ts - FRONTEND COUPON VALIDATION
+// src/lib/subscriptionService.ts - SIMPLE VERSION WITHOUT FRONTEND COUPON VALIDATION
 import { supabase } from './supabase';
 
 const pendingCheckoutRequests = new Map<string, Promise<string>>();
@@ -42,36 +42,12 @@ export const subscriptionService = {
   },
 
   /**
-   * CRITICAL FIX: Validate coupon on frontend first
-   */
-  async validateCoupon(couponCode: string): Promise<{ valid: boolean; discount?: string; error?: string }> {
-    try {
-      const { data, error } = await supabase.functions.invoke('validate-coupon', {
-        body: { couponCode: couponCode.trim().toUpperCase() }
-      });
-
-      if (error) {
-        return { valid: false, error: error.message };
-      }
-
-      return { 
-        valid: data.valid, 
-        discount: data.discount,
-        error: data.error 
-      };
-    } catch (err) {
-      return { valid: false, error: 'Failed to validate coupon' };
-    }
-  },
-
-  /**
-   * CRITICAL FIX: Create checkout with upfront coupon validation
+   * Create checkout session - simplified without frontend coupon validation
    */
   async createCheckoutSession(
     planType: 'monthly' | 'yearly',
     userId: string,
-    userEmail: string,
-    couponCode?: string
+    userEmail: string
   ): Promise<string> {
     const requestKey = `checkout-${userId}-${planType}`;
     
@@ -80,7 +56,7 @@ export const subscriptionService = {
       return pendingCheckoutRequests.get(requestKey)!;
     }
 
-    const checkoutPromise = this._createCheckoutSessionInternal(planType, userId, userEmail, couponCode);
+    const checkoutPromise = this._createCheckoutSessionInternal(planType, userId, userEmail);
     pendingCheckoutRequests.set(requestKey, checkoutPromise);
 
     try {
@@ -92,16 +68,15 @@ export const subscriptionService = {
   },
 
   /**
-   * Internal checkout session creation with coupon pre-validation
+   * Internal checkout session creation
    */
   async _createCheckoutSessionInternal(
     planType: 'monthly' | 'yearly',
     userId: string,
-    userEmail: string,
-    couponCode?: string
+    userEmail: string
   ): Promise<string> {
     try {
-      console.log('Creating checkout session:', { planType, userId, userEmail, couponCode });
+      console.log('Creating checkout session:', { planType, userId, userEmail });
 
       const plans = this.getPlansConfig();
       const selectedPlan = plans[planType];
@@ -110,26 +85,11 @@ export const subscriptionService = {
         throw new Error(`Price ID not configured for ${planType} plan`);
       }
 
-      // CRITICAL FIX: Validate coupon on frontend first
-      let validatedCoupon = null;
-      if (couponCode) {
-        const validation = await this.validateCoupon(couponCode);
-        if (!validation.valid) {
-          throw new Error(validation.error || 'Invalid coupon code');
-        }
-        validatedCoupon = {
-          code: couponCode.trim().toUpperCase(),
-          discount: validation.discount,
-          is100Percent: validation.discount === '100%'
-        };
-      }
-
       const { data, error } = await supabase.functions.invoke('create-checkout-session', {
         body: {
           planType,
           userId,
           userEmail,
-          couponCode: validatedCoupon?.code,
           successUrl: `${window.location.origin}/checkout-success?session_id={CHECKOUT_SESSION_ID}`,
           cancelUrl: `${window.location.origin}/plans`,
         }
