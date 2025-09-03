@@ -13,10 +13,10 @@ import { VideoProps } from './types';
 
 // Default video sources - replace these paths with your actual video files
 const DEFAULT_VIDEO_PROPS: VideoProps = {
-  thumbnailSrc: '/assets/videos/demo-thumbnail.mp4',
-  thumbnailWebM: '/assets/videos/demo-thumbnail.webm',
-  fullVideoSrc: '/assets/videos/full-demo.mp4',
-  fallbackImage: '/assets/images/video-fallback.jpg',
+  thumbnailSrc: '../../assets/videos/demo-thumbnail.mp4',
+  thumbnailWebM: '../../assets/videos/demo-thumbnail.webm',
+  fullVideoSrc: '../../assets/videos/full-demo.mp4',
+  fallbackImage: '../../assets/images/video-fallback.jpg',
   title: 'AskStan! Product Demo',
   description: 'Watch how our AI coach transforms your social media strategy in real-time',
   autoplay: true,

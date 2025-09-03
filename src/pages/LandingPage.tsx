@@ -11,6 +11,10 @@ import { ArrowRight, TrendingUp, Users, Sparkles, CheckCircle, Zap, Play } from 
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../contexts/AuthContext';
 import askstanBanner from '../assets/images/hero-image.jpg';
+import demoThumbnail from '../assets/videos/demo-thumbnail.mp4';
+import demoThumbnailWebM from '../assets/videos/demo-thumbnail.webm'; // if you have this
+import fullDemo from '../assets/videos/full-demo.mp4';
+import videoFallback from '../assets/images/video-fallback.jpg';
 
 export const LandingPage: React.FC = () => {
   const { user, clearSession } = useAuth();
@@ -354,68 +358,118 @@ export const LandingPage: React.FC = () => {
               </motion.div>
             </motion.div>
 
-            {/* RIGHT SIDE - Placeholder Video Container (matches your image) */}
-            <motion.div
-              initial={{ opacity: 0, x: 50 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-              viewport={{ once: true }}
-              className="relative"
-            >
-              {/* Decorative Background Elements */}
-              <div className="absolute -inset-4 bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-yellow-500/10 rounded-3xl blur-xl" />
-              <div className="absolute -top-8 -right-8 w-32 h-32 bg-gradient-to-br from-blue-400/20 to-transparent rounded-full blur-2xl" />
-              <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-gradient-to-br from-yellow-400/20 to-transparent rounded-full blur-2xl" />
-              
-              {/* Video Placeholder Container - Glass Morphism Style */}
-              <div className="relative z-10 aspect-video bg-white/80 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/20 overflow-hidden">
-                {/* Placeholder Content */}
-                <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
-                  <div className="text-center">
-                    <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-yellow-500 rounded-full flex items-center justify-center mb-4 mx-auto">
-                      <Play className="w-10 h-10 text-white ml-1" fill="currentColor" />
-                    </div>
-                    <p className="text-gray-600 font-medium">Demo Video Coming Soon</p>
-                    <p className="text-gray-500 text-sm mt-1">Add your video files to see it in action</p>
-                  </div>
-                </div>
+            {/* RIGHT SIDE - Working Video Container */}
+<motion.div
+  initial={{ opacity: 0, x: 50 }}
+  whileInView={{ opacity: 1, x: 0 }}
+  transition={{ duration: 0.8, delay: 0.2 }}
+  viewport={{ once: true }}
+  className="relative"
+>
+  {/* Decorative Background Elements */}
+  <div className="absolute -inset-4 bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-yellow-500/10 rounded-3xl blur-xl" />
+  <div className="absolute -top-8 -right-8 w-32 h-32 bg-gradient-to-br from-blue-400/20 to-transparent rounded-full blur-2xl" />
+  <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-gradient-to-br from-yellow-400/20 to-transparent rounded-full blur-2xl" />
+  
+  {/* Working Video Container */}
+  <div className="relative z-10 aspect-video rounded-2xl overflow-hidden bg-white/80 backdrop-blur-lg border border-white/20 shadow-2xl group cursor-pointer"
+    onClick={() => {
+      // You can add modal functionality here later
+      console.log('Video clicked - open full demo');
+    }}
+  >
+    {/* Actual Video Element */}
+    <video
+      className="w-full h-full object-cover"
+      autoPlay
+      muted
+      loop
+      playsInline
+      poster={videoFallback}
+      onError={(e) => {
+        console.log('Video failed to load, showing fallback');
+        // Fallback to image if video fails
+        const target = e.currentTarget as HTMLVideoElement;
+        target.style.display = 'none';
+        const fallbackImg = target.nextElementSibling as HTMLImageElement;
+        if (fallbackImg) fallbackImg.style.display = 'block';
+      }}
+    >
+      {/* WebM version for better compression (if you have it) */}
+      {demoThumbnailWebM && <source src={demoThumbnailWebM} type="video/webm" />}
+      {/* MP4 fallback */}
+      <source src={demoThumbnail} type="video/mp4" />
+      Your browser does not support the video tag.
+    </video>
 
-                {/* Video Duration Badge */}
-                <div className="absolute top-4 right-4 px-3 py-1 bg-black/70 backdrop-blur-md text-white text-sm font-medium rounded-lg">
-                  2:30
-                </div>
+    {/* Fallback Image (hidden by default, shown if video fails) */}
+    <img
+      src={videoFallback || askstanBanner} // Use your existing banner as fallback if no video-fallback.jpg
+      alt="AskStan! Product Demo"
+      className="w-full h-full object-cover"
+      style={{ display: 'none' }}
+    />
 
-                {/* Quality Badge */}
-                <div className="absolute top-4 left-4 px-3 py-1 bg-gradient-to-r from-blue-500 to-purple-600 text-white text-sm font-medium rounded-lg">
-                  HD
-                </div>
+    {/* Video Overlay Elements */}
+    <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
-                {/* Checkmark indicating AskStan! Product Demo */}
-                <div className="absolute top-4 left-1/2 transform -translate-x-1/2 flex items-center px-3 py-1 bg-green-500/90 backdrop-blur-md text-white text-sm font-medium rounded-lg">
-                  <CheckCircle className="w-4 h-4 mr-1" />
-                  <span>AskStan! Product Demo</span>
-                </div>
-              </div>
+    {/* Play Button Overlay */}
+    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+      <motion.button
+        className="w-16 h-16 bg-white/20 backdrop-blur-md border-2 border-white/30 rounded-full flex items-center justify-center group/button hover:bg-white/30 hover:border-white/50 transition-all duration-300"
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.95 }}
+        onClick={(e) => {
+          e.stopPropagation();
+          // Add full video modal functionality here
+          console.log('Play full demo clicked');
+        }}
+      >
+        <Play className="w-6 h-6 text-white ml-1" fill="currentColor" />
+      </motion.button>
+    </div>
 
-              {/* Floating Elements */}
-              <motion.div
-                className="absolute -top-4 left-1/2 transform -translate-x-1/2 w-16 h-16 bg-white/80 backdrop-blur-lg rounded-full border border-white/20 shadow-lg flex items-center justify-center"
-                animate={{ y: [0, -10, 0] }}
-                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-              >
-                <Play className="w-6 h-6 text-blue-600 ml-0.5" fill="currentColor" />
-              </motion.div>
+    {/* Video Duration Badge */}
+    <div className="absolute top-4 right-4 px-3 py-1 bg-black/70 backdrop-blur-md text-white text-sm font-medium rounded-lg">
+      2:30
+    </div>
 
-              <motion.div
-                className="absolute -bottom-6 -right-6 w-20 h-20 bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-2xl rotate-12 shadow-lg opacity-80"
-                animate={{ rotate: [12, 18, 12] }}
-                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-              >
-                <div className="w-full h-full flex items-center justify-center">
-                  <Sparkles className="w-8 h-8 text-white" />
-                </div>
-              </motion.div>
-            </motion.div>
+    {/* Quality Badge */}
+    <div className="absolute top-4 left-4 px-3 py-1 bg-gradient-to-r from-blue-500 to-purple-600 text-white text-sm font-medium rounded-lg">
+      HD
+    </div>
+
+    {/* AskStan! Product Demo Badge */}
+    <div className="absolute top-4 left-1/2 transform -translate-x-1/2 flex items-center px-3 py-1 bg-green-500/90 backdrop-blur-md text-white text-sm font-medium rounded-lg">
+      <CheckCircle className="w-4 h-4 mr-1" />
+      <span>AskStan! Product Demo</span>
+    </div>
+
+    {/* Gradient Border Effect on Hover */}
+    <div className="absolute inset-0 rounded-2xl p-1 bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-yellow-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10">
+      <div className="w-full h-full rounded-xl bg-transparent" />
+    </div>
+  </div>
+
+  {/* Floating Elements */}
+  <motion.div
+    className="absolute -top-4 left-1/2 transform -translate-x-1/2 w-16 h-16 bg-white/80 backdrop-blur-lg rounded-full border border-white/20 shadow-lg flex items-center justify-center"
+    animate={{ y: [0, -10, 0] }}
+    transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+  >
+    <Play className="w-6 h-6 text-blue-600 ml-0.5" fill="currentColor" />
+  </motion.div>
+
+  <motion.div
+    className="absolute -bottom-6 -right-6 w-20 h-20 bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-2xl rotate-12 shadow-lg opacity-80"
+    animate={{ rotate: [12, 18, 12] }}
+    transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+  >
+    <div className="w-full h-full flex items-center justify-center">
+      <Sparkles className="w-8 h-8 text-white" />
+    </div>
+  </motion.div>
+</motion.div>
           </div>
 
           {/* Bottom Stats/Social Proof */}
