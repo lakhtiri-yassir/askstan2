@@ -1,19 +1,16 @@
 /**
- * LANDING PAGE INTEGRATION
- * Updated LandingPage.tsx with VideoDemo section integration
- * Maintains existing design and adds video demo between hero and features
+ * COMPLETE LANDING PAGE WITHOUT TESTIMONIALS
+ * Full LandingPage.tsx with seamless banner integration, video demo placeholder,
+ * and all sections except testimonials (removed as requested)
  */
 
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { ArrowRight, TrendingUp, Users, Sparkles, CheckCircle, Star, Zap } from 'lucide-react';
+import { ArrowRight, TrendingUp, Users, Sparkles, CheckCircle, Zap, Play } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../contexts/AuthContext';
 import askstanBanner from '../assets/images/hero-image.jpg';
-
-// Import the new VideoDemo component
-import { VideoDemo } from '../components/VideoDemo';
 
 export const LandingPage: React.FC = () => {
   const { user, clearSession } = useAuth();
@@ -46,9 +43,23 @@ export const LandingPage: React.FC = () => {
         </motion.div>
       )}
 
-      {/* HERO SECTION - Split Layout */}
-      <section className="min-h-screen flex items-center">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+      {/* HERO SECTION - Split Layout with Seamless Banner Integration */}
+      <section className="min-h-screen flex items-center relative overflow-hidden">
+        {/* Enhanced Background Elements for Seamless Integration */}
+        <div className="absolute inset-0">
+          {/* Base gradient matching the page background */}
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-yellow-50" />
+          
+          {/* Subtle overlay gradients for depth */}
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-50/30 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/50 to-transparent" />
+          
+          {/* Radial gradients for banner area integration */}
+          <div className="absolute top-1/2 right-0 w-1/2 h-1/2 bg-gradient-radial from-blue-100/40 via-transparent to-transparent transform -translate-y-1/2 blur-3xl" />
+          <div className="absolute bottom-1/4 right-1/4 w-1/3 h-1/3 bg-gradient-radial from-yellow-100/30 via-transparent to-transparent blur-2xl" />
+        </div>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center min-h-screen py-20">
             
             {/* LEFT SIDE - Content */}
@@ -132,17 +143,60 @@ export const LandingPage: React.FC = () => {
               </motion.div>
             </motion.div>
 
-            {/* RIGHT SIDE - AskStan Banner */}
+            {/* RIGHT SIDE - AskStan Banner with Seamless Integration */}
             <motion.div
               initial={{ opacity: 0, x: 50 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8, delay: 0.4 }}
-              className="flex justify-center lg:justify-end"
+              className="relative flex justify-center lg:justify-end"
             >
-              <img
-                src={askstanBanner}
-                alt="AskStan! AI Social Media Coach"
-                className="w-full max-w-lg h-auto object-contain drop-shadow-2xl"
+              {/* Seamless Background Integration Elements */}
+              <div className="absolute inset-0 -m-8">
+                {/* Matching background that extends beyond the image */}
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-50/80 via-white/60 to-yellow-50/80 rounded-3xl blur-xl" />
+                <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-blue-100/20 to-yellow-100/20 rounded-2xl blur-lg" />
+              </div>
+
+              {/* Banner Image with Enhanced Integration */}
+              <div className="relative z-10">
+                <img
+                  src={askstanBanner}
+                  alt="AskStan! AI Social Media Coach"
+                  className="w-full max-w-lg h-auto object-contain drop-shadow-2xl"
+                  style={{
+                    filter: 'drop-shadow(0 20px 40px rgba(0, 0, 0, 0.1))'
+                  }}
+                />
+                
+                {/* Subtle overlay to blend edges */}
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-50/10 via-transparent to-yellow-50/10 rounded-lg pointer-events-none" />
+              </div>
+
+              {/* Floating Elements for Extra Integration */}
+              <motion.div
+                className="absolute top-1/4 -left-4 w-16 h-16 bg-gradient-to-br from-blue-200/60 to-purple-200/60 rounded-2xl blur-sm opacity-70"
+                animate={{ 
+                  y: [0, -10, 0],
+                  rotate: [0, 5, 0]
+                }}
+                transition={{ 
+                  duration: 6, 
+                  repeat: Infinity, 
+                  ease: "easeInOut" 
+                }}
+              />
+              
+              <motion.div
+                className="absolute bottom-1/4 -right-2 w-12 h-12 bg-gradient-to-br from-yellow-200/60 to-orange-200/60 rounded-xl blur-sm opacity-60"
+                animate={{ 
+                  y: [0, 15, 0],
+                  rotate: [0, -3, 0]
+                }}
+                transition={{ 
+                  duration: 8, 
+                  repeat: Infinity, 
+                  ease: "easeInOut" 
+                }}
               />
             </motion.div>
           </div>
@@ -179,8 +233,218 @@ export const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* VIDEO DEMO SECTION - NEW INTEGRATION */}
-      <VideoDemo />
+      {/* VIDEO DEMO SECTION - Fixed Implementation */}
+      <section className="py-20 relative overflow-hidden">
+        {/* Background Elements */}
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 via-white to-yellow-50/50" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.1)_0%,transparent_50%)] pointer-events-none" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(245,158,11,0.1)_0%,transparent_50%)] pointer-events-none" />
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 xl:gap-16 items-center">
+            
+            {/* LEFT SIDE - Content */}
+            <motion.div
+              initial={{ opacity: 0, x: -50 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8 }}
+              viewport={{ once: true }}
+              className="space-y-8"
+            >
+              {/* Section Badge */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                viewport={{ once: true }}
+                className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-100 to-yellow-100 rounded-full border border-blue-200/50"
+              >
+                <Play className="w-4 h-4 text-blue-600 mr-2" />
+                <span className="text-blue-800 font-medium text-sm">Live Demo</span>
+              </motion.div>
+
+              {/* Main Heading */}
+              <div>
+                <motion.h2
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, delay: 0.3 }}
+                  viewport={{ once: true }}
+                  className="text-4xl md:text-5xl lg:text-6xl font-black mb-6 tracking-tight"
+                >
+                  <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-yellow-500 bg-clip-text text-transparent">
+                    See AskStan!
+                  </span>
+                  <br />
+                  <span className="text-gray-900">in Action</span>
+                </motion.h2>
+
+                <motion.p
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, delay: 0.4 }}
+                  viewport={{ once: true }}
+                  className="text-xl md:text-2xl text-gray-600 leading-relaxed"
+                >
+                  Watch how our AI coach transforms your social media strategy in real-time
+                </motion.p>
+              </div>
+
+              {/* Feature Highlights */}
+              <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.5 }}
+                viewport={{ once: true }}
+                className="space-y-4"
+              >
+                <div className="flex items-start space-x-4">
+                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <Sparkles className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-1">AI-Powered Insights</h3>
+                    <p className="text-gray-600">See how Stan analyzes your content and provides personalized recommendations.</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start space-x-4">
+                  <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-yellow-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <TrendingUp className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-1">Real-Time Strategy</h3>
+                    <p className="text-gray-600">Watch the platform adapt and evolve strategies based on your goals.</p>
+                  </div>
+                </div>
+              </motion.div>
+
+              {/* Call-to-Action */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.6 }}
+                viewport={{ once: true }}
+                className="flex flex-col sm:flex-row gap-4"
+              >
+                <motion.button
+                  onClick={() => {
+                    // For now, just scroll to features since we don't have actual video
+                    document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  className="group relative px-8 py-4 bg-gradient-to-r from-blue-500 to-yellow-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-blue-500/30"
+                  whileHover={{ scale: 1.02, y: -2 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <div className="flex items-center justify-center space-x-2">
+                    <Play className="w-5 h-5" fill="currentColor" />
+                    <span>Watch Full Demo</span>
+                  </div>
+                  <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-600 to-yellow-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10" />
+                </motion.button>
+
+                <motion.a
+                  href="#features"
+                  className="px-8 py-4 bg-white/80 backdrop-blur-lg border border-gray-200 text-gray-700 font-semibold rounded-xl shadow-lg hover:shadow-xl hover:bg-white transition-all duration-300 text-center focus:outline-none focus:ring-4 focus:ring-gray-200"
+                  whileHover={{ scale: 1.02, y: -2 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  Learn More
+                </motion.a>
+              </motion.div>
+            </motion.div>
+
+            {/* RIGHT SIDE - Placeholder Video Container (matches your image) */}
+            <motion.div
+              initial={{ opacity: 0, x: 50 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+              viewport={{ once: true }}
+              className="relative"
+            >
+              {/* Decorative Background Elements */}
+              <div className="absolute -inset-4 bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-yellow-500/10 rounded-3xl blur-xl" />
+              <div className="absolute -top-8 -right-8 w-32 h-32 bg-gradient-to-br from-blue-400/20 to-transparent rounded-full blur-2xl" />
+              <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-gradient-to-br from-yellow-400/20 to-transparent rounded-full blur-2xl" />
+              
+              {/* Video Placeholder Container - Glass Morphism Style */}
+              <div className="relative z-10 aspect-video bg-white/80 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/20 overflow-hidden">
+                {/* Placeholder Content */}
+                <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
+                  <div className="text-center">
+                    <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-yellow-500 rounded-full flex items-center justify-center mb-4 mx-auto">
+                      <Play className="w-10 h-10 text-white ml-1" fill="currentColor" />
+                    </div>
+                    <p className="text-gray-600 font-medium">Demo Video Coming Soon</p>
+                    <p className="text-gray-500 text-sm mt-1">Add your video files to see it in action</p>
+                  </div>
+                </div>
+
+                {/* Video Duration Badge */}
+                <div className="absolute top-4 right-4 px-3 py-1 bg-black/70 backdrop-blur-md text-white text-sm font-medium rounded-lg">
+                  2:30
+                </div>
+
+                {/* Quality Badge */}
+                <div className="absolute top-4 left-4 px-3 py-1 bg-gradient-to-r from-blue-500 to-purple-600 text-white text-sm font-medium rounded-lg">
+                  HD
+                </div>
+
+                {/* Checkmark indicating AskStan! Product Demo */}
+                <div className="absolute top-4 left-1/2 transform -translate-x-1/2 flex items-center px-3 py-1 bg-green-500/90 backdrop-blur-md text-white text-sm font-medium rounded-lg">
+                  <CheckCircle className="w-4 h-4 mr-1" />
+                  <span>AskStan! Product Demo</span>
+                </div>
+              </div>
+
+              {/* Floating Elements */}
+              <motion.div
+                className="absolute -top-4 left-1/2 transform -translate-x-1/2 w-16 h-16 bg-white/80 backdrop-blur-lg rounded-full border border-white/20 shadow-lg flex items-center justify-center"
+                animate={{ y: [0, -10, 0] }}
+                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <Play className="w-6 h-6 text-blue-600 ml-0.5" fill="currentColor" />
+              </motion.div>
+
+              <motion.div
+                className="absolute -bottom-6 -right-6 w-20 h-20 bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-2xl rotate-12 shadow-lg opacity-80"
+                animate={{ rotate: [12, 18, 12] }}
+                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <div className="w-full h-full flex items-center justify-center">
+                  <Sparkles className="w-8 h-8 text-white" />
+                </div>
+              </motion.div>
+            </motion.div>
+          </div>
+
+          {/* Bottom Stats/Social Proof */}
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.7 }}
+            viewport={{ once: true }}
+            className="mt-20 text-center"
+          >
+            <div className="inline-flex items-center space-x-8 px-8 py-4 bg-white/60 backdrop-blur-lg rounded-2xl border border-white/20 shadow-lg">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-gray-900">2K+</div>
+                <div className="text-sm text-gray-600">Active Users</div>
+              </div>
+              <div className="w-px h-8 bg-gray-300" />
+              <div className="text-center">
+                <div className="text-2xl font-bold text-gray-900">98%</div>
+                <div className="text-sm text-gray-600">Success Rate</div>
+              </div>
+              <div className="w-px h-8 bg-gray-300" />
+              <div className="text-center">
+                <div className="text-2xl font-bold text-gray-900">24/7</div>
+                <div className="text-sm text-gray-600">AI Support</div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </section>
 
       {/* FEATURES SECTION */}
       <section id="features" className="py-20 bg-white/50">
@@ -257,106 +521,6 @@ export const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* TESTIMONIALS SECTION */}
-      <section className="py-20 bg-gradient-to-br from-blue-50 to-yellow-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-6">
-              Join <span className="bg-gradient-to-r from-blue-600 to-yellow-500 bg-clip-text text-transparent">2,000+</span> Growing Professionals
-            </h2>
-          </motion.div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* Testimonial 1 */}
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.1 }}
-              viewport={{ once: true }}
-              className="bg-white/80 backdrop-blur-lg rounded-2xl p-8 shadow-xl border border-white/20"
-            >
-              <div className="flex items-center mb-4">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="w-5 h-5 text-yellow-500 fill-current" />
-                ))}
-              </div>
-              <p className="text-gray-700 mb-6 leading-relaxed">
-                "AskStan! transformed my LinkedIn strategy. My engagement increased by 300% in just two months!"
-              </p>
-              <div className="flex items-center">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mr-4">
-                  <span className="text-white font-bold">MJ</span>
-                </div>
-                <div>
-                  <div className="font-semibold text-gray-900">Maria Johnson</div>
-                  <div className="text-gray-600 text-sm">Marketing Director</div>
-                </div>
-              </div>
-            </motion.div>
-
-            {/* Testimonial 2 */}
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-              viewport={{ once: true }}
-              className="bg-white/80 backdrop-blur-lg rounded-2xl p-8 shadow-xl border border-white/20"
-            >
-              <div className="flex items-center mb-4">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="w-5 h-5 text-yellow-500 fill-current" />
-                ))}
-              </div>
-              <p className="text-gray-700 mb-6 leading-relaxed">
-                "The AI coaching is incredible. It's like having a social media expert available 24/7."
-              </p>
-              <div className="flex items-center">
-                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-yellow-500 rounded-full flex items-center justify-center mr-4">
-                  <span className="text-white font-bold">DK</span>
-                </div>
-                <div>
-                  <div className="font-semibold text-gray-900">David Kim</div>
-                  <div className="text-gray-600 text-sm">Entrepreneur</div>
-                </div>
-              </div>
-            </motion.div>
-
-            {/* Testimonial 3 */}
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.3 }}
-              viewport={{ once: true }}
-              className="bg-white/80 backdrop-blur-lg rounded-2xl p-8 shadow-xl border border-white/20"
-            >
-              <div className="flex items-center mb-4">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="w-5 h-5 text-yellow-500 fill-current" />
-                ))}
-              </div>
-              <p className="text-gray-700 mb-6 leading-relaxed">
-                "Finally, a tool that actually understands social media strategy. Game changer!"
-              </p>
-              <div className="flex items-center">
-                <div className="w-12 h-12 bg-gradient-to-br from-yellow-500 to-blue-500 rounded-full flex items-center justify-center mr-4">
-                  <span className="text-white font-bold">SC</span>
-                </div>
-                <div>
-                  <div className="font-semibold text-gray-900">Sarah Chen</div>
-                  <div className="text-gray-600 text-sm">Content Creator</div>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        </div>
-      </section>
-
       {/* CTA SECTION */}
       <section className="py-20 bg-gradient-to-r from-blue-600 to-yellow-500">
         <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
@@ -380,16 +544,7 @@ export const LandingPage: React.FC = () => {
                 className="bg-white text-blue-600 hover:bg-gray-100 font-bold px-8 py-4 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
               >
                 {user ? "Go to Dashboard" : "Start Free Trial"}
-              </Button>
-              <Button
-                as={Link}
-                to="/plans"
-                variant="outline"
-                size="lg"
-                className="border-2 border-white text-white hover:bg-white hover:text-blue-600 font-semibold px-8 py-4 rounded-2xl transition-all duration-300"
-              >
-                View Plans
-              </Button>
+                </Button>
             </div>
           </motion.div>
         </div>
