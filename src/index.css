@@ -161,3 +161,264 @@
 .heavy-animation:hover {
   will-change: auto;
 }
+
+/**
+ * VIDEO DEMO CSS ADDITIONS
+ * Add these styles to your src/index.css file
+ * Custom styles for video components with AskStan! design system integration
+ */
+
+/* Add to existing @layer components section in src/index.css */
+
+@layer components {
+  /* Video player custom volume slider */
+  .slider {
+    background: linear-gradient(to right, #3b82f6 0%, #f59e0b 100%);
+    outline: none;
+    border-radius: 15px;
+    background-size: 0% 100%;
+    background-repeat: no-repeat;
+    transition: background-size 0.2s ease;
+  }
+  
+  .slider::-webkit-slider-thumb {
+    appearance: none;
+    height: 16px;
+    width: 16px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #3b82f6, #f59e0b);
+    cursor: pointer;
+    border: 2px solid white;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s ease;
+  }
+  
+  .slider::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+  }
+  
+  .slider::-moz-range-thumb {
+    appearance: none;
+    height: 16px;
+    width: 16px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #3b82f6, #f59e0b);
+    cursor: pointer;
+    border: 2px solid white;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s ease;
+  }
+  
+  .slider::-moz-range-thumb:hover {
+    transform: scale(1.2);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+  }
+
+  /* Video shimmer loading animation */
+  @keyframes shimmer {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
+  /* Video container glass morphism enhancement */
+  .video-glass {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 
+      0 20px 25px -5px rgba(0, 0, 0, 0.1),
+      0 10px 10px -5px rgba(0, 0, 0, 0.04),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+
+  /* Video thumbnail hover glow effect */
+  .video-thumbnail-glow {
+    position: relative;
+  }
+  
+  .video-thumbnail-glow::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: inherit;
+    padding: 2px;
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6, #f59e0b);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: xor;
+    -webkit-mask-composite: xor;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  
+  .video-thumbnail-glow:hover::before {
+    opacity: 1;
+  }
+
+  /* Progress bar styling for video */
+  .video-progress {
+    appearance: none;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .video-progress::-webkit-slider-thumb {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #3b82f6, #f59e0b);
+    cursor: pointer;
+    border: 2px solid white;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    transform: scale(0);
+    transition: transform 0.2s ease;
+  }
+  
+  .video-progress:hover::-webkit-slider-thumb {
+    transform: scale(1);
+  }
+
+  /* Video modal backdrop blur enhancement */
+  .video-modal-backdrop {
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    background: rgba(0, 0, 0, 0.75);
+  }
+
+  /* Custom video controls styling */
+  .video-controls {
+    background: linear-gradient(
+      180deg,
+      transparent 0%,
+      rgba(0, 0, 0, 0.1) 40%,
+      rgba(0, 0, 0, 0.6) 100%
+    );
+  }
+
+  /* Video loading spinner */
+  .video-spinner {
+    border: 3px solid rgba(255, 255, 255, 0.2);
+    border-top: 3px solid #3b82f6;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  /* Video quality badge styling */
+  .quality-badge {
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 6px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  /* Video thumbnail play button enhancement */
+  .video-play-button {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .video-play-button:hover {
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: scale(1.1);
+    box-shadow: 
+      0 10px 25px rgba(0, 0, 0, 0.2),
+      0 0 20px rgba(59, 130, 246, 0.3);
+  }
+
+  /* Video section background pattern */
+  .video-section-bg {
+    background-image: 
+      radial-gradient(circle at 25% 25%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
+      radial-gradient(circle at 75% 75%, rgba(245, 158, 11, 0.1) 0%, transparent 50%);
+  }
+
+  /* Mobile optimizations for video */
+  @media (max-width: 768px) {
+    .video-controls {
+      padding: 12px;
+    }
+    
+    .video-play-button {
+      width: 60px;
+      height: 60px;
+    }
+    
+    .slider {
+      height: 6px;
+    }
+    
+    .slider::-webkit-slider-thumb,
+    .slider::-moz-range-thumb {
+      width: 20px;
+      height: 20px;
+    }
+  }
+
+  /* Accessibility enhancements */
+  .video-element:focus {
+    outline: 3px solid rgba(59, 130, 246, 0.6);
+    outline-offset: 2px;
+  }
+
+  /* Reduced motion preferences */
+  @media (prefers-reduced-motion: reduce) {
+    .video-play-button,
+    .video-thumbnail-glow::before {
+      transition: none;
+    }
+    
+    .video-spinner {
+      animation: none;
+      border: 3px solid #3b82f6;
+    }
+    
+    @keyframes shimmer {
+      0%, 100% { transform: translateX(0); }
+    }
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .video-glass {
+    background: rgba(255, 255, 255, 0.95);
+    border: 2px solid #000;
+  }
+  
+  .video-play-button {
+    background: rgba(0, 0, 0, 0.8);
+    border: 3px solid #fff;
+    color: #fff;
+  }
+  
+  .quality-badge {
+    background: #000;
+    color: #fff;
+    border: 1px solid #fff;
+  }
+}
