@@ -1,27 +1,426 @@
 /**
- * COMPLETE LANDING PAGE WITHOUT TESTIMONIALS
- * Full LandingPage.tsx with seamless banner integration, video demo placeholder,
- * and all sections except testimonials (removed as requested)
+ * SIMPLIFIED 13-MINUTE VIDEO DEMO SYSTEM
+ * Optimized for single 28MB full-demo.mp4 file
+ * Clean, professional video player without complexity
  */
 
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { ArrowRight, TrendingUp, Users, Sparkles, CheckCircle, Zap, Play } from 'lucide-react';
+import { 
+  ArrowRight, TrendingUp, Users, Sparkles, CheckCircle, Zap, Play, Pause,
+  SkipForward, Volume2, VolumeX, Maximize, X, Clock, 
+  FastForward, RotateCcw
+} from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../contexts/AuthContext';
 import askstanBanner from '../assets/images/hero-image.jpg';
-import demoThumbnail from '../assets/videos/demo-thumbnail.mp4';
-import demoThumbnailWebM from '../assets/videos/demo-thumbnail.webm'; // if you have this
-import fullDemo from '../assets/videos/full-demo.mp4';
-import videoFallback from '../assets/images/video-fallback.jpg';
+
+interface VideoPlayerProps {
+  videoSrc: string;
+  onClose: () => void;
+}
+
+const SimpleVideoPlayer: React.FC<VideoPlayerProps> = ({ videoSrc, onClose }) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const progressRef = useRef<HTMLDivElement>(null);
+  
+  // Video state management
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [volume, setVolume] = useState(1);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [buffered, setBuffered] = useState(0);
+  const [playbackRate, setPlaybackRate] = useState(1);
+  const [showControls, setShowControls] = useState(true);
+
+  // Initialize video and event listeners
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const handleLoadedData = () => {
+      setLoading(false);
+      setDuration(video.duration);
+      console.log(`✅ Video loaded successfully (${Math.round(video.duration / 60)}:${Math.round(video.duration % 60).toString().padStart(2, '0')})`);
+    };
+
+    const handleTimeUpdate = () => {
+      setCurrentTime(video.currentTime);
+    };
+
+    const handleProgress = () => {
+      if (video.buffered.length > 0) {
+        const bufferedEnd = video.buffered.end(video.buffered.length - 1);
+        setBuffered((bufferedEnd / video.duration) * 100);
+      }
+    };
+
+    const handlePlay = () => setIsPlaying(true);
+    const handlePause = () => setIsPlaying(false);
+    const handleVolumeChange = () => {
+      setVolume(video.volume);
+      setIsMuted(video.muted);
+    };
+
+    // Attach event listeners
+    video.addEventListener('loadeddata', handleLoadedData);
+    video.addEventListener('timeupdate', handleTimeUpdate);
+    video.addEventListener('progress', handleProgress);
+    video.addEventListener('play', handlePlay);
+    video.addEventListener('pause', handlePause);
+    video.addEventListener('volumechange', handleVolumeChange);
+
+    return () => {
+      video.removeEventListener('loadeddata', handleLoadedData);
+      video.removeEventListener('timeupdate', handleTimeUpdate);
+      video.removeEventListener('progress', handleProgress);
+      video.removeEventListener('play', handlePlay);
+      video.removeEventListener('pause', handlePause);
+      video.removeEventListener('volumechange', handleVolumeChange);
+    };
+  }, []);
+
+  // Auto-hide controls
+  useEffect(() => {
+    let hideTimer: NodeJS.Timeout;
+    if (isPlaying && showControls) {
+      hideTimer = setTimeout(() => setShowControls(false), 3000);
+    }
+    return () => clearTimeout(hideTimer);
+  }, [isPlaying, showControls]);
+
+  // Video control functions
+  const togglePlay = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    
+    if (video.paused) {
+      video.play().catch(console.error);
+    } else {
+      video.pause();
+    }
+  }, []);
+
+  const seek = useCallback((time: number) => {
+    const video = videoRef.current;
+    if (video) {
+      video.currentTime = Math.max(0, Math.min(time, duration));
+    }
+  }, [duration]);
+
+  const skip = useCallback((seconds: number) => {
+    seek(currentTime + seconds);
+  }, [currentTime, seek]);
+
+  const toggleMute = useCallback(() => {
+    const video = videoRef.current;
+    if (video) {
+      video.muted = !video.muted;
+    }
+  }, []);
+
+  const changeVolume = useCallback((newVolume: number) => {
+    const video = videoRef.current;
+    if (video) {
+      video.volume = Math.max(0, Math.min(1, newVolume));
+    }
+  }, []);
+
+  const changePlaybackRate = useCallback((rate: number) => {
+    const video = videoRef.current;
+    if (video) {
+      video.playbackRate = rate;
+      setPlaybackRate(rate);
+    }
+  }, []);
+
+  const toggleFullscreen = useCallback(async () => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    try {
+      if (!document.fullscreenElement) {
+        await video.requestFullscreen();
+        setIsFullscreen(true);
+      } else {
+        await document.exitFullscreen();
+        setIsFullscreen(false);
+      }
+    } catch (error) {
+      console.error('Fullscreen failed:', error);
+    }
+  }, []);
+
+  // Handle click on progress bar
+  const handleProgressClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const progressBar = progressRef.current;
+    if (!progressBar) return;
+
+    const rect = progressBar.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const progressWidth = rect.width;
+    const clickTime = (clickX / progressWidth) * duration;
+    
+    seek(clickTime);
+  }, [duration, seek]);
+
+  // Format time display
+  const formatTime = (time: number): string => {
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black z-50 flex flex-col"
+      onMouseMove={() => setShowControls(true)}
+      onClick={() => setShowControls(true)}
+    >
+      {/* Video Element */}
+      <div className="flex-1 relative bg-black flex items-center justify-center">
+        {loading && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-16 h-16 border-4 border-white/20 border-t-white rounded-full animate-spin" />
+            <p className="text-white ml-4 text-lg">Loading demo video...</p>
+          </div>
+        )}
+        
+        <video
+          ref={videoRef}
+          className="max-w-full max-h-full object-contain"
+          src={videoSrc}
+          preload="metadata"
+          onLoadStart={() => setLoading(true)}
+          onClick={togglePlay}
+        >
+          Your browser does not support the video tag.
+        </video>
+
+        {/* Close Button */}
+        <motion.button
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={onClose}
+          className="absolute top-4 right-4 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors z-10"
+        >
+          <X className="w-5 h-5" />
+        </motion.button>
+      </div>
+
+      {/* Enhanced Controls */}
+      <AnimatePresence>
+        {showControls && (
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className="bg-gradient-to-t from-black/90 via-black/70 to-transparent p-4"
+          >
+            {/* Progress Bar */}
+            <div className="mb-4">
+              <div 
+                ref={progressRef}
+                onClick={handleProgressClick}
+                className="relative h-2 bg-white/20 rounded-full cursor-pointer group"
+              >
+                {/* Buffered Progress */}
+                <div 
+                  className="absolute h-full bg-white/30 rounded-full transition-all"
+                  style={{ width: `${buffered}%` }}
+                />
+                {/* Played Progress */}
+                <div 
+                  className="absolute h-full bg-gradient-to-r from-blue-500 to-yellow-500 rounded-full transition-all"
+                  style={{ width: `${(currentTime / duration) * 100}%` }}
+                />
+                {/* Progress Thumb */}
+                <div 
+                  className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                  style={{ left: `${(currentTime / duration) * 100}%`, marginLeft: '-8px' }}
+                />
+              </div>
+              
+              {/* Time Display */}
+              <div className="flex justify-between items-center mt-2 text-sm text-white/80">
+                <span>{formatTime(currentTime)}</span>
+                <div className="flex items-center space-x-2">
+                  <Clock className="w-4 h-4" />
+                  <span>{formatTime(duration - currentTime)} remaining</span>
+                </div>
+                <span>{formatTime(duration)}</span>
+              </div>
+            </div>
+
+            {/* Control Buttons */}
+            <div className="flex items-center justify-between">
+              {/* Left Controls */}
+              <div className="flex items-center space-x-3">
+                {/* Play/Pause */}
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={togglePlay}
+                  className="w-12 h-12 bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/30 rounded-full flex items-center justify-center text-white transition-colors"
+                >
+                  {isPlaying ? (
+                    <Pause className="w-5 h-5" />
+                  ) : (
+                    <Play className="w-5 h-5 ml-1" fill="currentColor" />
+                  )}
+                </motion.button>
+
+                {/* Skip Controls */}
+                <button
+                  onClick={() => skip(-10)}
+                  className="p-2 text-white/70 hover:text-white transition-colors"
+                  title="Rewind 10s"
+                >
+                  <RotateCcw className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => skip(30)}
+                  className="p-2 text-white/70 hover:text-white transition-colors"
+                  title="Skip 30s"
+                >
+                  <FastForward className="w-5 h-5" />
+                </button>
+
+                {/* Volume Controls */}
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={toggleMute}
+                    className="p-2 text-white/70 hover:text-white transition-colors"
+                  >
+                    {isMuted || volume === 0 ? (
+                      <VolumeX className="w-5 h-5" />
+                    ) : (
+                      <Volume2 className="w-5 h-5" />
+                    )}
+                  </button>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.1"
+                    value={isMuted ? 0 : volume}
+                    onChange={(e) => {
+                      const newVolume = parseFloat(e.target.value);
+                      changeVolume(newVolume);
+                      if (newVolume > 0 && isMuted) {
+                        toggleMute();
+                      }
+                    }}
+                    className="w-20 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer slider"
+                  />
+                </div>
+              </div>
+
+              {/* Center Info */}
+              <div className="hidden sm:flex items-center text-white/80 text-sm">
+                <span>AskStan! Complete Demo</span>
+              </div>
+
+              {/* Right Controls */}
+              <div className="flex items-center space-x-3">
+                {/* Playback Speed */}
+                <select
+                  value={playbackRate}
+                  onChange={(e) => changePlaybackRate(parseFloat(e.target.value))}
+                  className="bg-black/50 text-white border border-white/20 rounded px-2 py-1 text-sm"
+                >
+                  <option value={0.5}>0.5×</option>
+                  <option value={0.75}>0.75×</option>
+                  <option value={1}>1×</option>
+                  <option value={1.25}>1.25×</option>
+                  <option value={1.5}>1.5×</option>
+                  <option value={2}>2×</option>
+                </select>
+
+                {/* Fullscreen */}
+                <button
+                  onClick={toggleFullscreen}
+                  className="p-2 text-white/70 hover:text-white transition-colors"
+                  title="Fullscreen"
+                >
+                  <Maximize className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+};
 
 export const LandingPage: React.FC = () => {
   const { user, clearSession } = useAuth();
+  const [showVideoModal, setShowVideoModal] = useState(false);
+
+  // Your video file path - update this to match your file location
+  const DEMO_VIDEO_URL = "/full-demo.mp4"; // Assuming it's in public folder
 
   const handleClearSession = () => {
     clearSession();
     window.location.reload();
+  };
+
+  const formatTime = (seconds: number): string => {
+    const minutes = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${minutes}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const createVideoPreview = () => {
+    return (
+      <div className="w-full h-full bg-gradient-to-br from-blue-500 via-purple-500 to-yellow-500 flex flex-col justify-between p-6 text-white">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <Play className="w-6 h-6" />
+            <span className="font-bold text-lg">Complete Demo</span>
+          </div>
+          <div className="bg-black/30 px-3 py-1 rounded-lg text-sm">
+            13:00
+          </div>
+        </div>
+        
+        <div className="space-y-4">
+          <h3 className="font-bold text-xl mb-4">See AskStan! In Action:</h3>
+          <div className="grid grid-cols-1 gap-3 text-sm">
+            <div className="flex items-center space-x-2">
+              <CheckCircle className="w-4 h-4 flex-shrink-0" />
+              <span>Complete platform walkthrough</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <CheckCircle className="w-4 h-4 flex-shrink-0" />
+              <span>AI coach generating real strategies</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <CheckCircle className="w-4 h-4 flex-shrink-0" />
+              <span>Live content creation process</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <CheckCircle className="w-4 h-4 flex-shrink-0" />
+              <span>Analytics and growth tracking</span>
+            </div>
+          </div>
+          
+          <div className="mt-4 text-center">
+            <p className="text-sm opacity-90">13 minutes • 28MB • HD Quality</p>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -34,211 +433,29 @@ export const LandingPage: React.FC = () => {
           className="bg-blue-100 border border-blue-300 text-blue-800 p-3 text-center"
         >
           <p className="text-sm">
-            Logged in as: {user.email} | Status: {user.email_confirmed_at ? 'Confirmed' : 'Unconfirmed'}
+            Logged in as: {user.email} | Status: {user.email_confirmed_at ? 'Confirmed' : 'Pending Confirmation'}
+            <button 
+              onClick={handleClearSession}
+              className="ml-4 px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600"
+            >
+              Clear Session
+            </button>
           </p>
-          <Button
-            onClick={handleClearSession}
-            variant="outline"
-            size="sm"
-            className="mt-2"
-          >
-            <span>Clear Session</span>
-          </Button>
         </motion.div>
       )}
 
-      {/* HERO SECTION - Split Layout with Seamless Banner Integration */}
-      <section className="min-h-screen flex items-center relative overflow-hidden">
-        {/* Enhanced Background Elements for Seamless Integration */}
-        <div className="absolute inset-0">
-          {/* Base gradient matching the page background */}
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-yellow-50" />
-          
-          {/* Subtle overlay gradients for depth */}
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-50/30 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/50 to-transparent" />
-          
-          {/* Radial gradients for banner area integration */}
-          <div className="absolute top-1/2 right-0 w-1/2 h-1/2 bg-gradient-radial from-blue-100/40 via-transparent to-transparent transform -translate-y-1/2 blur-3xl" />
-          <div className="absolute bottom-1/4 right-1/4 w-1/3 h-1/3 bg-gradient-radial from-yellow-100/30 via-transparent to-transparent blur-2xl" />
-        </div>
+      {/* Video Modal */}
+      <AnimatePresence>
+        {showVideoModal && (
+          <SimpleVideoPlayer
+            videoSrc={DEMO_VIDEO_URL}
+            onClose={() => setShowVideoModal(false)}
+          />
+        )}
+      </AnimatePresence>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center min-h-screen py-20">
-            
-            {/* LEFT SIDE - Content */}
-            <motion.div
-              initial={{ opacity: 0, x: -50 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.8 }}
-              className="space-y-8"
-            >
-              {/* Main Heading with Gradient */}
-              <div>
-                <motion.h1
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.8, delay: 0.2 }}
-                  className="text-6xl md:text-7xl lg:text-8xl font-black mb-6 tracking-tight bg-gradient-to-r from-blue-600 via-purple-600 to-yellow-500 bg-clip-text text-transparent"
-                >
-                  AskStan!
-                </motion.h1>
-
-                {/* Tagline */}
-                <motion.h2
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.8, delay: 0.4 }}
-                  className="text-2xl md:text-3xl lg:text-4xl font-bold text-gray-800 mb-8"
-                >
-                  Your On-Demand Social Media Growth Coach
-                </motion.h2>
-              </div>
-
-              {/* Description */}
-              <motion.div
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.6 }}
-                className="space-y-6"
-              >
-                <p className="text-lg md:text-xl text-gray-600 leading-relaxed">
-                  Meet Stan, your AI-powered social media strategist who delivers personalized insights and proven growth tactics 24/7. 
-                  Specializing in LinkedIn optimization, content strategy, and audience engagement.
-                </p>
-              </motion.div>
-
-              {/* Key Features */}
-              <motion.div
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.8 }}
-                className="space-y-4"
-              >
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <TrendingUp className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">LinkedIn Mastery</h3>
-                    <p className="text-gray-600">Unlock LinkedIn's potential with AI-driven content strategies and networking tactics.</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-yellow-500 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <Sparkles className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Content Intelligence</h3>
-                    <p className="text-gray-600">Get instant content ideas, optimization tips, and engagement strategies.</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-gradient-to-br from-yellow-500 to-blue-500 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <Users className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Growth Analytics</h3>
-                    <p className="text-gray-600">Track your progress with detailed insights and performance metrics.</p>
-                  </div>
-                </div>
-              </motion.div>
-            </motion.div>
-
-            {/* RIGHT SIDE - AskStan Banner with Seamless Integration */}
-            <motion.div
-              initial={{ opacity: 0, x: 50 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.8, delay: 0.4 }}
-              className="relative flex justify-center lg:justify-end"
-            >
-              {/* Seamless Background Integration Elements */}
-              <div className="absolute inset-0 -m-8">
-                {/* Matching background that extends beyond the image */}
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-50/80 via-white/60 to-yellow-50/80 rounded-3xl blur-xl" />
-                <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-blue-100/20 to-yellow-100/20 rounded-2xl blur-lg" />
-              </div>
-
-              {/* Banner Image with Enhanced Integration */}
-              <div className="relative z-10">
-                <img
-                  src={askstanBanner}
-                  alt="AskStan! AI Social Media Coach"
-                  className="w-full max-w-lg h-auto object-contain drop-shadow-2xl"
-                  style={{
-                    filter: 'drop-shadow(0 20px 40px rgba(0, 0, 0, 0.1))'
-                  }}
-                />
-                
-                {/* Subtle overlay to blend edges */}
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-50/10 via-transparent to-yellow-50/10 rounded-lg pointer-events-none" />
-              </div>
-
-              {/* Floating Elements for Extra Integration */}
-              <motion.div
-                className="absolute top-1/4 -left-4 w-16 h-16 bg-gradient-to-br from-blue-200/60 to-purple-200/60 rounded-2xl blur-sm opacity-70"
-                animate={{ 
-                  y: [0, -10, 0],
-                  rotate: [0, 5, 0]
-                }}
-                transition={{ 
-                  duration: 6, 
-                  repeat: Infinity, 
-                  ease: "easeInOut" 
-                }}
-              />
-              
-              <motion.div
-                className="absolute bottom-1/4 -right-2 w-12 h-12 bg-gradient-to-br from-yellow-200/60 to-orange-200/60 rounded-xl blur-sm opacity-60"
-                animate={{ 
-                  y: [0, 15, 0],
-                  rotate: [0, -3, 0]
-                }}
-                transition={{ 
-                  duration: 8, 
-                  repeat: Infinity, 
-                  ease: "easeInOut" 
-                }}
-              />
-            </motion.div>
-          </div>
-
-          {/* CTA Buttons */}
-          <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 1.0 }}
-            className="flex flex-col sm:flex-row gap-6 justify-center items-center pb-20"
-          >
-            <Button
-              as={Link}
-              to={user ? "/dashboard" : "/signup"}
-              size="lg"
-              className="group relative px-12 py-4 bg-gradient-to-r from-blue-500 to-yellow-500 hover:from-blue-600 hover:to-yellow-600 text-white font-bold rounded-2xl shadow-2xl hover:shadow-3xl transition-all duration-300 transform hover:scale-105 focus:scale-105"
-            >
-              <span className="flex items-center">
-                {user ? "Go to Dashboard" : "Start Growing Today"}
-                <ArrowRight className="ml-2 w-5 h-5 transition-transform group-hover:translate-x-1" />
-              </span>
-            </Button>
-
-            <Button
-              as={Link}
-              to="/plans"
-              variant="outline"
-              size="lg"
-              className="px-12 py-4 border-2 border-gray-300 hover:border-blue-400 bg-white/80 backdrop-blur-sm text-gray-700 hover:text-blue-600 font-semibold rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300"
-            >
-              View Pricing
-            </Button>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* VIDEO DEMO SECTION - Fixed Implementation */}
-      <section className="py-20 relative overflow-hidden">
+      {/* Hero Section */}
+      <section className="relative pt-24 pb-20 overflow-hidden">
         {/* Background Elements */}
         <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 via-white to-yellow-50/50" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.1)_0%,transparent_50%)] pointer-events-none" />
@@ -247,262 +464,195 @@ export const LandingPage: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 xl:gap-16 items-center">
             
-            {/* LEFT SIDE - Content */}
+            {/* LEFT SIDE - Hero Content */}
             <motion.div
               initial={{ opacity: 0, x: -50 }}
-              whileInView={{ opacity: 1, x: 0 }}
+              animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8 }}
-              viewport={{ once: true }}
               className="space-y-8"
             >
-              {/* Section Badge */}
+              {/* Hero Badge */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.2 }}
-                viewport={{ once: true }}
                 className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-100 to-yellow-100 rounded-full border border-blue-200/50"
               >
-                <Play className="w-4 h-4 text-blue-600 mr-2" />
-                <span className="text-blue-800 font-medium text-sm">Live Demo</span>
+                <Sparkles className="w-4 h-4 text-blue-600 mr-2" />
+                <span className="text-blue-800 font-medium text-sm">AI-Powered Growth</span>
               </motion.div>
 
               {/* Main Heading */}
               <div>
-                <motion.h2
+                <motion.h1
                   initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
+                  animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.8, delay: 0.3 }}
-                  viewport={{ once: true }}
                   className="text-4xl md:text-5xl lg:text-6xl font-black mb-6 tracking-tight"
                 >
                   <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-yellow-500 bg-clip-text text-transparent">
-                    See AskStan!
+                    Grow Your Social Media
                   </span>
                   <br />
-                  <span className="text-gray-900">in Action</span>
-                </motion.h2>
+                  <span className="text-gray-900">With AI Coach</span>
+                </motion.h1>
 
                 <motion.p
                   initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
+                  animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.8, delay: 0.4 }}
-                  viewport={{ once: true }}
-                  className="text-xl md:text-2xl text-gray-600 leading-relaxed"
+                  className="text-xl md:text-2xl text-gray-600 mb-8 leading-relaxed"
                 >
-                  Watch how our AI coach transforms your social media strategy in real-time
+                  Get personalized strategies, content ideas, and growth tips from your AI-powered social media coach. Watch our complete 13-minute demo to see exactly how it works.
                 </motion.p>
               </div>
 
-              {/* Feature Highlights */}
-              <motion.div
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.5 }}
-                viewport={{ once: true }}
-                className="space-y-4"
-              >
-                <div className="flex items-start space-x-4">
-                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <Sparkles className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-1">AI-Powered Insights</h3>
-                    <p className="text-gray-600">See how Stan analyzes your content and provides personalized recommendations.</p>
-                  </div>
-                </div>
-
-                <div className="flex items-start space-x-4">
-                  <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-yellow-500 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <TrendingUp className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-1">Real-Time Strategy</h3>
-                    <p className="text-gray-600">Watch the platform adapt and evolve strategies based on your goals.</p>
-                  </div>
-                </div>
-              </motion.div>
-
-              {/* Call-to-Action */}
+              {/* CTA Buttons */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.6 }}
-                viewport={{ once: true }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.5 }}
                 className="flex flex-col sm:flex-row gap-4"
               >
+                <Link to="/auth">
+                  <Button 
+                    size="lg" 
+                    className="group relative px-8 py-4 bg-gradient-to-r from-blue-500 to-yellow-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 w-full sm:w-auto"
+                  >
+                    <div className="flex items-center justify-center space-x-2">
+                      <span>Start Growing Today</span>
+                      <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                    <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-600 to-yellow-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10" />
+                  </Button>
+                </Link>
+
                 <motion.button
-                  onClick={() => {
-                    // For now, just scroll to features since we don't have actual video
-                    document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
-                  }}
-                  className="group relative px-8 py-4 bg-gradient-to-r from-blue-500 to-yellow-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-blue-500/30"
+                  onClick={() => setShowVideoModal(true)}
+                  className="px-8 py-4 bg-white/80 backdrop-blur-lg border border-gray-200 text-gray-700 font-semibold rounded-xl shadow-lg hover:shadow-xl hover:bg-white transition-all duration-300 text-center"
                   whileHover={{ scale: 1.02, y: -2 }}
                   whileTap={{ scale: 0.98 }}
                 >
                   <div className="flex items-center justify-center space-x-2">
-                    <Play className="w-5 h-5" fill="currentColor" />
+                    <Play className="w-5 h-5" />
                     <span>Watch Full Demo</span>
                   </div>
-                  <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-600 to-yellow-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10" />
                 </motion.button>
+              </motion.div>
 
-                <motion.a
-                  href="#features"
-                  className="px-8 py-4 bg-white/80 backdrop-blur-lg border border-gray-200 text-gray-700 font-semibold rounded-xl shadow-lg hover:shadow-xl hover:bg-white transition-all duration-300 text-center focus:outline-none focus:ring-4 focus:ring-gray-200"
-                  whileHover={{ scale: 1.02, y: -2 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  Learn More
-                </motion.a>
+              {/* Social Proof */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.6 }}
+                className="flex items-center space-x-6 pt-4"
+              >
+                <div className="flex items-center space-x-2">
+                  <Users className="w-5 h-5 text-blue-600" />
+                  <span className="text-gray-600 font-medium">1000+ Users</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <TrendingUp className="w-5 h-5 text-green-600" />
+                  <span className="text-gray-600 font-medium">300% Growth</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Clock className="w-5 h-5 text-purple-600" />
+                  <span className="text-gray-600 font-medium">13-Min Demo</span>
+                </div>
               </motion.div>
             </motion.div>
 
-            {/* RIGHT SIDE - Working Video Container */}
-<motion.div
-  initial={{ opacity: 0, x: 50 }}
-  whileInView={{ opacity: 1, x: 0 }}
-  transition={{ duration: 0.8, delay: 0.2 }}
-  viewport={{ once: true }}
-  className="relative"
->
-  {/* Decorative Background Elements */}
-  <div className="absolute -inset-4 bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-yellow-500/10 rounded-3xl blur-xl" />
-  <div className="absolute -top-8 -right-8 w-32 h-32 bg-gradient-to-br from-blue-400/20 to-transparent rounded-full blur-2xl" />
-  <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-gradient-to-br from-yellow-400/20 to-transparent rounded-full blur-2xl" />
-  
-  {/* Working Video Container */}
-  <div className="relative z-10 aspect-video rounded-2xl overflow-hidden bg-white/80 backdrop-blur-lg border border-white/20 shadow-2xl group cursor-pointer"
-    onClick={() => {
-      // You can add modal functionality here later
-      console.log('Video clicked - open full demo');
-    }}
-  >
-    {/* Actual Video Element */}
-    <video
-      className="w-full h-full object-cover"
-      autoPlay
-      muted
-      loop
-      playsInline
-      poster={videoFallback}
-      onError={(e) => {
-        console.log('Video failed to load, showing fallback');
-        // Fallback to image if video fails
-        const target = e.currentTarget as HTMLVideoElement;
-        target.style.display = 'none';
-        const fallbackImg = target.nextElementSibling as HTMLImageElement;
-        if (fallbackImg) fallbackImg.style.display = 'block';
-      }}
-    >
-      {/* WebM version for better compression (if you have it) */}
-      {demoThumbnailWebM && <source src={demoThumbnailWebM} type="video/webm" />}
-      {/* MP4 fallback */}
-      <source src={demoThumbnail} type="video/mp4" />
-      Your browser does not support the video tag.
-    </video>
+            {/* RIGHT SIDE - Video Preview */}
+            <motion.div
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+              className="relative"
+            >
+              {/* Decorative Background Elements */}
+              <div className="absolute -inset-4 bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-yellow-500/10 rounded-3xl blur-xl" />
+              <div className="absolute -top-8 -right-8 w-32 h-32 bg-gradient-to-br from-blue-400/20 to-transparent rounded-full blur-2xl" />
+              <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-gradient-to-br from-yellow-400/20 to-transparent rounded-full blur-2xl" />
+              
+              {/* Video Preview Container */}
+              <div 
+                className="relative z-10 aspect-video rounded-2xl overflow-hidden bg-white/80 backdrop-blur-lg border border-white/20 shadow-2xl group cursor-pointer"
+                onClick={() => setShowVideoModal(true)}
+              >
+                {/* Video Preview Content */}
+                <div className="relative w-full h-full">
+                  {createVideoPreview()}
 
-    {/* Fallback Image (hidden by default, shown if video fails) */}
-    <img
-      src={videoFallback || askstanBanner} // Use your existing banner as fallback if no video-fallback.jpg
-      alt="AskStan! Product Demo"
-      className="w-full h-full object-cover"
-      style={{ display: 'none' }}
-    />
+                  {/* Hover Overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
-    {/* Video Overlay Elements */}
-    <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  {/* Central Play Button */}
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <motion.button
+                      className="w-20 h-20 bg-white/20 backdrop-blur-md border-2 border-white/30 rounded-full flex items-center justify-center group/button hover:bg-white/30 hover:border-white/50 transition-all duration-300"
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowVideoModal(true);
+                      }}
+                    >
+                      <Play className="w-8 h-8 text-white ml-1" fill="currentColor" />
+                    </motion.button>
+                  </div>
 
-    {/* Play Button Overlay */}
-    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-      <motion.button
-        className="w-16 h-16 bg-white/20 backdrop-blur-md border-2 border-white/30 rounded-full flex items-center justify-center group/button hover:bg-white/30 hover:border-white/50 transition-all duration-300"
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={(e) => {
-          e.stopPropagation();
-          // Add full video modal functionality here
-          console.log('Play full demo clicked');
-        }}
-      >
-        <Play className="w-6 h-6 text-white ml-1" fill="currentColor" />
-      </motion.button>
-    </div>
+                  {/* Duration Badge */}
+                  <div className="absolute top-4 right-4 px-3 py-1 bg-black/70 backdrop-blur-md text-white text-sm font-medium rounded-lg">
+                    13:00
+                  </div>
 
-    {/* Video Duration Badge */}
-    <div className="absolute top-4 right-4 px-3 py-1 bg-black/70 backdrop-blur-md text-white text-sm font-medium rounded-lg">
-      2:30
-    </div>
+                  {/* Quality Badge */}
+                  <div className="absolute top-4 left-4 px-3 py-1 bg-gradient-to-r from-blue-500 to-purple-600 text-white text-sm font-medium rounded-lg">
+                    HD
+                  </div>
 
-    {/* Quality Badge */}
-    <div className="absolute top-4 left-4 px-3 py-1 bg-gradient-to-r from-blue-500 to-purple-600 text-white text-sm font-medium rounded-lg">
-      HD
-    </div>
+                  {/* File Size Badge */}
+                  <div className="absolute bottom-4 right-4 flex items-center px-3 py-1 bg-purple-500/90 backdrop-blur-md text-white text-sm font-medium rounded-lg">
+                    <span>28MB</span>
+                  </div>
 
-    {/* AskStan! Product Demo Badge */}
-    <div className="absolute top-4 left-1/2 transform -translate-x-1/2 flex items-center px-3 py-1 bg-green-500/90 backdrop-blur-md text-white text-sm font-medium rounded-lg">
-      <CheckCircle className="w-4 h-4 mr-1" />
-      <span>AskStan! Product Demo</span>
-    </div>
+                  {/* Complete Demo Badge */}
+                  <div className="absolute bottom-4 left-4 flex items-center px-3 py-1 bg-green-500/90 backdrop-blur-md text-white text-sm font-medium rounded-lg">
+                    <CheckCircle className="w-4 h-4 mr-1" />
+                    <span>Complete Demo</span>
+                  </div>
+                </div>
+              </div>
 
-    {/* Gradient Border Effect on Hover */}
-    <div className="absolute inset-0 rounded-2xl p-1 bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-yellow-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10">
-      <div className="w-full h-full rounded-xl bg-transparent" />
-    </div>
-  </div>
+              {/* Video Description */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.8 }}
+                className="mt-6 text-center"
+              >
+                <p className="text-gray-600 font-medium mb-2">
+                  Complete AskStan! platform demonstration
+                </p>
+                <p className="text-sm text-gray-500">
+                  See real AI coaching, content creation, and growth strategies
+                </p>
+              </motion.div>
+            </motion.div>
 
-  {/* Floating Elements */}
-  <motion.div
-    className="absolute -top-4 left-1/2 transform -translate-x-1/2 w-16 h-16 bg-white/80 backdrop-blur-lg rounded-full border border-white/20 shadow-lg flex items-center justify-center"
-    animate={{ y: [0, -10, 0] }}
-    transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-  >
-    <Play className="w-6 h-6 text-blue-600 ml-0.5" fill="currentColor" />
-  </motion.div>
-
-  <motion.div
-    className="absolute -bottom-6 -right-6 w-20 h-20 bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-2xl rotate-12 shadow-lg opacity-80"
-    animate={{ rotate: [12, 18, 12] }}
-    transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-  >
-    <div className="w-full h-full flex items-center justify-center">
-      <Sparkles className="w-8 h-8 text-white" />
-    </div>
-  </motion.div>
-</motion.div>
           </div>
-
-          {/* Bottom Stats/Social Proof */}
-          <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.7 }}
-            viewport={{ once: true }}
-            className="mt-20 text-center"
-          >
-            <div className="inline-flex items-center space-x-8 px-8 py-4 bg-white/60 backdrop-blur-lg rounded-2xl border border-white/20 shadow-lg">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-gray-900">2K+</div>
-                <div className="text-sm text-gray-600">Active Users</div>
-              </div>
-              <div className="w-px h-8 bg-gray-300" />
-              <div className="text-center">
-                <div className="text-2xl font-bold text-gray-900">98%</div>
-                <div className="text-sm text-gray-600">Success Rate</div>
-              </div>
-              <div className="w-px h-8 bg-gray-300" />
-              <div className="text-center">
-                <div className="text-2xl font-bold text-gray-900">24/7</div>
-                <div className="text-sm text-gray-600">AI Support</div>
-              </div>
-            </div>
-          </motion.div>
         </div>
       </section>
 
-      {/* FEATURES SECTION */}
-      <section id="features" className="py-20 bg-white/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Features Section */}
+      <section id="features" className="py-20 relative overflow-hidden">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 opacity-50">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_25%,rgba(59,130,246,0.1)_0%,transparent_50%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_75%,rgba(245,158,11,0.1)_0%,transparent_50%)]" />
+        </div>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           {/* Section Header */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -511,135 +661,232 @@ export const LandingPage: React.FC = () => {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-6">
-              Everything You Need to <span className="bg-gradient-to-r from-blue-600 to-yellow-500 bg-clip-text text-transparent">Grow</span>
+            <h2 className="text-4xl md:text-5xl font-bold mb-6">
+              <span className="bg-gradient-to-r from-blue-600 to-yellow-500 bg-clip-text text-transparent">
+                Powerful AI Features
+              </span>
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              AskStan! provides comprehensive tools and insights to transform your social media presence
+              Everything you need to dominate social media, powered by cutting-edge AI technology
             </p>
           </motion.div>
 
           {/* Features Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {/* Feature 1 */}
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.1 }}
-              viewport={{ once: true }}
-              className="bg-white/80 backdrop-blur-lg rounded-2xl p-8 shadow-xl border border-white/20 hover:shadow-2xl transition-all duration-300"
-            >
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mb-6">
-                <Zap className="w-8 h-8 text-white" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">Instant AI Coaching</h3>
-              <p className="text-gray-600 leading-relaxed">
-                Get personalized advice and strategies in real-time. Stan analyzes your content and provides actionable insights instantly.
-              </p>
-            </motion.div>
-
-            {/* Feature 2 */}
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-              viewport={{ once: true }}
-              className="bg-white/80 backdrop-blur-lg rounded-2xl p-8 shadow-xl border border-white/20 hover:shadow-2xl transition-all duration-300"
-            >
-              <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-yellow-500 rounded-2xl flex items-center justify-center mb-6">
-                <TrendingUp className="w-8 h-8 text-white" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">Growth Analytics</h3>
-              <p className="text-gray-600 leading-relaxed">
-                Track your progress with detailed analytics and insights. See what works and optimize your strategy for maximum growth.
-              </p>
-            </motion.div>
-
-            {/* Feature 3 */}
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.3 }}
-              viewport={{ once: true }}
-              className="bg-white/80 backdrop-blur-lg rounded-2xl p-8 shadow-xl border border-white/20 hover:shadow-2xl transition-all duration-300"
-            >
-              <div className="w-16 h-16 bg-gradient-to-br from-yellow-500 to-blue-500 rounded-2xl flex items-center justify-center mb-6">
-                <Users className="w-8 h-8 text-white" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">Multi-Platform Support</h3>
-              <p className="text-gray-600 leading-relaxed">
-                Optimize your presence across LinkedIn, Twitter, Instagram, and more. One platform, all your social media needs.
-              </p>
-            </motion.div>
+            {[
+              {
+                icon: Sparkles,
+                title: "Content Generation",
+                description: "AI creates engaging posts tailored to your brand and audience",
+                color: "from-blue-500 to-purple-500"
+              },
+              {
+                icon: TrendingUp,
+                title: "Growth Analytics",
+                description: "Real-time insights and recommendations for exponential growth",
+                color: "from-purple-500 to-pink-500"
+              },
+              {
+                icon: Zap,
+                title: "Smart Scheduling",
+                description: "Optimal posting times based on your audience's behavior",
+                color: "from-yellow-500 to-red-500"
+              }
+            ].map((feature, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: index * 0.1 }}
+                viewport={{ once: true }}
+                className="group relative"
+              >
+                <div className="h-full p-8 bg-white/80 backdrop-blur-lg border border-white/20 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+                  <div className={`w-12 h-12 bg-gradient-to-r ${feature.color} rounded-xl flex items-center justify-center mb-6`}>
+                    <feature.icon className="w-6 h-6 text-white" />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-4">{feature.title}</h3>
+                  <p className="text-gray-600 leading-relaxed">{feature.description}</p>
+                </div>
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* CTA SECTION */}
-      <section className="py-20 bg-gradient-to-r from-blue-600 to-yellow-500">
-        <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
+      {/* Video Features Highlight Section */}
+      <section className="py-20 relative overflow-hidden bg-gradient-to-r from-blue-50 to-purple-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
             viewport={{ once: true }}
+            className="text-center mb-16"
           >
-            <h2 className="text-4xl md:text-5xl font-black text-white mb-6">
-              Ready to Transform Your Social Media?
+            <h2 className="text-3xl md:text-4xl font-bold mb-6">
+              <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                What's in the Complete Demo?
+              </span>
             </h2>
-            <p className="text-xl text-white/90 mb-8 max-w-2xl mx-auto">
-              Join thousands of professionals who've already accelerated their growth with AskStan!
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
+              A comprehensive 13-minute walkthrough showing every feature, strategy, and result that makes AskStan! your ultimate growth partner
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button
-                as={Link}
-                to={user ? "/dashboard" : "/signup"}
-                size="lg"
-                className="bg-white text-blue-600 hover:bg-gray-100 font-bold px-8 py-4 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
-              >
-                {user ? "Go to Dashboard" : "Start Free Trial"}
-                </Button>
+            
+            {/* Demo Stats */}
+            <div className="flex flex-wrap justify-center gap-6 mb-8">
+              <div className="bg-white/60 backdrop-blur-lg border border-white/20 rounded-xl px-6 py-3">
+                <div className="text-2xl font-bold text-blue-600">13:00</div>
+                <div className="text-sm text-gray-600">Duration</div>
+              </div>
+              <div className="bg-white/60 backdrop-blur-lg border border-white/20 rounded-xl px-6 py-3">
+                <div className="text-2xl font-bold text-purple-600">28MB</div>
+                <div className="text-sm text-gray-600">File Size</div>
+              </div>
+              <div className="bg-white/60 backdrop-blur-lg border border-white/20 rounded-xl px-6 py-3">
+                <div className="text-2xl font-bold text-green-600">HD</div>
+                <div className="text-sm text-gray-600">Quality</div>
+              </div>
             </div>
+          </motion.div>
+
+          {/* What You'll See Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {[
+              {
+                title: "Platform Overview",
+                description: "Complete walkthrough of the AskStan! interface and navigation",
+                duration: "2-3 minutes",
+                icon: "🎯"
+              },
+              {
+                title: "AI Coach in Action",
+                description: "Watch real AI-generated strategies and content recommendations",
+                duration: "4-5 minutes", 
+                icon: "🤖"
+              },
+              {
+                title: "Content Creation",
+                description: "See how AI creates posts, captions, and hashtag strategies",
+                duration: "3-4 minutes",
+                icon: "✨"
+              },
+              {
+                title: "Growth Analytics",
+                description: "Real-time metrics, insights, and performance tracking",
+                duration: "2-3 minutes",
+                icon: "📈"
+              },
+              {
+                title: "Success Stories",
+                description: "Actual user results and transformation examples",
+                duration: "1-2 minutes",
+                icon: "🏆"
+              },
+              {
+                title: "Getting Started",
+                description: "How to begin your growth journey with AskStan!",
+                duration: "1 minute",
+                icon: "🚀"
+              }
+            ].map((section, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: index * 0.1 }}
+                viewport={{ once: true }}
+                className="group cursor-pointer"
+                onClick={() => setShowVideoModal(true)}
+              >
+                <div className="h-full p-6 bg-white/80 backdrop-blur-lg border border-white/20 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+                  <div className="text-3xl mb-4">{section.icon}</div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
+                    {section.title}
+                  </h3>
+                  <p className="text-gray-600 text-sm leading-relaxed mb-4">
+                    {section.description}
+                  </p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-blue-600 font-medium">{section.duration}</span>
+                    <div className="flex items-center text-blue-600 text-sm group-hover:translate-x-1 transition-transform">
+                      <Play className="w-4 h-4 mr-1" />
+                      <span>Watch now</span>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Watch Now CTA */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.8 }}
+            viewport={{ once: true }}
+            className="text-center mt-12"
+          >
+            <motion.button
+              onClick={() => setShowVideoModal(true)}
+              className="group relative px-8 py-4 bg-gradient-to-r from-blue-500 to-purple-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+              whileHover={{ scale: 1.02, y: -2 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <div className="flex items-center justify-center space-x-2">
+                <Play className="w-6 h-6" fill="currentColor" />
+                <span>Watch Complete Demo Now</span>
+              </div>
+              <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10" />
+            </motion.button>
           </motion.div>
         </div>
       </section>
 
-      {/* FOOTER */}
-      <footer className="bg-gray-900 text-white py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div className="md:col-span-2">
-              <h3 className="text-2xl font-bold mb-4 bg-gradient-to-r from-blue-400 to-yellow-400 bg-clip-text text-transparent">
-                AskStan!
-              </h3>
-              <p className="text-gray-400 mb-6 max-w-md">
-                Your AI-powered social media growth coach. Transform your online presence with personalized strategies and 24/7 support.
-              </p>
-            </div>
+      {/* CTA Section */}
+      <section className="py-20 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-purple-600 to-yellow-500" />
+        <div className="absolute inset-0 bg-black/20" />
+        
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            viewport={{ once: true }}
+            className="space-y-8"
+          >
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+              Ready to Transform Your Social Media?
+            </h2>
+            <p className="text-xl text-white/90 mb-8">
+              Join thousands of creators who've accelerated their growth with AI
+            </p>
             
-            <div>
-              <h4 className="font-semibold mb-4">Product</h4>
-              <ul className="space-y-2 text-gray-400">
-                <li><Link to="/plans" className="hover:text-white transition-colors">Pricing</Link></li>
-              </ul>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link to="/auth">
+                <Button 
+                  size="lg" 
+                  className="px-8 py-4 bg-white text-blue-600 font-semibold rounded-xl shadow-lg hover:shadow-xl hover:bg-gray-50 transition-all duration-300 w-full sm:w-auto"
+                >
+                  Get Started Free
+                </Button>
+              </Link>
+              <motion.button
+                onClick={() => setShowVideoModal(true)}
+                className="px-8 py-4 bg-white/10 backdrop-blur-md border-2 border-white/20 text-white font-semibold rounded-xl hover:bg-white/20 transition-all duration-300"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <div className="flex items-center justify-center space-x-2">
+                  <Play className="w-5 h-5" />
+                  <span>Watch Demo Again</span>
+                </div>
+              </motion.button>
             </div>
-            
-            <div>
-              <h4 className="font-semibold mb-4">Company</h4>
-              <ul className="space-y-2 text-gray-400">
-                <li><Link to="/privacy" className="hover:text-white transition-colors">Privacy</Link></li>
-                <li><Link to="/terms" className="hover:text-white transition-colors">Terms</Link></li>
-              </ul>
-            </div>
-          </div>
-          
-          <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-            <p>&copy; 2025 AskStan!. All rights reserved.</p>
-          </div>
+          </motion.div>
         </div>
-      </footer>
+      </section>
     </div>
   );
 };
-
-export default LandingPage;
