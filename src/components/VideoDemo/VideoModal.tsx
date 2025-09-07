@@ -1,7 +1,7 @@
 /**
- * VIDEO MODAL COMPONENT - FIXED AUTO-HIDE CONTROLS
- * Full-screen video player modal with proper control auto-hiding
- * Matches AskStan! design system with glass morphism and gradients
+ * VIDEO MODAL COMPONENT - FIXED LOADING AND CONTROLS
+ * Full-screen video player modal with proper loading states and control visibility
+ * Ensures controls are always accessible when needed
  */
 
 import React, { useRef, useEffect, useState } from 'react';
@@ -21,6 +21,7 @@ export const VideoModal: React.FC<VideoModalProps> = ({
   const { state, actions, isSupported } = useVideoPlayer({ videoRef });
   const [showControls, setShowControls] = useState(true);
   const [controlsTimeout, setControlsTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [userInteracted, setUserInteracted] = useState(false);
 
   // Handle ESC key to close modal
   useEffect(() => {
@@ -45,13 +46,14 @@ export const VideoModal: React.FC<VideoModalProps> = ({
 
   // Auto-play when modal opens
   useEffect(() => {
-    if (isOpen && videoRef.current && !state.isPlaying) {
+    if (isOpen && videoRef.current && !state.isPlaying && !state.isLoading) {
       const timer = setTimeout(() => {
         actions.play();
-      }, 100);
+        setUserInteracted(true);
+      }, 500);
       return () => clearTimeout(timer);
     }
-  }, [isOpen, actions, state.isPlaying]);
+  }, [isOpen, actions, state.isPlaying, state.isLoading]);
 
   // Pause when modal closes
   useEffect(() => {
@@ -60,7 +62,7 @@ export const VideoModal: React.FC<VideoModalProps> = ({
     }
   }, [isOpen, state.isPlaying, actions]);
 
-  // FIXED: Improved auto-hide controls logic
+  // IMPROVED: Auto-hide controls logic with better conditions
   useEffect(() => {
     // Clear any existing timeout
     if (controlsTimeout) {
@@ -68,15 +70,22 @@ export const VideoModal: React.FC<VideoModalProps> = ({
       setControlsTimeout(null);
     }
 
-    if (state.isPlaying) {
-      // Hide controls after 3 seconds when playing
+    // Always show controls when:
+    // - Video is loading
+    // - Video is paused
+    // - User hasn't interacted yet
+    // - Video has error
+    if (state.isLoading || !state.isPlaying || !userInteracted || state.error) {
+      setShowControls(true);
+      return;
+    }
+
+    // Only hide controls when video is actually playing and user has interacted
+    if (state.isPlaying && userInteracted && !state.isLoading) {
       const timeout = setTimeout(() => {
         setShowControls(false);
-      }, 3000);
+      }, 4000); // Longer delay for better UX
       setControlsTimeout(timeout);
-    } else {
-      // Always show controls when paused
-      setShowControls(true);
     }
 
     return () => {
@@ -84,10 +93,11 @@ export const VideoModal: React.FC<VideoModalProps> = ({
         clearTimeout(controlsTimeout);
       }
     };
-  }, [state.isPlaying]); // Only depend on isPlaying, not showControls
+  }, [state.isPlaying, state.isLoading, userInteracted, state.error]);
 
-  // FIXED: Show controls on mouse move and reset timer
+  // IMPROVED: Show controls on mouse move
   const handleMouseMove = () => {
+    setUserInteracted(true);
     setShowControls(true);
     
     // Clear existing timeout
@@ -96,17 +106,18 @@ export const VideoModal: React.FC<VideoModalProps> = ({
       setControlsTimeout(null);
     }
 
-    // Set new timeout only if playing
-    if (state.isPlaying) {
+    // Set new timeout only if playing and loaded
+    if (state.isPlaying && !state.isLoading) {
       const timeout = setTimeout(() => {
         setShowControls(false);
-      }, 3000);
+      }, 4000);
       setControlsTimeout(timeout);
     }
   };
 
   // Format time display
   const formatTime = (seconds: number): string => {
+    if (!seconds || isNaN(seconds)) return '0:00';
     const minutes = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${minutes}:${secs.toString().padStart(2, '0')}`;
@@ -114,22 +125,34 @@ export const VideoModal: React.FC<VideoModalProps> = ({
 
   // Progress bar click handler
   const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (state.isLoading || !state.duration) return;
+    
     const rect = e.currentTarget.getBoundingClientRect();
     const clickX = e.clientX - rect.left;
     const percentage = clickX / rect.width;
     const newTime = percentage * state.duration;
     actions.seek(newTime);
+    setUserInteracted(true);
   };
 
   // Skip forward/backward
   const handleSkipBackward = () => {
     const newTime = Math.max(0, state.currentTime - 10);
     actions.seek(newTime);
+    setUserInteracted(true);
   };
 
   const handleSkipForward = () => {
     const newTime = Math.min(state.duration, state.currentTime + 10);
     actions.seek(newTime);
+    setUserInteracted(true);
+  };
+
+  // Handle play/pause toggle
+  const handleTogglePlay = () => {
+    actions.togglePlay();
+    setUserInteracted(true);
+    setShowControls(true);
   };
 
   if (!isSupported) {
@@ -147,14 +170,14 @@ export const VideoModal: React.FC<VideoModalProps> = ({
           className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm"
           onClick={onClose}
         >
-          {/* Close Button */}
+          {/* Close Button - Always Visible */}
           <motion.button
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
             transition={{ duration: 0.2 }}
             onClick={onClose}
-            className="absolute top-6 right-6 z-60 w-12 h-12 bg-white/10 backdrop-blur-lg border border-white/20 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors"
+            className="absolute top-6 right-6 z-[60] w-12 h-12 bg-white/10 backdrop-blur-lg border border-white/20 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors"
             aria-label="Close video"
           >
             <X className="w-6 h-6 text-white" />
@@ -165,17 +188,9 @@ export const VideoModal: React.FC<VideoModalProps> = ({
             className="w-full h-full flex items-center justify-center p-4"
             onClick={(e) => e.stopPropagation()}
             onMouseMove={handleMouseMove}
-            onMouseLeave={() => {
-              // Hide controls faster when mouse leaves if playing
-              if (state.isPlaying) {
-                if (controlsTimeout) {
-                  clearTimeout(controlsTimeout);
-                }
-                const timeout = setTimeout(() => {
-                  setShowControls(false);
-                }, 1000);
-                setControlsTimeout(timeout);
-              }
+            onMouseEnter={() => {
+              setShowControls(true);
+              setUserInteracted(true);
             }}
           >
             <motion.div
@@ -190,17 +205,21 @@ export const VideoModal: React.FC<VideoModalProps> = ({
                 ref={videoRef}
                 className="w-full h-full object-contain cursor-pointer"
                 poster={poster}
-                onClick={actions.togglePlay}
+                onClick={handleTogglePlay}
                 onDoubleClick={actions.toggleFullscreen}
+                preload="metadata"
               >
                 <source src={videoSrc} type="video/mp4" />
                 Your browser does not support the video tag.
               </video>
 
-              {/* Loading Overlay */}
+              {/* Loading Overlay - Only show when actually loading */}
               {state.isLoading && (
-                <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                  <div className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
+                <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin mb-4"></div>
+                    <p className="text-white text-lg">Loading video...</p>
+                  </div>
                 </div>
               )}
 
@@ -213,23 +232,29 @@ export const VideoModal: React.FC<VideoModalProps> = ({
                     </div>
                     <h3 className="text-white text-xl font-semibold mb-2">Video Error</h3>
                     <p className="text-white/80">{state.error}</p>
+                    <button 
+                      onClick={onClose}
+                      className="mt-4 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                    >
+                      Close
+                    </button>
                   </div>
                 </div>
               )}
 
-              {/* Center Play/Pause Button - Only when paused or controls visible */}
+              {/* Center Play/Pause Button - Show when paused or controls visible */}
               <AnimatePresence>
-                {(showControls && !state.isLoading) && (
+                {(showControls && !state.isLoading && !state.error) && (
                   <motion.div
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.8 }}
                     transition={{ duration: 0.2 }}
-                    className="absolute inset-0 flex items-center justify-center"
+                    className="absolute inset-0 flex items-center justify-center pointer-events-none"
                   >
                     <button
-                      onClick={actions.togglePlay}
-                      className="w-20 h-20 bg-white/10 backdrop-blur-lg border border-white/20 rounded-full flex items-center justify-center hover:bg-white/20 transition-all duration-300 group"
+                      onClick={handleTogglePlay}
+                      className="w-20 h-20 bg-white/10 backdrop-blur-lg border border-white/20 rounded-full flex items-center justify-center hover:bg-white/20 transition-all duration-300 group pointer-events-auto"
                       aria-label={state.isPlaying ? "Pause video" : "Play video"}
                     >
                       {state.isPlaying ? (
@@ -242,33 +267,36 @@ export const VideoModal: React.FC<VideoModalProps> = ({
                 )}
               </AnimatePresence>
 
-              {/* Bottom Controls Bar */}
+              {/* Bottom Controls Bar - Always show when controls are visible */}
               <AnimatePresence>
-                {(showControls && !state.isLoading) && (
+                {(showControls && !state.isLoading && !state.error) && (
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 20 }}
                     transition={{ duration: 0.3 }}
-                    className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"
+                    className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent"
+                    onMouseEnter={() => setShowControls(true)}
                   >
                     {/* Progress Bar */}
-                    <div 
-                      className="w-full h-2 bg-white/20 cursor-pointer mb-4 group mx-6"
-                      onClick={handleProgressClick}
-                    >
+                    <div className="px-6 pt-4">
                       <div 
-                        className="h-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-150 group-hover:from-blue-400 group-hover:to-blue-500"
-                        style={{ width: `${(state.currentTime / state.duration) * 100 || 0}%` }}
-                      />
+                        className="w-full h-2 bg-white/20 rounded-full cursor-pointer group"
+                        onClick={handleProgressClick}
+                      >
+                        <div 
+                          className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-150 group-hover:from-blue-400 group-hover:to-blue-500"
+                          style={{ width: `${(state.currentTime / state.duration) * 100 || 0}%` }}
+                        />
+                      </div>
                     </div>
 
                     {/* Control Buttons */}
-                    <div className="flex items-center justify-between px-6 pb-6">
+                    <div className="flex items-center justify-between px-6 py-4">
                       {/* Left Controls */}
                       <div className="flex items-center space-x-4">
                         <button
-                          onClick={actions.togglePlay}
+                          onClick={handleTogglePlay}
                           className="p-2 hover:bg-white/20 rounded-full transition-colors"
                           aria-label={state.isPlaying ? "Pause" : "Play"}
                         >
@@ -298,14 +326,17 @@ export const VideoModal: React.FC<VideoModalProps> = ({
                         {/* Volume Controls */}
                         <div className="flex items-center space-x-2">
                           <button
-                            onClick={actions.toggleMute}
+                            onClick={() => {
+                              actions.toggleMute();
+                              setUserInteracted(true);
+                            }}
                             className="p-2 hover:bg-white/20 rounded-full transition-colors"
                             title={state.muted ? "Unmute" : "Mute"}
                           >
                             {state.muted ? (
-                              <VolumeX className="w-5 h-5" />
+                              <VolumeX className="w-5 h-5 text-white" />
                             ) : (
-                              <Volume2 className="w-5 h-5" />
+                              <Volume2 className="w-5 h-5 text-white" />
                             )}
                           </button>
 
@@ -321,35 +352,59 @@ export const VideoModal: React.FC<VideoModalProps> = ({
                               if (newVolume > 0 && state.muted) {
                                 actions.toggleMute();
                               }
+                              setUserInteracted(true);
                             }}
                             className="w-20 accent-blue-500"
                           />
                         </div>
 
                         {/* Time Display */}
-                        <div className="text-sm text-white/80">
+                        <div className="text-sm text-white/80 font-mono">
                           {formatTime(state.currentTime)} / {formatTime(state.duration)}
                         </div>
                       </div>
 
                       {/* Right Controls */}
                       <div className="flex items-center space-x-4">
-                        <div className="text-sm text-white/80 font-medium">
+                        <div className="text-sm text-white/80 font-medium max-w-xs truncate">
                           {title}
                         </div>
 
                         <button
-                          onClick={actions.toggleFullscreen}
+                          onClick={() => {
+                            actions.toggleFullscreen();
+                            setUserInteracted(true);
+                          }}
                           className="p-2 hover:bg-white/20 rounded-full transition-colors"
                           title="Fullscreen"
                         >
-                          <Maximize className="w-5 h-5" />
+                          <Maximize className="w-5 h-5 text-white" />
                         </button>
                       </div>
                     </div>
                   </motion.div>
                 )}
               </AnimatePresence>
+
+              {/* Emergency Controls Overlay - Shows on long press or when video is stuck */}
+              {(state.isLoading && userInteracted) && (
+                <div className="absolute top-4 left-4 bg-black/70 backdrop-blur-lg rounded-lg p-3">
+                  <div className="flex items-center space-x-3">
+                    <button
+                      onClick={handleTogglePlay}
+                      className="p-2 bg-white/20 hover:bg-white/30 rounded-full transition-colors"
+                      title="Toggle Play/Pause"
+                    >
+                      {state.isPlaying ? (
+                        <Pause className="w-4 h-4 text-white" />
+                      ) : (
+                        <Play className="w-4 h-4 text-white" fill="currentColor" />
+                      )}
+                    </button>
+                    <span className="text-white text-sm">Loading...</span>
+                  </div>
+                </div>
+              )}
             </motion.div>
           </div>
         </motion.div>
