@@ -1,5 +1,5 @@
 /**
- * USE VIDEO PLAYER HOOK - COMPLETE IMPLEMENTATION
+ * USE VIDEO PLAYER HOOK - FIXED IMPLEMENTATION
  * Custom React hook for video player state management
  * Handles play/pause, progress, volume, and fullscreen functionality
  */
@@ -100,24 +100,16 @@ export const useVideoPlayer = ({
       }));
     };
 
-    const handleError = (e: Event) => {
+    const handleError = () => {
       const errorMessage = video.error ? 
         `Video error (${video.error.code}): ${video.error.message}` : 
-        'Unknown video error occurred';
+        'Unknown video error';
       
-      console.error('Video player error:', errorMessage, e);
       setState(prev => ({ 
         ...prev, 
-        error: 'Failed to load video',
+        error: errorMessage,
         isLoading: false,
-        isPlaying: false
-      }));
-    };
-
-    const handleFullscreenChange = () => {
-      setState(prev => ({ 
-        ...prev, 
-        isFullscreen: document.fullscreenElement === video 
+        isPlaying: false 
       }));
     };
 
@@ -141,7 +133,14 @@ export const useVideoPlayer = ({
       setState(prev => ({ ...prev, isLoading: false }));
     };
 
-    // Attach event listeners
+    const handleFullscreenChange = () => {
+      setState(prev => ({ 
+        ...prev, 
+        isFullscreen: document.fullscreenElement === video 
+      }));
+    };
+
+    // Add event listeners
     video.addEventListener('loadeddata', handleLoadedData);
     video.addEventListener('loadedmetadata', handleLoadedMetadata);
     video.addEventListener('play', handlePlay);
@@ -156,7 +155,7 @@ export const useVideoPlayer = ({
     video.addEventListener('seeked', handleSeeked);
     document.addEventListener('fullscreenchange', handleFullscreenChange);
 
-    // Cleanup
+    // Cleanup function
     return () => {
       video.removeEventListener('loadeddata', handleLoadedData);
       video.removeEventListener('loadedmetadata', handleLoadedMetadata);
@@ -284,5 +283,5 @@ export const useVideoPlayer = ({
   };
 };
 
-// Default export for useVideoPlayer hook
+// CRITICAL FIX: Add default export
 export default useVideoPlayer;

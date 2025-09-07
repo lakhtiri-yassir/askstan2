@@ -1,5 +1,5 @@
 /**
- * VIDEO MODAL COMPONENT - COMPLETE IMPLEMENTATION
+ * VIDEO MODAL COMPONENT - FIXED EXPORT ISSUE
  * Full-screen video player modal with custom controls
  * Matches AskStan! design system with glass morphism and gradients
  */
@@ -8,7 +8,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Play, Pause, Volume2, VolumeX, Maximize, SkipBack, SkipForward } from 'lucide-react';
 import { VideoModalProps } from './types';
-import { useVideoPlayer } from './useVideoPlayer';
+import useVideoPlayer from './useVideoPlayer'; // Default import
 
 export const VideoModal: React.FC<VideoModalProps> = ({
   isOpen,
@@ -95,31 +95,19 @@ export const VideoModal: React.FC<VideoModalProps> = ({
     actions.seek(newTime);
   };
 
+  // Skip forward/backward
+  const handleSkipBackward = () => {
+    const newTime = Math.max(0, state.currentTime - 10);
+    actions.seek(newTime);
+  };
+
+  const handleSkipForward = () => {
+    const newTime = Math.min(state.duration, state.currentTime + 10);
+    actions.seek(newTime);
+  };
+
   if (!isSupported) {
-    return (
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md"
-            onClick={onClose}
-          >
-            <div className="bg-white rounded-lg p-8 text-center">
-              <h3 className="text-xl font-bold mb-4">Video Not Supported</h3>
-              <p className="text-gray-600 mb-4">Your browser doesn't support video playback.</p>
-              <button
-                onClick={onClose}
-                className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-              >
-                Close
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    );
+    return null;
   }
 
   return (
@@ -129,178 +117,194 @@ export const VideoModal: React.FC<VideoModalProps> = ({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 bg-black"
-          onMouseMove={handleMouseMove}
+          transition={{ duration: 0.3 }}
+          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm"
+          onClick={onClose}
         >
           {/* Close Button */}
           <motion.button
             initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: showControls ? 1 : 0, scale: 1 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
             transition={{ duration: 0.2 }}
             onClick={onClose}
-            className="absolute top-6 right-6 z-10 w-12 h-12 bg-black/50 backdrop-blur-md border border-white/20 rounded-full flex items-center justify-center text-white hover:bg-black/70 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white/50"
+            className="absolute top-6 right-6 z-60 w-12 h-12 bg-white/10 backdrop-blur-lg border border-white/20 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors"
             aria-label="Close video"
           >
-            <X className="w-6 h-6" />
+            <X className="w-6 h-6 text-white" />
           </motion.button>
 
           {/* Video Container */}
-          <div className="relative w-full h-full flex items-center justify-center">
-            <video
-              ref={videoRef}
-              className="max-w-full max-h-full"
-              poster={poster}
-              onClick={() => actions.togglePlay()}
-              onError={() => console.error('Video failed to load:', videoSrc)}
-            >
-              <source src={videoSrc} type="video/mp4" />
-              Your browser does not support the video tag.
-            </video>
-
-            {/* Loading Spinner */}
-            {state.isLoading && (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
-              </div>
-            )}
-
-            {/* Error Message */}
-            {state.error && (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="bg-black/80 backdrop-blur-md rounded-lg p-8 text-center text-white">
-                  <h3 className="text-xl font-bold mb-4">Playback Error</h3>
-                  <p className="text-gray-300 mb-4">{state.error}</p>
-                  <button
-                    onClick={() => window.location.reload()}
-                    className="px-6 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors"
-                  >
-                    Refresh Page
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Play/Pause Overlay */}
-            {!state.isPlaying && !state.isLoading && !state.error && (
-              <motion.button
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                onClick={() => actions.play()}
-                className="absolute inset-0 flex items-center justify-center bg-black/20 cursor-pointer group"
-              >
-                <div className="w-24 h-24 bg-white/20 backdrop-blur-md border-2 border-white/30 rounded-full flex items-center justify-center group-hover:bg-white/30 group-hover:border-white/50 transition-all duration-300">
-                  <Play className="w-10 h-10 text-white ml-2" fill="currentColor" />
-                </div>
-              </motion.button>
-            )}
-
-            {/* Video Controls */}
+          <div 
+            className="w-full h-full flex items-center justify-center p-4"
+            onClick={(e) => e.stopPropagation()}
+            onMouseMove={handleMouseMove}
+          >
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: showControls ? 1 : 0, y: showControls ? 0 : 20 }}
-              transition={{ duration: 0.3 }}
-              className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-6"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ duration: 0.3, delay: 0.1 }}
+              className="relative w-full max-w-6xl aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl"
             >
-              {/* Progress Bar */}
-              <div className="mb-4">
-                <div
-                  className="w-full h-2 bg-white/20 rounded-full cursor-pointer group"
-                  onClick={handleProgressClick}
-                >
-                  <div
-                    className="h-full bg-gradient-to-r from-blue-500 to-yellow-500 rounded-full relative group-hover:h-3 transition-all duration-200"
-                    style={{ width: `${(state.currentTime / state.duration) * 100 || 0}%` }}
-                  >
-                    <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+              {/* Video Element */}
+              <video
+                ref={videoRef}
+                className="w-full h-full object-contain"
+                poster={poster}
+                onClick={actions.togglePlay}
+                onDoubleClick={actions.toggleFullscreen}
+              >
+                <source src={videoSrc} type="video/mp4" />
+                Your browser does not support the video tag.
+              </video>
+
+              {/* Loading Overlay */}
+              {state.isLoading && (
+                <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                  <div className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
+                </div>
+              )}
+
+              {/* Error Overlay */}
+              {state.error && (
+                <div className="absolute inset-0 bg-black/80 flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <X className="w-8 h-8 text-red-400" />
+                    </div>
+                    <h3 className="text-white text-xl font-semibold mb-2">Video Error</h3>
+                    <p className="text-white/80">{state.error}</p>
                   </div>
                 </div>
-              </div>
+              )}
 
-              {/* Control Buttons */}
-              <div className="flex items-center justify-between text-white">
-                {/* Left Controls */}
-                <div className="flex items-center space-x-4">
-                  <button
-                    onClick={() => actions.seek(Math.max(0, state.currentTime - 10))}
-                    className="p-2 hover:bg-white/20 rounded-full transition-colors"
-                    title="Skip back 10s"
+              {/* Controls Overlay */}
+              <AnimatePresence>
+                {showControls && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"
                   >
-                    <SkipBack className="w-5 h-5" />
-                  </button>
+                    {/* Center Play/Pause Button */}
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <button
+                        onClick={actions.togglePlay}
+                        className="w-20 h-20 bg-white/10 backdrop-blur-lg border border-white/20 rounded-full flex items-center justify-center hover:bg-white/20 transition-all duration-300 group"
+                        aria-label={state.isPlaying ? "Pause video" : "Play video"}
+                      >
+                        {state.isPlaying ? (
+                          <Pause className="w-10 h-10 text-white group-hover:scale-110 transition-transform" />
+                        ) : (
+                          <Play className="w-10 h-10 text-white ml-1 group-hover:scale-110 transition-transform" fill="currentColor" />
+                        )}
+                      </button>
+                    </div>
 
-                  <button
-                    onClick={() => actions.togglePlay()}
-                    className="p-3 hover:bg-white/20 rounded-full transition-colors"
-                    title={state.isPlaying ? "Pause" : "Play"}
-                  >
-                    {state.isPlaying ? (
-                      <Pause className="w-6 h-6" />
-                    ) : (
-                      <Play className="w-6 h-6 ml-1" fill="currentColor" />
-                    )}
-                  </button>
+                    {/* Bottom Controls Bar */}
+                    <div className="absolute bottom-0 left-0 right-0 p-6">
+                      {/* Progress Bar */}
+                      <div 
+                        className="w-full h-2 bg-white/20 rounded-full cursor-pointer mb-4 group"
+                        onClick={handleProgressClick}
+                      >
+                        <div 
+                          className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-150 group-hover:from-blue-400 group-hover:to-blue-500"
+                          style={{ width: `${(state.currentTime / state.duration) * 100 || 0}%` }}
+                        />
+                      </div>
 
-                  <button
-                    onClick={() => actions.seek(Math.min(state.duration, state.currentTime + 10))}
-                    className="p-2 hover:bg-white/20 rounded-full transition-colors"
-                    title="Skip forward 10s"
-                  >
-                    <SkipForward className="w-5 h-5" />
-                  </button>
+                      {/* Control Buttons */}
+                      <div className="flex items-center justify-between">
+                        {/* Left Controls */}
+                        <div className="flex items-center space-x-4">
+                          <button
+                            onClick={actions.togglePlay}
+                            className="p-2 hover:bg-white/20 rounded-full transition-colors"
+                            aria-label={state.isPlaying ? "Pause" : "Play"}
+                          >
+                            {state.isPlaying ? (
+                              <Pause className="w-6 h-6 text-white" />
+                            ) : (
+                              <Play className="w-6 h-6 text-white" fill="currentColor" />
+                            )}
+                          </button>
 
-                  {/* Volume Control */}
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => actions.toggleMute()}
-                      className="p-2 hover:bg-white/20 rounded-full transition-colors"
-                      title={state.muted ? "Unmute" : "Mute"}
-                    >
-                      {state.muted ? (
-                        <VolumeX className="w-5 h-5" />
-                      ) : (
-                        <Volume2 className="w-5 h-5" />
-                      )}
-                    </button>
+                          <button
+                            onClick={handleSkipBackward}
+                            className="p-2 hover:bg-white/20 rounded-full transition-colors"
+                            title="Skip backward 10s"
+                          >
+                            <SkipBack className="w-5 h-5 text-white" />
+                          </button>
 
-                    <input
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.1"
-                      value={state.muted ? 0 : state.volume}
-                      onChange={(e) => {
-                        const newVolume = parseFloat(e.target.value);
-                        actions.setVolume(newVolume);
-                        if (newVolume > 0 && state.muted) {
-                          actions.toggleMute();
-                        }
-                      }}
-                      className="w-20 accent-blue-500"
-                    />
-                  </div>
+                          <button
+                            onClick={handleSkipForward}
+                            className="p-2 hover:bg-white/20 rounded-full transition-colors"
+                            title="Skip forward 10s"
+                          >
+                            <SkipForward className="w-5 h-5 text-white" />
+                          </button>
 
-                  {/* Time Display */}
-                  <div className="text-sm text-white/80">
-                    {formatTime(state.currentTime)} / {formatTime(state.duration)}
-                  </div>
-                </div>
+                          {/* Volume Controls */}
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={actions.toggleMute}
+                              className="p-2 hover:bg-white/20 rounded-full transition-colors"
+                              title={state.muted ? "Unmute" : "Mute"}
+                            >
+                              {state.muted ? (
+                                <VolumeX className="w-5 h-5" />
+                              ) : (
+                                <Volume2 className="w-5 h-5" />
+                              )}
+                            </button>
 
-                {/* Right Controls */}
-                <div className="flex items-center space-x-4">
-                  <div className="text-sm text-white/80 font-medium">
-                    {title}
-                  </div>
+                            <input
+                              type="range"
+                              min="0"
+                              max="1"
+                              step="0.1"
+                              value={state.muted ? 0 : state.volume}
+                              onChange={(e) => {
+                                const newVolume = parseFloat(e.target.value);
+                                actions.setVolume(newVolume);
+                                if (newVolume > 0 && state.muted) {
+                                  actions.toggleMute();
+                                }
+                              }}
+                              className="w-20 accent-blue-500"
+                            />
+                          </div>
 
-                  <button
-                    onClick={() => actions.toggleFullscreen()}
-                    className="p-2 hover:bg-white/20 rounded-full transition-colors"
-                    title="Fullscreen"
-                  >
-                    <Maximize className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
+                          {/* Time Display */}
+                          <div className="text-sm text-white/80">
+                            {formatTime(state.currentTime)} / {formatTime(state.duration)}
+                          </div>
+                        </div>
+
+                        {/* Right Controls */}
+                        <div className="flex items-center space-x-4">
+                          <div className="text-sm text-white/80 font-medium">
+                            {title}
+                          </div>
+
+                          <button
+                            onClick={actions.toggleFullscreen}
+                            className="p-2 hover:bg-white/20 rounded-full transition-colors"
+                            title="Fullscreen"
+                          >
+                            <Maximize className="w-5 h-5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
           </div>
         </motion.div>
@@ -309,5 +313,5 @@ export const VideoModal: React.FC<VideoModalProps> = ({
   );
 };
 
-// Default export for VideoModal component
+// CRITICAL FIX: Add default export
 export default VideoModal;

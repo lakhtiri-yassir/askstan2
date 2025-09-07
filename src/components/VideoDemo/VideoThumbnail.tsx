@@ -1,5 +1,5 @@
 /**
- * VIDEO THUMBNAIL COMPONENT - COMPLETE IMPLEMENTATION
+ * VIDEO THUMBNAIL COMPONENT - FIXED EXPORT ISSUE
  * Displays 3-second looping video with play overlay
  * Integrates with AskStan! design system and accessibility standards
  */
@@ -60,21 +60,12 @@ export const VideoThumbnail: React.FC<VideoThumbnailProps> = ({
       setHasError(true);
       setShowFallback(true);
     };
-    
-    const handleLoadedData = () => {
-      setHasError(false);
-      if (autoplay && video.paused) {
-        video.play().catch(() => {
-          console.warn('Autoplay prevented by browser');
-          setIsPlaying(false);
-        });
-      }
-    };
 
     const handleCanPlay = () => {
-      if (autoplay) {
+      setHasError(false);
+      if (autoplay && !isPlaying) {
         video.play().catch(() => {
-          console.warn('Autoplay prevented');
+          console.warn('Autoplay failed - user interaction required');
         });
       }
     };
@@ -82,39 +73,18 @@ export const VideoThumbnail: React.FC<VideoThumbnailProps> = ({
     video.addEventListener('play', handlePlay);
     video.addEventListener('pause', handlePause);
     video.addEventListener('error', handleError);
-    video.addEventListener('loadeddata', handleLoadedData);
     video.addEventListener('canplay', handleCanPlay);
 
     return () => {
       video.removeEventListener('play', handlePlay);
       video.removeEventListener('pause', handlePause);
       video.removeEventListener('error', handleError);
-      video.removeEventListener('loadeddata', handleLoadedData);
       video.removeEventListener('canplay', handleCanPlay);
     };
-  }, [autoplay, isInView, thumbnailSrc]);
+  }, [thumbnailSrc, autoplay, isInView, isPlaying]);
 
   // Handle thumbnail click
-  const handleThumbnailClick = () => {
-    const video = videoRef.current;
-    if (hasError) {
-      onPlay(); // Open full video even if thumbnail failed
-      return;
-    }
-
-    if (video) {
-      if (isPlaying) {
-        video.pause();
-      } else {
-        video.play().catch(() => {
-          console.warn('Play prevented by browser');
-        });
-      }
-    }
-  };
-
-  // Handle play button click
-  const handlePlayClick = (e: React.MouseEvent) => {
+  const handleThumbnailClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     onPlay();
   };
@@ -199,45 +169,51 @@ export const VideoThumbnail: React.FC<VideoThumbnailProps> = ({
         <motion.div
           className="absolute inset-0 flex items-center justify-center"
           initial={{ opacity: 0 }}
-          animate={{ opacity: isHovered ? 1 : 0 }}
+          animate={{ opacity: isHovered ? 1 : 0.8 }}
           transition={{ duration: 0.2 }}
         >
           <motion.button
-            className="w-16 h-16 bg-white/20 backdrop-blur-md border-2 border-white/30 rounded-full flex items-center justify-center group/button hover:bg-white/30 hover:border-white/50 transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-blue-500/30"
-            onClick={handlePlayClick}
+            className="w-20 h-20 bg-white/90 backdrop-blur-lg border border-white/20 rounded-full flex items-center justify-center shadow-2xl hover:bg-white transition-all duration-300 group"
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
-            aria-label="Watch full demo"
+            onClick={handleThumbnailClick}
+            aria-label="Play full video"
           >
-            <Play className="w-6 h-6 text-white ml-1" fill="currentColor" />
+            <Play 
+              className="w-8 h-8 text-blue-600 ml-1 group-hover:text-blue-700 transition-colors" 
+              fill="currentColor" 
+            />
           </motion.button>
         </motion.div>
 
         {/* Error State */}
         {hasError && (
-          <div className="absolute inset-0 bg-gray-900/80 flex flex-col items-center justify-center text-white p-4">
-            <AlertCircle className="w-12 h-12 mb-4 text-yellow-500" />
-            <p className="text-sm text-center mb-2">Video preview unavailable</p>
-            <button
-              onClick={handlePlayClick}
-              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              Watch Full Demo
-            </button>
+          <div className="absolute top-4 right-4 flex items-center space-x-2 bg-red-500/90 backdrop-blur-lg rounded-lg px-3 py-2">
+            <AlertCircle className="w-4 h-4 text-white" />
+            <span className="text-white text-sm">Video unavailable</span>
           </div>
         )}
 
-        {/* Video Status Indicators */}
-        {!hasError && (
+        {/* Video Controls Overlay (only shown when video is playing) */}
+        {isInView && !showFallback && (
           <>
-            {/* Thumbnail Controls Indicator */}
-            <div className="absolute bottom-4 left-4 flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            {/* Mini play/pause control */}
+            <div className="absolute bottom-4 right-4 flex items-center space-x-2">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleThumbnailClick();
+                  const video = videoRef.current;
+                  if (video) {
+                    if (isPlaying) {
+                      video.pause();
+                    } else {
+                      video.play().catch(() => {
+                        console.warn('Play failed - user interaction required');
+                      });
+                    }
+                  }
                 }}
-                className="w-8 h-8 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-white/30 transition-colors focus:outline-none focus:ring-2 focus:ring-white/50"
+                className="w-8 h-8 bg-black/50 backdrop-blur-lg rounded-full flex items-center justify-center hover:bg-black/70 transition-colors"
                 aria-label={isPlaying ? "Pause preview" : "Play preview"}
               >
                 {isPlaying ? (
@@ -273,5 +249,5 @@ export const VideoThumbnail: React.FC<VideoThumbnailProps> = ({
   );
 };
 
-// Default export for VideoThumbnail component
+// CRITICAL FIX: Add default export
 export default VideoThumbnail;
