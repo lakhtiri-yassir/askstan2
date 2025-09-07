@@ -201,13 +201,22 @@ export const VideoModal: React.FC<VideoModalProps> = ({
     }
   };
 
-  // Video controls
+  // Video controls - FIXED: Better pause handling
   const togglePlay = () => {
     const video = videoRef.current;
     if (!video) return;
 
+    console.log('🎥 Toggle play - current state:', isPlaying ? 'playing' : 'paused');
+    
     if (isPlaying) {
       video.pause();
+      // Ensure controls stay visible when paused
+      setShowControls(true);
+      // Clear any auto-hide timeouts when pausing
+      if (controlsTimeout) {
+        clearTimeout(controlsTimeout);
+        setControlsTimeout(null);
+      }
     } else {
       video.play().catch(error => {
         console.error('🎥 Play failed:', error);
