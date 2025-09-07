@@ -30,9 +30,6 @@ export const VideoModal: React.FC<VideoModalProps> = ({
       }
     };
 
-// Default export for VideoModal component
-export default VideoModal;
-
     if (isOpen) {
       document.addEventListener('keydown', handleEscKey);
       document.body.style.overflow = 'hidden';
@@ -311,3 +308,6 @@ export default VideoModal;
     </AnimatePresence>
   );
 };
+
+// Default export for VideoModal component
+export default VideoModal;
