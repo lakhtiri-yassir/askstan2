@@ -1,6 +1,6 @@
 /**
- * VIDEO MODAL COMPONENT - FIXED EXPORT ISSUE
- * Full-screen video player modal with custom controls
+ * VIDEO MODAL COMPONENT - FIXED AUTO-HIDE CONTROLS
+ * Full-screen video player modal with proper control auto-hiding
  * Matches AskStan! design system with glass morphism and gradients
  */
 
@@ -60,23 +60,49 @@ export const VideoModal: React.FC<VideoModalProps> = ({
     }
   }, [isOpen, state.isPlaying, actions]);
 
-  // Auto-hide controls
-  const resetControlsTimeout = () => {
+  // FIXED: Improved auto-hide controls logic
+  useEffect(() => {
+    // Clear any existing timeout
     if (controlsTimeout) {
       clearTimeout(controlsTimeout);
+      setControlsTimeout(null);
     }
-    setShowControls(true);
-    const timeout = setTimeout(() => {
-      if (state.isPlaying) {
-        setShowControls(false);
-      }
-    }, 3000);
-    setControlsTimeout(timeout);
-  };
 
-  // Show controls on mouse move
+    if (state.isPlaying) {
+      // Hide controls after 3 seconds when playing
+      const timeout = setTimeout(() => {
+        setShowControls(false);
+      }, 3000);
+      setControlsTimeout(timeout);
+    } else {
+      // Always show controls when paused
+      setShowControls(true);
+    }
+
+    return () => {
+      if (controlsTimeout) {
+        clearTimeout(controlsTimeout);
+      }
+    };
+  }, [state.isPlaying]); // Only depend on isPlaying, not showControls
+
+  // FIXED: Show controls on mouse move and reset timer
   const handleMouseMove = () => {
-    resetControlsTimeout();
+    setShowControls(true);
+    
+    // Clear existing timeout
+    if (controlsTimeout) {
+      clearTimeout(controlsTimeout);
+      setControlsTimeout(null);
+    }
+
+    // Set new timeout only if playing
+    if (state.isPlaying) {
+      const timeout = setTimeout(() => {
+        setShowControls(false);
+      }, 3000);
+      setControlsTimeout(timeout);
+    }
   };
 
   // Format time display
@@ -139,6 +165,18 @@ export const VideoModal: React.FC<VideoModalProps> = ({
             className="w-full h-full flex items-center justify-center p-4"
             onClick={(e) => e.stopPropagation()}
             onMouseMove={handleMouseMove}
+            onMouseLeave={() => {
+              // Hide controls faster when mouse leaves if playing
+              if (state.isPlaying) {
+                if (controlsTimeout) {
+                  clearTimeout(controlsTimeout);
+                }
+                const timeout = setTimeout(() => {
+                  setShowControls(false);
+                }, 1000);
+                setControlsTimeout(timeout);
+              }
+            }}
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
@@ -150,7 +188,7 @@ export const VideoModal: React.FC<VideoModalProps> = ({
               {/* Video Element */}
               <video
                 ref={videoRef}
-                className="w-full h-full object-contain"
+                className="w-full h-full object-contain cursor-pointer"
                 poster={poster}
                 onClick={actions.togglePlay}
                 onDoubleClick={actions.toggleFullscreen}
@@ -179,127 +217,134 @@ export const VideoModal: React.FC<VideoModalProps> = ({
                 </div>
               )}
 
-              {/* Controls Overlay */}
+              {/* Center Play/Pause Button - Only when paused or controls visible */}
               <AnimatePresence>
-                {showControls && (
+                {(showControls && !state.isLoading) && (
                   <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
                     transition={{ duration: 0.2 }}
-                    className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"
+                    className="absolute inset-0 flex items-center justify-center"
                   >
-                    {/* Center Play/Pause Button */}
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <button
-                        onClick={actions.togglePlay}
-                        className="w-20 h-20 bg-white/10 backdrop-blur-lg border border-white/20 rounded-full flex items-center justify-center hover:bg-white/20 transition-all duration-300 group"
-                        aria-label={state.isPlaying ? "Pause video" : "Play video"}
-                      >
-                        {state.isPlaying ? (
-                          <Pause className="w-10 h-10 text-white group-hover:scale-110 transition-transform" />
-                        ) : (
-                          <Play className="w-10 h-10 text-white ml-1 group-hover:scale-110 transition-transform" fill="currentColor" />
-                        )}
-                      </button>
+                    <button
+                      onClick={actions.togglePlay}
+                      className="w-20 h-20 bg-white/10 backdrop-blur-lg border border-white/20 rounded-full flex items-center justify-center hover:bg-white/20 transition-all duration-300 group"
+                      aria-label={state.isPlaying ? "Pause video" : "Play video"}
+                    >
+                      {state.isPlaying ? (
+                        <Pause className="w-10 h-10 text-white group-hover:scale-110 transition-transform" />
+                      ) : (
+                        <Play className="w-10 h-10 text-white ml-1 group-hover:scale-110 transition-transform" fill="currentColor" />
+                      )}
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Bottom Controls Bar */}
+              <AnimatePresence>
+                {(showControls && !state.isLoading) && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 20 }}
+                    transition={{ duration: 0.3 }}
+                    className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"
+                  >
+                    {/* Progress Bar */}
+                    <div 
+                      className="w-full h-2 bg-white/20 cursor-pointer mb-4 group mx-6"
+                      onClick={handleProgressClick}
+                    >
+                      <div 
+                        className="h-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-150 group-hover:from-blue-400 group-hover:to-blue-500"
+                        style={{ width: `${(state.currentTime / state.duration) * 100 || 0}%` }}
+                      />
                     </div>
 
-                    {/* Bottom Controls Bar */}
-                    <div className="absolute bottom-0 left-0 right-0 p-6">
-                      {/* Progress Bar */}
-                      <div 
-                        className="w-full h-2 bg-white/20 rounded-full cursor-pointer mb-4 group"
-                        onClick={handleProgressClick}
-                      >
-                        <div 
-                          className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-150 group-hover:from-blue-400 group-hover:to-blue-500"
-                          style={{ width: `${(state.currentTime / state.duration) * 100 || 0}%` }}
-                        />
-                      </div>
+                    {/* Control Buttons */}
+                    <div className="flex items-center justify-between px-6 pb-6">
+                      {/* Left Controls */}
+                      <div className="flex items-center space-x-4">
+                        <button
+                          onClick={actions.togglePlay}
+                          className="p-2 hover:bg-white/20 rounded-full transition-colors"
+                          aria-label={state.isPlaying ? "Pause" : "Play"}
+                        >
+                          {state.isPlaying ? (
+                            <Pause className="w-6 h-6 text-white" />
+                          ) : (
+                            <Play className="w-6 h-6 text-white" fill="currentColor" />
+                          )}
+                        </button>
 
-                      {/* Control Buttons */}
-                      <div className="flex items-center justify-between">
-                        {/* Left Controls */}
-                        <div className="flex items-center space-x-4">
+                        <button
+                          onClick={handleSkipBackward}
+                          className="p-2 hover:bg-white/20 rounded-full transition-colors"
+                          title="Skip backward 10s"
+                        >
+                          <SkipBack className="w-5 h-5 text-white" />
+                        </button>
+
+                        <button
+                          onClick={handleSkipForward}
+                          className="p-2 hover:bg-white/20 rounded-full transition-colors"
+                          title="Skip forward 10s"
+                        >
+                          <SkipForward className="w-5 h-5 text-white" />
+                        </button>
+
+                        {/* Volume Controls */}
+                        <div className="flex items-center space-x-2">
                           <button
-                            onClick={actions.togglePlay}
+                            onClick={actions.toggleMute}
                             className="p-2 hover:bg-white/20 rounded-full transition-colors"
-                            aria-label={state.isPlaying ? "Pause" : "Play"}
+                            title={state.muted ? "Unmute" : "Mute"}
                           >
-                            {state.isPlaying ? (
-                              <Pause className="w-6 h-6 text-white" />
+                            {state.muted ? (
+                              <VolumeX className="w-5 h-5" />
                             ) : (
-                              <Play className="w-6 h-6 text-white" fill="currentColor" />
+                              <Volume2 className="w-5 h-5" />
                             )}
                           </button>
 
-                          <button
-                            onClick={handleSkipBackward}
-                            className="p-2 hover:bg-white/20 rounded-full transition-colors"
-                            title="Skip backward 10s"
-                          >
-                            <SkipBack className="w-5 h-5 text-white" />
-                          </button>
-
-                          <button
-                            onClick={handleSkipForward}
-                            className="p-2 hover:bg-white/20 rounded-full transition-colors"
-                            title="Skip forward 10s"
-                          >
-                            <SkipForward className="w-5 h-5 text-white" />
-                          </button>
-
-                          {/* Volume Controls */}
-                          <div className="flex items-center space-x-2">
-                            <button
-                              onClick={actions.toggleMute}
-                              className="p-2 hover:bg-white/20 rounded-full transition-colors"
-                              title={state.muted ? "Unmute" : "Mute"}
-                            >
-                              {state.muted ? (
-                                <VolumeX className="w-5 h-5" />
-                              ) : (
-                                <Volume2 className="w-5 h-5" />
-                              )}
-                            </button>
-
-                            <input
-                              type="range"
-                              min="0"
-                              max="1"
-                              step="0.1"
-                              value={state.muted ? 0 : state.volume}
-                              onChange={(e) => {
-                                const newVolume = parseFloat(e.target.value);
-                                actions.setVolume(newVolume);
-                                if (newVolume > 0 && state.muted) {
-                                  actions.toggleMute();
-                                }
-                              }}
-                              className="w-20 accent-blue-500"
-                            />
-                          </div>
-
-                          {/* Time Display */}
-                          <div className="text-sm text-white/80">
-                            {formatTime(state.currentTime)} / {formatTime(state.duration)}
-                          </div>
+                          <input
+                            type="range"
+                            min="0"
+                            max="1"
+                            step="0.1"
+                            value={state.muted ? 0 : state.volume}
+                            onChange={(e) => {
+                              const newVolume = parseFloat(e.target.value);
+                              actions.setVolume(newVolume);
+                              if (newVolume > 0 && state.muted) {
+                                actions.toggleMute();
+                              }
+                            }}
+                            className="w-20 accent-blue-500"
+                          />
                         </div>
 
-                        {/* Right Controls */}
-                        <div className="flex items-center space-x-4">
-                          <div className="text-sm text-white/80 font-medium">
-                            {title}
-                          </div>
-
-                          <button
-                            onClick={actions.toggleFullscreen}
-                            className="p-2 hover:bg-white/20 rounded-full transition-colors"
-                            title="Fullscreen"
-                          >
-                            <Maximize className="w-5 h-5" />
-                          </button>
+                        {/* Time Display */}
+                        <div className="text-sm text-white/80">
+                          {formatTime(state.currentTime)} / {formatTime(state.duration)}
                         </div>
+                      </div>
+
+                      {/* Right Controls */}
+                      <div className="flex items-center space-x-4">
+                        <div className="text-sm text-white/80 font-medium">
+                          {title}
+                        </div>
+
+                        <button
+                          onClick={actions.toggleFullscreen}
+                          className="p-2 hover:bg-white/20 rounded-full transition-colors"
+                          title="Fullscreen"
+                        >
+                          <Maximize className="w-5 h-5" />
+                        </button>
                       </div>
                     </div>
                   </motion.div>
