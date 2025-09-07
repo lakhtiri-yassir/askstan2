@@ -1,22 +1,23 @@
 /**
- * VIDEO DEMO COMPONENT
+ * VIDEO DEMO COMPONENT - UPDATED WITH CORRECT PATHS
  * Main container for video demo section on AskStan! landing page
  * Integrates seamlessly with existing design system and animations
  */
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Play, Sparkles, TrendingUp } from 'lucide-react';
+import { Play, Sparkles, TrendingUp, Zap, CheckCircle } from 'lucide-react';
 import { VideoThumbnail } from './VideoThumbnail';
 import { VideoModal } from './VideoModal';
 import { VideoProps } from './types';
+import askstanBanner from '../../assets/images/hero-image.jpg';
 
-// Default video sources - replace these paths with your actual video files
+// Updated video sources with correct paths matching your existing setup
 const DEFAULT_VIDEO_PROPS: VideoProps = {
-  thumbnailSrc: '../../assets/videos/demo-thumbnail.mp4',
-  thumbnailWebM: '../../assets/videos/demo-thumbnail.webm',
-  fullVideoSrc: '../../assets/videos/full-demo.mp4',
-  fallbackImage: '../../assets/images/video-fallback.jpg',
+  thumbnailSrc: '/demo-thumbnail.mp4', // Short preview video in public folder
+  thumbnailWebM: '/demo-thumbnail.webm', // WebM version if available
+  fullVideoSrc: '/full-demo.mp4', // Your existing 13-minute demo video
+  fallbackImage: askstanBanner, // Use existing hero image as fallback
   title: 'AskStan! Product Demo',
   description: 'Watch how our AI coach transforms your social media strategy in real-time',
   autoplay: true,
@@ -77,7 +78,7 @@ export const VideoDemo: React.FC<Partial<VideoProps>> = (props) => {
                     See AskStan!
                   </span>
                   <br />
-                  <span className="text-gray-900">in Action</span>
+                  <span className="text-gray-900">In Action</span>
                 </motion.h2>
 
                 <motion.p
@@ -85,39 +86,60 @@ export const VideoDemo: React.FC<Partial<VideoProps>> = (props) => {
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.8, delay: 0.4 }}
                   viewport={{ once: true }}
-                  className="text-xl md:text-2xl text-gray-600 leading-relaxed"
+                  className="text-xl text-gray-600 leading-relaxed max-w-lg"
                 >
                   {videoProps.description}
                 </motion.p>
               </div>
 
-              {/* Feature Highlights */}
+              {/* Features List */}
               <motion.div
-                initial={{ opacity: 0, y: 30 }}
+                initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.5 }}
                 viewport={{ once: true }}
                 className="space-y-4"
               >
-                <div className="flex items-start space-x-4">
-                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <Sparkles className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-1">AI-Powered Insights</h3>
-                    <p className="text-gray-600">See how Stan analyzes your content and provides personalized recommendations.</p>
-                  </div>
-                </div>
+                {[
+                  'Real-time AI coaching and feedback',
+                  'Personalized content strategy recommendations',
+                  'Performance analytics and insights',
+                  'Multi-platform social media optimization'
+                ].map((feature, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, x: -20 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.5, delay: 0.6 + index * 0.1 }}
+                    viewport={{ once: true }}
+                    className="flex items-center space-x-3"
+                  >
+                    <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
+                    <span className="text-gray-700">{feature}</span>
+                  </motion.div>
+                ))}
+              </motion.div>
 
-                <div className="flex items-start space-x-4">
-                  <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-yellow-500 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <TrendingUp className="w-6 h-6 text-white" />
+              {/* Statistics */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.8 }}
+                viewport={{ once: true }}
+                className="grid grid-cols-3 gap-6 pt-6"
+              >
+                {[
+                  { value: '13 min', label: 'Complete Demo' },
+                  { value: '50+', label: 'Features Shown' },
+                  { value: '100%', label: 'Real Usage' }
+                ].map((stat, index) => (
+                  <div key={index} className="text-center">
+                    <div className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-yellow-500 bg-clip-text text-transparent">
+                      {stat.value}
+                    </div>
+                    <div className="text-sm text-gray-600">{stat.label}</div>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-1">Real-Time Strategy</h3>
-                    <p className="text-gray-600">Watch the platform adapt and evolve strategies based on your goals.</p>
-                  </div>
-                </div>
+                ))}
               </motion.div>
 
               {/* Call-to-Action */}
@@ -179,7 +201,7 @@ export const VideoDemo: React.FC<Partial<VideoProps>> = (props) => {
 
                 {/* Video Duration Badge */}
                 <div className="absolute top-4 right-4 px-3 py-1 bg-black/70 backdrop-blur-md text-white text-sm font-medium rounded-lg">
-                  2:30
+                  13:00
                 </div>
 
                 {/* Quality Badge */}
@@ -198,42 +220,22 @@ export const VideoDemo: React.FC<Partial<VideoProps>> = (props) => {
               </motion.div>
 
               <motion.div
-                className="absolute -bottom-6 -right-6 w-20 h-20 bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-2xl rotate-12 shadow-lg opacity-80"
-                animate={{ rotate: [12, 18, 12] }}
+                className="absolute -bottom-4 right-1/4 w-12 h-12 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center shadow-lg"
+                animate={{ rotate: [0, 360] }}
+                transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+              >
+                <Sparkles className="w-6 h-6 text-white" />
+              </motion.div>
+
+              <motion.div
+                className="absolute top-1/4 -left-6 w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center shadow-lg"
+                animate={{ x: [0, 10, 0] }}
                 transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
               >
-                <div className="w-full h-full flex items-center justify-center">
-                  <Sparkles className="w-8 h-8 text-white" />
-                </div>
+                <TrendingUp className="w-5 h-5 text-white" />
               </motion.div>
             </motion.div>
           </div>
-
-          {/* Bottom Stats/Social Proof */}
-          <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.7 }}
-            viewport={{ once: true }}
-            className="mt-20 text-center"
-          >
-            <div className="inline-flex items-center space-x-8 px-8 py-4 bg-white/60 backdrop-blur-lg rounded-2xl border border-white/20 shadow-lg">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-gray-900">2K+</div>
-                <div className="text-sm text-gray-600">Active Users</div>
-              </div>
-              <div className="w-px h-8 bg-gray-300" />
-              <div className="text-center">
-                <div className="text-2xl font-bold text-gray-900">98%</div>
-                <div className="text-sm text-gray-600">Success Rate</div>
-              </div>
-              <div className="w-px h-8 bg-gray-300" />
-              <div className="text-center">
-                <div className="text-2xl font-bold text-gray-900">24/7</div>
-                <div className="text-sm text-gray-600">AI Support</div>
-              </div>
-            </div>
-          </motion.div>
         </div>
       </section>
 

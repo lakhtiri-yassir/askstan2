@@ -1,5 +1,5 @@
 /**
- * USE VIDEO PLAYER HOOK
+ * USE VIDEO PLAYER HOOK - COMPLETE IMPLEMENTATION
  * Custom React hook for video player state management
  * Handles play/pause, progress, volume, and fullscreen functionality
  */
@@ -78,7 +78,7 @@ export const useVideoPlayer = ({
     };
 
     const handlePlay = () => {
-      setState(prev => ({ ...prev, isPlaying: true }));
+      setState(prev => ({ ...prev, isPlaying: true, error: null }));
     };
 
     const handlePause = () => {
@@ -100,11 +100,17 @@ export const useVideoPlayer = ({
       }));
     };
 
-    const handleError = () => {
+    const handleError = (e: Event) => {
+      const errorMessage = video.error ? 
+        `Video error (${video.error.code}): ${video.error.message}` : 
+        'Unknown video error occurred';
+      
+      console.error('Video player error:', errorMessage, e);
       setState(prev => ({ 
         ...prev, 
         error: 'Failed to load video',
-        isLoading: false 
+        isLoading: false,
+        isPlaying: false
       }));
     };
 
@@ -115,6 +121,26 @@ export const useVideoPlayer = ({
       }));
     };
 
+    const handleWaiting = () => {
+      setState(prev => ({ ...prev, isLoading: true }));
+    };
+
+    const handleCanPlay = () => {
+      setState(prev => ({ ...prev, isLoading: false }));
+    };
+
+    const handleEnded = () => {
+      setState(prev => ({ ...prev, isPlaying: false }));
+    };
+
+    const handleSeeking = () => {
+      setState(prev => ({ ...prev, isLoading: true }));
+    };
+
+    const handleSeeked = () => {
+      setState(prev => ({ ...prev, isLoading: false }));
+    };
+
     // Attach event listeners
     video.addEventListener('loadeddata', handleLoadedData);
     video.addEventListener('loadedmetadata', handleLoadedMetadata);
@@ -123,6 +149,11 @@ export const useVideoPlayer = ({
     video.addEventListener('timeupdate', handleTimeUpdate);
     video.addEventListener('volumechange', handleVolumeChange);
     video.addEventListener('error', handleError);
+    video.addEventListener('waiting', handleWaiting);
+    video.addEventListener('canplay', handleCanPlay);
+    video.addEventListener('ended', handleEnded);
+    video.addEventListener('seeking', handleSeeking);
+    video.addEventListener('seeked', handleSeeked);
     document.addEventListener('fullscreenchange', handleFullscreenChange);
 
     // Cleanup
@@ -134,6 +165,11 @@ export const useVideoPlayer = ({
       video.removeEventListener('timeupdate', handleTimeUpdate);
       video.removeEventListener('volumechange', handleVolumeChange);
       video.removeEventListener('error', handleError);
+      video.removeEventListener('waiting', handleWaiting);
+      video.removeEventListener('canplay', handleCanPlay);
+      video.removeEventListener('ended', handleEnded);
+      video.removeEventListener('seeking', handleSeeking);
+      video.removeEventListener('seeked', handleSeeked);
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
   }, [videoRef]);
@@ -147,7 +183,7 @@ export const useVideoPlayer = ({
           console.error('Play failed:', error);
           setState(prev => ({ 
             ...prev, 
-            error: 'Playback failed',
+            error: 'Playback failed - browser may have blocked autoplay',
             isPlaying: false 
           }));
         });
@@ -181,15 +217,19 @@ export const useVideoPlayer = ({
 
     seek: useCallback((time: number) => {
       const video = videoRef.current;
-      if (video) {
-        video.currentTime = Math.max(0, Math.min(time, video.duration || 0));
+      if (video && !isNaN(time) && time >= 0 && time <= video.duration) {
+        video.currentTime = time;
       }
     }, [videoRef]),
 
     setVolume: useCallback((volume: number) => {
       const video = videoRef.current;
-      if (video) {
-        video.volume = Math.max(0, Math.min(1, volume));
+      if (video && volume >= 0 && volume <= 1) {
+        video.volume = volume;
+        // Unmute if volume is set above 0
+        if (volume > 0 && video.muted) {
+          video.muted = false;
+        }
       }
     }, [videoRef]),
 
@@ -211,7 +251,7 @@ export const useVideoPlayer = ({
           await video.requestFullscreen();
         }
       } catch (error) {
-        console.error('Fullscreen failed:', error);
+        console.error('Fullscreen toggle failed:', error);
         setState(prev => ({ 
           ...prev, 
           error: 'Fullscreen not supported' 
@@ -227,6 +267,15 @@ export const useVideoPlayer = ({
       }
     }, [videoRef])
   };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (updateIntervalRef.current) {
+        clearInterval(updateIntervalRef.current);
+      }
+    };
+  }, []);
 
   return {
     state,

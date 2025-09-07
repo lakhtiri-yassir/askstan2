@@ -1,5 +1,5 @@
 /**
- * VIDEO THUMBNAIL COMPONENT
+ * VIDEO THUMBNAIL COMPONENT - COMPLETE IMPLEMENTATION
  * Displays 3-second looping video with play overlay
  * Integrates with AskStan! design system and accessibility standards
  */
@@ -23,6 +23,7 @@ export const VideoThumbnail: React.FC<VideoThumbnailProps> = ({
   const [hasError, setHasError] = useState(false);
   const [isInView, setIsInView] = useState(!lazyLoad);
   const [showFallback, setShowFallback] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -55,7 +56,7 @@ export const VideoThumbnail: React.FC<VideoThumbnailProps> = ({
     const handlePlay = () => setIsPlaying(true);
     const handlePause = () => setIsPlaying(false);
     const handleError = () => {
-      console.error('Video thumbnail failed to load');
+      console.error('Video thumbnail failed to load:', thumbnailSrc);
       setHasError(true);
       setShowFallback(true);
     };
@@ -70,18 +71,28 @@ export const VideoThumbnail: React.FC<VideoThumbnailProps> = ({
       }
     };
 
+    const handleCanPlay = () => {
+      if (autoplay) {
+        video.play().catch(() => {
+          console.warn('Autoplay prevented');
+        });
+      }
+    };
+
     video.addEventListener('play', handlePlay);
     video.addEventListener('pause', handlePause);
     video.addEventListener('error', handleError);
     video.addEventListener('loadeddata', handleLoadedData);
+    video.addEventListener('canplay', handleCanPlay);
 
     return () => {
       video.removeEventListener('play', handlePlay);
       video.removeEventListener('pause', handlePause);
       video.removeEventListener('error', handleError);
       video.removeEventListener('loadeddata', handleLoadedData);
+      video.removeEventListener('canplay', handleCanPlay);
     };
-  }, [autoplay, isInView]);
+  }, [autoplay, isInView, thumbnailSrc]);
 
   // Handle thumbnail click
   const handleThumbnailClick = () => {
@@ -124,6 +135,9 @@ export const VideoThumbnail: React.FC<VideoThumbnailProps> = ({
       >
         {/* Loading shimmer effect */}
         <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="w-16 h-16 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
+        </div>
       </div>
     );
   }
@@ -132,6 +146,8 @@ export const VideoThumbnail: React.FC<VideoThumbnailProps> = ({
     <div 
       ref={containerRef} 
       className="relative group cursor-pointer"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
       {/* Video Container with Glass Morphism */}
       <motion.div
@@ -156,6 +172,7 @@ export const VideoThumbnail: React.FC<VideoThumbnailProps> = ({
             poster={fallbackImage}
             aria-label={alt}
             onError={() => setShowFallback(true)}
+            style={{ filter: hasError ? 'grayscale(100%)' : 'none' }}
           >
             {/* WebM source for better compression */}
             {thumbnailWebM && (
@@ -182,7 +199,7 @@ export const VideoThumbnail: React.FC<VideoThumbnailProps> = ({
         <motion.div
           className="absolute inset-0 flex items-center justify-center"
           initial={{ opacity: 0 }}
-          whileHover={{ opacity: 1 }}
+          animate={{ opacity: isHovered ? 1 : 0 }}
           transition={{ duration: 0.2 }}
         >
           <motion.button
@@ -200,53 +217,58 @@ export const VideoThumbnail: React.FC<VideoThumbnailProps> = ({
         {hasError && (
           <div className="absolute inset-0 bg-gray-900/80 flex flex-col items-center justify-center text-white p-4">
             <AlertCircle className="w-12 h-12 mb-4 text-yellow-500" />
-            <p className="text-sm text-center mb-2">Video unavailable</p>
+            <p className="text-sm text-center mb-2">Video preview unavailable</p>
             <button
               onClick={handlePlayClick}
               className="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              Watch Demo
+              Watch Full Demo
             </button>
           </div>
         )}
 
-        {/* Video Controls Indicator */}
+        {/* Video Status Indicators */}
         {!hasError && (
-          <div className="absolute bottom-4 left-4 flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleThumbnailClick();
-              }}
-              className="w-8 h-8 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-white/30 transition-colors focus:outline-none focus:ring-2 focus:ring-white/50"
-              aria-label={isPlaying ? "Pause preview" : "Play preview"}
-            >
-              {isPlaying ? (
-                <Pause className="w-4 h-4 text-white" />
-              ) : (
-                <Play className="w-4 h-4 text-white ml-0.5" fill="currentColor" />
-              )}
-            </button>
-          </div>
+          <>
+            {/* Thumbnail Controls Indicator */}
+            <div className="absolute bottom-4 left-4 flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleThumbnailClick();
+                }}
+                className="w-8 h-8 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-white/30 transition-colors focus:outline-none focus:ring-2 focus:ring-white/50"
+                aria-label={isPlaying ? "Pause preview" : "Play preview"}
+              >
+                {isPlaying ? (
+                  <Pause className="w-3 h-3 text-white" />
+                ) : (
+                  <Play className="w-3 h-3 text-white ml-0.5" fill="currentColor" />
+                )}
+              </button>
+              <span className="text-white text-xs bg-black/50 px-2 py-1 rounded">
+                Preview
+              </span>
+            </div>
+
+            {/* Live indicator for playing video */}
+            {isPlaying && (
+              <div className="absolute top-4 left-4 flex items-center space-x-2">
+                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                <span className="text-white text-xs bg-black/50 px-2 py-1 rounded">
+                  Live Preview
+                </span>
+              </div>
+            )}
+          </>
         )}
 
-        {/* Gradient Border Effect */}
-        <div className="absolute inset-0 rounded-2xl p-1 bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-yellow-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10">
-          <div className="w-full h-full rounded-xl bg-transparent" />
-        </div>
+        {/* Accessibility: Focus ring */}
+        <div className="absolute inset-0 rounded-2xl border-2 border-transparent group-focus-within:border-blue-500 transition-colors duration-200 pointer-events-none" />
       </motion.div>
 
-      {/* Loading Progress for Video */}
-      {!showFallback && isInView && (
-        <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/20 rounded-b-2xl overflow-hidden">
-          <motion.div
-            className="h-full bg-gradient-to-r from-blue-500 to-yellow-500"
-            initial={{ width: "0%" }}
-            animate={{ width: isPlaying ? "100%" : "0%" }}
-            transition={{ duration: 3, ease: "linear", repeat: Infinity }}
-          />
-        </div>
-      )}
+      {/* Decorative glow effect */}
+      <div className="absolute -inset-1 bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-yellow-500/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 -z-10" />
     </div>
   );
 };
