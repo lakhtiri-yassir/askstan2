@@ -1,4 +1,4 @@
-// src/lib/subscriptionService.ts - UPDATED: Added conditional redirect based on paymentRequired
+// src/lib/subscriptionService.ts - UPDATED: New pricing structure
 import { supabase } from './supabase';
 import { loadStripe } from '@stripe/stripe-js';
 
@@ -6,7 +6,7 @@ const pendingCheckoutRequests = new Map<string, Promise<string>>();
 
 export const subscriptionService = {
   /**
-   * Get available plans configuration
+   * Get available plans configuration - UPDATED PRICING
    */
   getPlansConfig() {
     return {
@@ -68,132 +68,112 @@ export const subscriptionService = {
     }
   },
 
-  /**
-   * Internal checkout session creation - UPDATED: Added conditional redirect logic
-   */
   async _createCheckoutSessionInternal(
     planType: 'monthly' | 'yearly',
     userId: string,
     userEmail: string
   ): Promise<string> {
     try {
-      console.log('Creating checkout session:', { planType, userId, userEmail });
-
-      const plans = this.getPlansConfig();
-      const selectedPlan = plans[planType];
-
-      if (!selectedPlan.priceId) {
-        throw new Error(`Price ID not configured for ${planType} plan`);
-      }
+      console.log('🛒 Creating checkout session:', { planType, userId, userEmail });
 
       const { data, error } = await supabase.functions.invoke('create-checkout-session', {
         body: {
           planType,
           userId,
-          userEmail,
-          successUrl: `${window.location.origin}/checkout-success?session_id={CHECKOUT_SESSION_ID}`,
-          cancelUrl: `${window.location.origin}/plans`,
+          userEmail
         }
       });
 
       if (error) {
-        console.error('Checkout session error:', error);
-        throw new Error(error.message || 'Failed to create checkout session');
+        console.error('❌ Checkout session error:', error);
+        throw new Error(`Failed to create checkout session: ${error.message}`);
       }
 
       if (!data?.url) {
-        throw new Error('No checkout URL returned');
+        console.error('❌ No checkout URL returned:', data);
+        throw new Error('Invalid response from checkout service');
       }
 
-      console.log('✅ Checkout session created successfully');
+      console.log('✅ Checkout session created:', {
+        sessionId: data.sessionId,
+        hasUrl: !!data.url,
+        paymentRequired: data.paymentRequired
+      });
 
-      // UPDATED: Check if payment is required
-      if (data.paymentRequired === false) {
-        console.log('🆓 Free subscription detected, redirecting directly to success page');
-        window.location.href = data.url;
-        return data.url;
-      } else {
-        console.log('💳 Payment required, redirecting to Stripe Checkout');
-        
-        if (!data.sessionId) {
-          throw new Error('No session ID returned for paid checkout');
-        }
-        
-        // Load Stripe and redirect to checkout
-        const stripe = await loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
-        if (!stripe) {
-          throw new Error('Failed to load Stripe');
-        }
-        
-        const { error: stripeError } = await stripe.redirectToCheckout({
-          sessionId: data.sessionId
-        });
-        
-        if (stripeError) {
-          throw new Error(stripeError.message || 'Stripe checkout failed');
-        }
-        
-        // This return won't be reached due to redirect, but needed for TypeScript
-        return data.url;
-      }
+      return data.url;
     } catch (error) {
-      console.error('Subscription service error:', error);
+      console.error('❌ Subscription service error:', error);
       throw error;
+    }
+  },
+
+  /**
+   * Get current user subscription
+   */
+  async getCurrentSubscription(userId: string) {
+    try {
+      const { data, error } = await supabase
+        .from('user_subscriptions')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching subscription:', error);
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error in getCurrentSubscription:', error);
+      return null;
     }
   },
 
   /**
    * Create customer portal session
    */
-  async createCustomerPortalSession(): Promise<string> {
+  async createPortalSession(userId: string): Promise<string> {
     try {
-      const { data, error } = await supabase.functions.invoke('create-portal-session');
+      const { data, error } = await supabase.functions.invoke('create-portal-session', {
+        body: { userId }
+      });
 
       if (error) {
-        throw new Error(error.message || 'Failed to create portal session');
-      }
-
-      if (!data?.url) {
-        throw new Error('No portal URL returned');
+        throw new Error(error.message);
       }
 
       return data.url;
     } catch (error) {
-      console.error('Portal session error:', error);
+      console.error('Error creating portal session:', error);
       throw error;
     }
   },
 
   /**
-   * Get user's current subscription
+   * Check if user has active subscription
    */
-  async getUserSubscription(userId: string) {
-    try {
-      const { data, error } = await supabase
-        .from('subscriptions')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('status', 'active')
-        .maybeSingle();
-
-      if (error) {
-        throw error;
-      }
-
-      return data;
-    } catch (error) {
-      console.error('Get subscription error:', error);
-      return null;
-    }
+  async hasActiveSubscription(userId: string): Promise<boolean> {
+    const subscription = await this.getCurrentSubscription(userId);
+    return !!subscription;
   },
 
   /**
-   * Handle successful checkout with improved retry logic
+   * Get subscription status
    */
-  async handleCheckoutSuccess(sessionId: string): Promise<any> {
-    console.log('Handling checkout success for session:', sessionId);
-    // Implementation for checkout success handling
-    // This method was incomplete in the original, keeping as-is
-    return { sessionId };
+  async getSubscriptionStatus(userId: string): Promise<'active' | 'inactive' | 'expired'> {
+    const subscription = await this.getCurrentSubscription(userId);
+    
+    if (!subscription) {
+      return 'inactive';
+    }
+
+    // Check if subscription is expired
+    if (subscription.current_period_end && new Date(subscription.current_period_end) < new Date()) {
+      return 'expired';
+    }
+
+    return subscription.status === 'active' ? 'active' : 'inactive';
   }
 };
