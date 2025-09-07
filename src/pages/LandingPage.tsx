@@ -422,25 +422,25 @@ const LandingPage: React.FC = () => {
               </motion.div>
             </motion.div>
 
-            {/* RIGHT SIDE - AskStan Banner with White Background */}
+            {/* RIGHT SIDE - AskStan Banner with Clean Design */}
             <motion.div
               initial={{ opacity: 0, x: 50 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8, delay: 0.2 }}
               className="relative flex items-center justify-center"
             >
-              {/* White Background Container */}
-              <div className="bg-white rounded-3xl shadow-2xl p-8 border border-gray-100">
+              {/* Clean Single Background Container */}
+              <div className="relative bg-white rounded-3xl shadow-xl p-12 border border-gray-200">
                 <img
                   src={askstanBanner}
                   alt="AskStan! AI Social Media Growth Platform"
-                  className="w-full h-auto max-w-lg rounded-2xl shadow-lg"
+                  className="w-full h-auto max-w-lg"
                 />
+                
+                {/* Subtle Decorative Elements */}
+                <div className="absolute -top-6 -right-6 w-24 h-24 bg-gradient-to-br from-blue-500/10 to-transparent rounded-full blur-xl" />
+                <div className="absolute -bottom-6 -left-6 w-20 h-20 bg-gradient-to-br from-yellow-500/10 to-transparent rounded-full blur-xl" />
               </div>
-
-              {/* Decorative Elements */}
-              <div className="absolute -top-8 -right-8 w-32 h-32 bg-gradient-to-br from-blue-400/20 to-transparent rounded-full blur-2xl" />
-              <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-gradient-to-br from-yellow-400/20 to-transparent rounded-full blur-2xl" />
             </motion.div>
           </div>
         </div>
