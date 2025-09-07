@@ -10,14 +10,14 @@ import { Play, Sparkles, TrendingUp, Zap, CheckCircle } from 'lucide-react';
 import VideoThumbnail from './VideoThumbnail'; // Default import
 import VideoModal from './VideoModal'; // Default import
 import { VideoProps } from './types';
-import askstanBanner from '../../assets/images/hero-image.jpg';
+
 
 // Updated video sources with correct paths matching your existing setup
 const DEFAULT_VIDEO_PROPS: VideoProps = {
   thumbnailSrc: '/demo-thumbnail.mp4', // Short preview video in public folder
   thumbnailWebM: '/demo-thumbnail.webm', // WebM version if available
   fullVideoSrc: '/full-demo.mp4', // Your existing 13-minute demo video
-  fallbackImage: askstanBanner, // Use existing hero image as fallback
+  fallbackImage: '/thumbnail.jpg', // Use existing hero image as fallback
   title: 'AskStan! Demo Video',
   description: 'Watch our complete 13-minute demo to see exactly how AskStan! transforms your customer support with AI-powered assistance.'
 };
