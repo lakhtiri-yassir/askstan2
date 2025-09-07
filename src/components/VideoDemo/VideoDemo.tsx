@@ -14,9 +14,9 @@ import askstanBanner from '../../assets/images/hero-image.jpg';
 
 // Updated video sources with correct paths matching your existing setup
 const DEFAULT_VIDEO_PROPS: VideoProps = {
-  thumbnailSrc: '../../assets/videos/demo-thumbnail.mp4', // Short preview video in public folder
-  thumbnailWebM: '../../assets/videos/demo-thumbnail.webm', // WebM version if available
-  fullVideoSrc: '../../assets/videos/full-demo.mp4', // Your existing 13-minute demo video
+  thumbnailSrc: '/demo-thumbnail.mp4', // Short preview video in public folder
+  thumbnailWebM: '/demo-thumbnail.webm', // WebM version if available
+  fullVideoSrc: '/full-demo.mp4', // Your existing 13-minute demo video
   fallbackImage: askstanBanner, // Use existing hero image as fallback
   title: 'AskStan! Product Demo',
   description: 'Watch how our AI coach transforms your social media strategy in real-time',
