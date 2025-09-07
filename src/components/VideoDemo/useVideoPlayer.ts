@@ -58,9 +58,6 @@ export const useVideoPlayer = ({
         clearInterval(updateIntervalRef.current);
       }
     };
-
-// Default export for useVideoPlayer hook
-export default useVideoPlayer;
   }, [state.isPlaying, updateState, updateInterval]);
 
   // Video event handlers
@@ -286,3 +283,6 @@ export default useVideoPlayer;
     isSupported
   };
 };
+
+// Default export for useVideoPlayer hook
+export default useVideoPlayer;
