@@ -250,3 +250,4 @@ export const VideoDemo: React.FC<Partial<VideoProps>> = (props) => {
     </>
   );
 };
+export default VideoDemo;
