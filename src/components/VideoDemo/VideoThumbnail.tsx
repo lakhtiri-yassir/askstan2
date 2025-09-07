@@ -60,6 +60,9 @@ export const VideoThumbnail: React.FC<VideoThumbnailProps> = ({
       setHasError(true);
       setShowFallback(true);
     };
+
+// Default export for VideoThumbnail component
+export default VideoThumbnail;
     
     const handleLoadedData = () => {
       setHasError(false);
