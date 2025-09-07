@@ -322,7 +322,7 @@ const SimpleVideoPlayer: React.FC<VideoPlayerProps> = ({ videoSrc, onClose }) =>
   );
 };
 
-export const LandingPage: React.FC = () => {
+const LandingPage: React.FC = () => {
   const { user, clearSession } = useAuth();
   const [showVideoModal, setShowVideoModal] = useState(false);
 
@@ -1185,3 +1185,4 @@ export const LandingPage: React.FC = () => {
     </div>
   );
 };
+export default LandingPage;
