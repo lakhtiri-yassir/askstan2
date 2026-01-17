@@ -15,12 +15,12 @@ export const chatbotConfig: ChatbotConfig = {
   
   // 📋 CHATBOT EMBED CODE
   embedCode: `
-    <script type="text/javascript">
+   <script type="text/javascript">
   (function(d, t) {
       var v = d.createElement(t), s = d.getElementsByTagName(t)[0];
       v.onload = function() {
         window.voiceflow.chat.load({
-          verify: { projectID: '69639a827ff5ecb50b323a0b' },
+          verify: { projectID: '696bb4a722776736091c68e0' },
           url: 'https://general-runtime.voiceflow.com',
           versionID: 'production',
           voice: {
