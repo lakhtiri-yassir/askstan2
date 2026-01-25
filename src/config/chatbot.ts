@@ -20,7 +20,7 @@ export const chatbotConfig: ChatbotConfig = {
       var v = d.createElement(t), s = d.getElementsByTagName(t)[0];
       v.onload = function() {
         window.voiceflow.chat.load({
-          verify: { projectID: '696bb4a722776736091c68e0' },
+          verify: { projectID: '697561b497302cc6bb17fdf6' },
           url: 'https://general-runtime.voiceflow.com',
           versionID: 'production',
           voice: {
