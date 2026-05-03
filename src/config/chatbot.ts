@@ -15,21 +15,14 @@ export const chatbotConfig: ChatbotConfig = {
   
   // 📋 CHATBOT EMBED CODE
   embedCode: `
-   <script type="text/javascript">
-  (function(d, t) {
-      var v = d.createElement(t), s = d.getElementsByTagName(t)[0];
-      v.onload = function() {
-        window.voiceflow.chat.load({
-          verify: { projectID: '69efe827eb124b8558d86ec7' },
-          url: 'https://general-runtime.voiceflow.com',
-          versionID: 'production',
-          voice: {
-            url: "https://runtime-api.voiceflow.com"
-          }
-        });
-      }
-      v.src = "https://cdn.voiceflow.com/widget-next/bundle.mjs"; v.type = "text/javascript"; s.parentNode.insertBefore(v, s);
-  })(document, 'script');
+   <!-- Stan Embed Code -->
+<script>
+  const script = document.createElement('script');
+  script.src = 'https://yvexan-chatbots.netlify.app/embed/b5f2c09e-93ba-4be5-aecc-7e08f6d1c10d.js';
+  script.setAttribute('data-layout', 'full');
+  script.async = true;
+  script.crossOrigin = 'anonymous';
+  document.head.appendChild(script);
 </script>
   `,
   
