@@ -22,11 +22,11 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     const baseClasses = 'inline-flex items-center justify-center font-semibold rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
     
     const variants = {
-      primary: 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-lg hover:shadow-xl focus:ring-red-500',
+      primary: 'bg-brand-red hover:bg-brand-red-600 text-white shadow-lg hover:shadow-xl focus:ring-brand-red',
       secondary: 'bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 text-gray-700 hover:text-gray-800 shadow-md hover:shadow-lg focus:ring-gray-500',
-      outline: 'border-2 border-red-500 text-red-600 hover:bg-red-500 hover:text-white bg-transparent focus:ring-red-500',
+      outline: 'border-2 border-brand-red text-brand-red hover:bg-brand-red hover:text-white bg-transparent focus:ring-brand-red',
       ghost: 'text-gray-600 hover:text-gray-800 hover:bg-gray-100 focus:ring-gray-500',
-      white: 'bg-white text-red-600 hover:bg-red-50 hover:text-white hover:bg-red-600 border-2 border-white hover:border-red-600 transition-all duration-200 focus:ring-red-500'
+      white: 'bg-white text-brand-red hover:bg-brand-red hover:text-white border-2 border-white hover:border-brand-red transition-all duration-200 focus:ring-brand-red'
     };
     
     const sizes = {

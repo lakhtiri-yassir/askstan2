@@ -16,7 +16,7 @@ export const PrivacyPolicyPage: React.FC = () => {
         >
           {/* Header */}
           <div className="mb-8">
-            <Link to="/" className="inline-flex items-center text-red-600 hover:text-red-700 mb-6">
+            <Link to="/" className="inline-flex items-center text-brand-red hover:text-brand-red-600 mb-6">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Home
             </Link>
@@ -77,7 +77,7 @@ export const PrivacyPolicyPage: React.FC = () => {
               <p className="text-gray-700 leading-relaxed mb-6">
                 If you have questions about this Privacy Policy or your data, contact us at:
                 <br />
-                <strong>Email:</strong> <a href="mailto:reply@askstan.io" className="text-red-600 hover:text-red-700">reply@askstan.io</a>
+                <strong>Email:</strong> <a href="mailto:reply@askstan.io" className="text-brand-red hover:text-brand-red-600">reply@askstan.io</a>
               </p>
 
               <h2 className="text-2xl font-bold text-gray-900 mt-8 mb-4">8. Changes to This Policy</h2>

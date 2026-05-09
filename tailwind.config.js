@@ -10,7 +10,19 @@ export default {
   theme: {
     extend: {
       colors: {
-        'brand-red': '#FF0800',
+        'brand-red': {
+          DEFAULT: '#FF0800',
+          50:  '#fff1f0',
+          100: '#ffe1de',
+          200: '#ffb8b2',
+          300: '#ff7f77',
+          400: '#ff3d33',
+          500: '#FF0800',
+          600: '#cc0600',
+          700: '#990500',
+          800: '#660300',
+          900: '#330200',
+        },
         'brand-black': '#000000',
         'brand-gray': {
           100: '#F1F1F2',

@@ -124,7 +124,7 @@ const SignInPage: React.FC = () => {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-yellow-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-red-600 mx-auto mb-4"></div>
           <p className="text-gray-600 font-medium">
             {subscriptionLoading ? 'Checking subscription...' : 'Redirecting...'}
           </p>
@@ -138,7 +138,7 @@ const SignInPage: React.FC = () => {
       {/* Go Back to Home Button */}
       <Link
         to="/"
-        className="absolute top-6 left-6 flex items-center text-gray-600 hover:text-red-600 transition-colors group z-10"
+        className="absolute top-6 left-6 flex items-center text-gray-600 hover:text-brand-red transition-colors group z-10"
       >
         <Home className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" />
         <span className="font-medium">Back to Home</span>
@@ -197,7 +197,7 @@ const SignInPage: React.FC = () => {
             </div>
 
             {errors.submit && (
-              <div className="text-red-600 text-sm text-center bg-red-50 p-3 rounded-lg">
+              <div className="text-brand-red text-sm text-center bg-red-50 p-3 rounded-lg">
                 {errors.submit}
               </div>
             )}
@@ -224,7 +224,7 @@ const SignInPage: React.FC = () => {
           <div className="mt-6 text-center">
             <Link 
               to="/forgot-password" 
-              className="text-red-600 hover:text-red-700 text-sm transition-colors"
+              className="text-brand-red hover:text-brand-red-600 text-sm transition-colors"
             >
               Forgot your password?
             </Link>
@@ -235,7 +235,7 @@ const SignInPage: React.FC = () => {
               Don't have an account?{' '}
               <Link 
                 to="/signup" 
-                className="text-red-600 hover:text-red-700 font-medium transition-colors"
+                className="text-brand-red hover:text-brand-red-600 font-medium transition-colors"
               >
                 Sign up
               </Link>

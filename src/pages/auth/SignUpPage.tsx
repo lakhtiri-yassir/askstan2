@@ -236,15 +236,15 @@ export const SignUpPage: React.FC = () => {
                   setErrors(prev => ({ ...prev, terms: undefined }));
                 }
               }}
-              className="mt-1 w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+              className="mt-1 w-4 h-4 text-brand-red border-gray-300 rounded focus:ring-brand-red"
             />
             <label htmlFor="acceptTerms" className="text-sm text-gray-600">
               I agree to the{' '}
-              <a href="/terms" className="text-red-600 hover:text-red-800 underline">
+              <a href="/terms" className="text-brand-red hover:text-brand-red-700 underline">
                 Terms of Service
               </a>{' '}
               and{' '}
-              <a href="/privacy" className="text-red-600 hover:text-red-800 underline">
+              <a href="/privacy" className="text-brand-red hover:text-brand-red-700 underline">
                 Privacy Policy
               </a>
             </label>
@@ -252,8 +252,8 @@ export const SignUpPage: React.FC = () => {
 
           {/* Terms Error */}
           {errors.terms && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-              <p className="text-red-700 text-sm text-center">{errors.terms}</p>
+            <div className="bg-red-50 border border-brand-red-200 rounded-lg p-3">
+              <p className="text-brand-red-600 text-sm text-center">{errors.terms}</p>
             </div>
           )}
 
@@ -262,9 +262,9 @@ export const SignUpPage: React.FC = () => {
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="bg-red-50 border border-red-200 rounded-lg p-3"
+              className="bg-red-50 border border-brand-red-200 rounded-lg p-3"
             >
-              <p className="text-red-700 text-sm text-center">{errors.submit}</p>
+              <p className="text-brand-red-600 text-sm text-center">{errors.submit}</p>
             </motion.div>
           )}
 
@@ -301,7 +301,7 @@ export const SignUpPage: React.FC = () => {
             Already have an account?{' '}
             <Link
               to="/signin"
-              className="text-red-600 hover:text-red-800 font-semibold transition-colors"
+              className="text-brand-red hover:text-brand-red-700 font-semibold transition-colors"
             >
               Sign in here
             </Link>

@@ -157,7 +157,7 @@ const UserRow: React.FC<{
                       setShowActions(false);
                     }}
                     disabled={isUpdating}
-                    className="flex items-center px-4 py-2 text-sm text-red-700 hover:bg-red-50 w-full text-left"
+                    className="flex items-center px-4 py-2 text-sm text-brand-red-600 hover:bg-red-50 w-full text-left"
                   >
                     {isUpdating ? (
                       <LoadingSpinner size="sm" className="mr-2" />
@@ -337,7 +337,7 @@ function AdminDashboard() {
           >
             <div className="flex items-center">
               <div className="p-3 bg-red-50 rounded-lg">
-                <Users className="w-6 h-6 text-red-600" />
+                <Users className="w-6 h-6 text-brand-red" />
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Total Users</p>
@@ -371,7 +371,7 @@ function AdminDashboard() {
           >
             <div className="flex items-center">
               <div className="p-3 bg-red-50 rounded-lg">
-                <Clock className="w-6 h-6 text-red-600" />
+                <Clock className="w-6 h-6 text-brand-red" />
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Trial Users</p>
@@ -388,7 +388,7 @@ function AdminDashboard() {
           >
             <div className="flex items-center">
               <div className="p-3 bg-red-100 rounded-lg">
-                <XCircle className="w-6 h-6 text-red-600" />
+                <XCircle className="w-6 h-6 text-brand-red" />
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Cancelled Subscriptions</p>
@@ -414,7 +414,7 @@ function AdminDashboard() {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-red focus:border-transparent"
               >
                 <option value="all">All Users</option>
                 <option value="subscribed">Subscribed</option>

@@ -120,14 +120,14 @@ export const PlansPage: React.FC = () => {
               transition={{ delay: index * 0.1 }}
               className={`relative bg-white rounded-2xl shadow-xl p-8 ${
                 plan.popular 
-                  ? 'ring-2 ring-red-500 transform scale-105' 
+                  ? 'ring-2 ring-brand-red transform scale-105' 
                   : 'border border-gray-200'
               }`}
             >
               {/* Popular Badge */}
               {plan.popular && (
                 <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                  <div className="bg-gradient-to-r from-red-500 to-purple-500 text-white px-6 py-2 rounded-full text-sm font-bold flex items-center space-x-2">
+                  <div className="bg-gradient-to-r from-brand-red to-purple-500 text-white px-6 py-2 rounded-full text-sm font-bold flex items-center space-x-2">
                     <Sparkles className="w-4 h-4" />
                     <span>Most Popular</span>
                   </div>
@@ -165,7 +165,7 @@ export const PlansPage: React.FC = () => {
                 disabled={isLoading}
                 className={`w-full py-4 text-lg font-semibold rounded-xl transition-all duration-300 ${
                   plan.popular
-                    ? 'bg-gradient-to-r from-red-500 to-purple-500 text-white hover:shadow-lg'
+                    ? 'bg-gradient-to-r from-brand-red to-purple-500 text-white hover:shadow-lg'
                     : 'bg-gray-900 text-white hover:bg-gray-800'
                 } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
               >

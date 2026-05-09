@@ -367,7 +367,7 @@ export const VideoModal: React.FC<VideoModalProps> = ({
                         onClick={handleSeek}
                       >
                         <div 
-                          className="h-full bg-gradient-to-r from-red-500 to-red-600 rounded-full transition-all duration-150"
+                          className="h-full bg-gradient-to-r from-brand-red to-brand-red-600 rounded-full transition-all duration-150"
                           style={{ width: `${(currentTime / duration) * 100 || 0}%` }}
                         />
                       </div>
@@ -428,7 +428,7 @@ export const VideoModal: React.FC<VideoModalProps> = ({
                             step="0.1"
                             value={isMuted ? 0 : volume}
                             onChange={(e) => changeVolume(parseFloat(e.target.value))}
-                            className="w-20 accent-red-500"
+                            className="w-20 accent-brand-red"
                           />
                         </div>
 

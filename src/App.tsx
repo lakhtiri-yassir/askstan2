@@ -35,7 +35,7 @@ const ComingSoonPage = () => (
     <div className="text-center">
       <h1 className="text-3xl font-bold text-gray-900 mb-4">Coming Soon</h1>
       <p className="text-gray-600 mb-6">This page is under development.</p>
-      <a href="/" className="text-red-600 hover:text-red-700 font-medium">
+      <a href="/" className="text-brand-red hover:text-brand-red-600 font-medium">
         ← Back to Home
       </a>
     </div>

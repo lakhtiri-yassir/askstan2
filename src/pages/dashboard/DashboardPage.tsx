@@ -30,14 +30,14 @@ class DashboardErrorBoundary extends React.Component<
       return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-yellow-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
-            <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+            <AlertCircle className="w-16 h-16 text-brand-red mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-gray-900 mb-4">Dashboard Error</h2>
             <p className="text-gray-600 mb-6">
               We encountered an issue loading your dashboard. Please refresh the page or contact support.
             </p>
             <button
               onClick={() => window.location.reload()}
-              className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+              className="bg-brand-red hover:bg-brand-red-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
             >
               Refresh Page
             </button>
@@ -163,7 +163,7 @@ export const DashboardPage: React.FC = () => {
             className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl border border-gray-200 overflow-hidden mb-8"
           >
             {/* Header */}
-            <div className="bg-gradient-to-r from-red-500 to-yellow-500 px-6 py-4">
+            <div className="bg-gradient-to-r from-brand-red to-yellow-500 px-6 py-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   <div className="w-3 h-3 bg-green-400 rounded-full mr-3 animate-pulse"></div>
@@ -208,7 +208,7 @@ export const DashboardPage: React.FC = () => {
                         <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
                         <span>AI Coach Online</span>
                       </div>
-                      <div className="flex items-center text-red-600">
+                      <div className="flex items-center text-brand-red">
                         <Sparkles className="w-4 h-4 mr-2" />
                         <span>LinkedIn Expert Ready</span>
                       </div>
@@ -232,7 +232,7 @@ export const DashboardPage: React.FC = () => {
 
               {/* Error State */}
               {chatbotError && (
-                <div className="absolute bottom-4 right-4 bg-red-100 border border-red-300 text-red-700 px-4 py-2 rounded-lg text-sm">
+                <div className="absolute bottom-4 right-4 bg-red-100 border border-brand-red-300 text-brand-red-600 px-4 py-2 rounded-lg text-sm">
                   <AlertCircle className="w-4 h-4 inline mr-2" />
                   {chatbotError}
                 </div>
@@ -240,9 +240,9 @@ export const DashboardPage: React.FC = () => {
 
               {/* Loading State */}
               {!chatbotLoaded && !chatbotError && (
-                <div className="absolute bottom-4 left-4 bg-red-50 border border-red-300 text-red-700 px-4 py-2 rounded-lg text-sm">
+                <div className="absolute bottom-4 left-4 bg-red-50 border border-brand-red-300 text-brand-red-600 px-4 py-2 rounded-lg text-sm">
                   <div className="flex items-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600 mr-2"></div>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-brand-red-600 mr-2"></div>
                     Loading AI Coach...
                   </div>
                 </div>
@@ -260,7 +260,7 @@ export const DashboardPage: React.FC = () => {
             <div className="bg-white/80 backdrop-blur-lg rounded-xl p-6 shadow-lg border border-gray-200">
               <div className="flex items-center mb-4">
                 <div className="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center mr-3">
-                  <Sparkles className="w-6 h-6 text-red-600" />
+                  <Sparkles className="w-6 h-6 text-brand-red" />
                 </div>
                 <h3 className="font-semibold text-gray-900">Content Ideas</h3>
               </div>

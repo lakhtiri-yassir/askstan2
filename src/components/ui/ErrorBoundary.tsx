@@ -49,7 +49,7 @@ export class ErrorBoundary extends Component<Props, State> {
         <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-yellow-50 flex items-center justify-center px-4">
           <div className="max-w-md w-full bg-white/80 backdrop-blur-md rounded-2xl shadow-xl p-8 border border-white/20 text-center">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-red-100 rounded-xl mb-4">
-              <AlertTriangle className="w-8 h-8 text-red-600" />
+              <AlertTriangle className="w-8 h-8 text-brand-red" />
             </div>
             
             <h2 className="text-2xl font-bold text-gray-900 mb-4">
@@ -80,7 +80,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 <summary className="text-sm text-gray-500 cursor-pointer">
                   Error Details (Development)
                 </summary>
-                <pre className="mt-2 text-xs text-red-600 bg-red-50 p-2 rounded overflow-auto">
+                <pre className="mt-2 text-xs text-brand-red bg-red-50 p-2 rounded overflow-auto">
                   {this.state.error.stack}
                 </pre>
               </details>

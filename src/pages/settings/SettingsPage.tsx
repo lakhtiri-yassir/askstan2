@@ -81,7 +81,7 @@ export const SettingsPage: React.FC = () => {
     <div className="space-y-6">
       <h3 className="text-xl font-semibold text-gray-900">Billing & Subscription</h3>
       {subscription ? (
-        <div className="bg-gradient-to-r from-gray-50 to-yellow-50 p-6 rounded-xl border border-red-200">
+        <div className="bg-gradient-to-r from-gray-50 to-yellow-50 p-6 rounded-xl border border-brand-red-200">
           <div className="flex items-center justify-between">
             <div>
               <h4 className="font-semibold text-gray-900">
@@ -91,7 +91,7 @@ export const SettingsPage: React.FC = () => {
                 {subscription.plan_type === 'yearly' ? '$143.95/year' : '$19.95/month'}
               </p>
               <p className={`text-sm mt-1 capitalize ${
-                subscription.status === 'active' ? 'text-green-600' : 'text-red-600'
+                subscription.status === 'active' ? 'text-green-600' : 'text-brand-red'
               }`}>
                 {subscription.status}
               </p>
@@ -150,7 +150,7 @@ export const SettingsPage: React.FC = () => {
                   <input
                     type="checkbox"
                     defaultChecked={index < 2}
-                    className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 rounded focus:ring-red-500"
+                    className="w-4 h-4 text-brand-red bg-gray-100 border-gray-300 rounded focus:ring-brand-red"
                   />
                 </div>
               ))}
@@ -178,7 +178,7 @@ export const SettingsPage: React.FC = () => {
               <Button
                 variant="outline"
                 onClick={signOut}
-                className="w-full justify-center text-red-600 border-red-300 hover:bg-red-50"
+                className="w-full justify-center text-brand-red border-brand-red-300 hover:bg-red-50"
               >
                 <LogOut className="w-4 h-4 mr-2" />
                 Sign Out

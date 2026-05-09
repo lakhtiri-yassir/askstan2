@@ -200,8 +200,8 @@ export const ResetPasswordPage: React.FC = () => {
             </div>
 
             {errors.submit && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                <p className="text-sm text-red-600">{errors.submit}</p>
+              <div className="bg-red-50 border border-brand-red-200 rounded-lg p-3">
+                <p className="text-sm text-brand-red">{errors.submit}</p>
               </div>
             )}
 
@@ -218,7 +218,7 @@ export const ResetPasswordPage: React.FC = () => {
           <div className="mt-6 text-center">
             <Link
               to="/signin"
-              className="text-sm font-semibold text-red-600 hover:text-red-500 transition-colors"
+              className="text-sm font-semibold text-brand-red hover:text-brand-red transition-colors"
             >
               Back to Sign In
             </Link>

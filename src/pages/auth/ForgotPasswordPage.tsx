@@ -140,7 +140,7 @@ export const ForgotPasswordPage: React.FC = () => {
           <div className="mt-6 text-center">
             <Link
               to="/signin"
-              className="inline-flex items-center text-sm font-semibold text-red-600 hover:text-red-500 transition-colors"
+              className="inline-flex items-center text-sm font-semibold text-brand-red hover:text-brand-red transition-colors"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Sign In

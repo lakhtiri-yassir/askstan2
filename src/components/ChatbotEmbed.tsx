@@ -261,7 +261,7 @@ export const ChatbotEmbed: React.FC<ChatbotEmbedProps> = ({
             id="error-logo-fallback"
             style={{ display: "none" }}
           >
-            <AlertTriangle className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 lg:w-32 lg:h-32 xl:w-36 xl:h-36 text-red-600" />
+            <AlertTriangle className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 lg:w-32 lg:h-32 xl:w-36 xl:h-36 text-brand-red" />
           </div>
         </div>
 
@@ -286,7 +286,7 @@ export const ChatbotEmbed: React.FC<ChatbotEmbedProps> = ({
         {/* Container Corner Status - Loading Spinner */}
         <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-10">
           <div className="relative w-5 h-5 sm:w-6 sm:h-6">
-            <div className="absolute inset-0 border-2 border-red-200 border-t-red-600 rounded-full animate-spin"></div>
+            <div className="absolute inset-0 border-2 border-brand-red-200 border-t-brand-red-600 rounded-full animate-spin"></div>
           </div>
         </div>
 
@@ -307,7 +307,7 @@ export const ChatbotEmbed: React.FC<ChatbotEmbedProps> = ({
             id="loading-logo-fallback"
             style={{ display: "none" }}
           >
-            <span className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold text-red-600">AS</span>
+            <span className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold text-brand-red">AS</span>
           </div>
         </div>
 

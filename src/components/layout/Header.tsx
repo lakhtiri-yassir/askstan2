@@ -1,4 +1,4 @@
-// src/components/layout/Header.tsx - FIXED: Wait for subscription loading before showing navigation
+﻿// src/components/layout/Header.tsx - FIXED: Wait for subscription loading before showing navigation
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -47,12 +47,12 @@ export const Header: React.FC = () => {
       className="bg-white/90 backdrop-blur-lg shadow-lg border-b border-gray-200 sticky top-0 z-50"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center py-4">
+        <div className="flex justify-between items-center py-2">
           <Link to="/" className="flex items-center">
-            <img 
-              src={askstanLogo} 
-              alt="AskStan! Logo" 
-              className="h-14 w-auto"
+            <img
+              src={askstanLogo}
+              alt="AskStan! Logo"
+              className="h-32 w-auto"
             />
           </Link>
 
@@ -76,14 +76,14 @@ export const Header: React.FC = () => {
                 ) : hasActiveSubscription ? (
                   <Link
                     to="/dashboard"
-                    className="text-gray-700 hover:text-red-600 font-medium transition-colors"
+                    className="text-gray-700 hover:text-brand-red font-medium transition-colors"
                   >
                     Dashboard
                   </Link>
                 ) : (
                   <Link
                     to="/plans"
-                    className="text-gray-700 hover:text-red-600 font-medium transition-colors"
+                    className="text-gray-700 hover:text-brand-red font-medium transition-colors"
                   >
                     Plans
                   </Link>
@@ -91,7 +91,7 @@ export const Header: React.FC = () => {
                 
                 <Link
                   to="/settings"
-                  className="text-gray-700 hover:text-red-600 font-medium transition-colors"
+                  className="text-gray-700 hover:text-brand-red font-medium transition-colors"
                 >
                   Settings
                 </Link>
@@ -111,7 +111,7 @@ export const Header: React.FC = () => {
               <>
                 <Link
                   to="/signin"
-                  className="text-gray-700 hover:text-red-600 font-medium transition-colors"
+                  className="text-gray-700 hover:text-brand-red font-medium transition-colors"
                 >
                   Sign In
                 </Link>
@@ -128,7 +128,7 @@ export const Header: React.FC = () => {
           <div className="md:hidden">
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="text-gray-700 hover:text-red-600 transition-colors"
+              className="text-gray-700 hover:text-brand-red transition-colors"
             >
               {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
@@ -161,7 +161,7 @@ export const Header: React.FC = () => {
                   ) : hasActiveSubscription ? (
                     <Link
                       to="/dashboard"
-                      className="block text-gray-700 hover:text-red-600 font-medium transition-colors py-2"
+                      className="block text-gray-700 hover:text-brand-red font-medium transition-colors py-2"
                       onClick={() => setIsMenuOpen(false)}
                     >
                       Dashboard
@@ -169,7 +169,7 @@ export const Header: React.FC = () => {
                   ) : (
                     <Link
                       to="/plans"
-                      className="block text-gray-700 hover:text-red-600 font-medium transition-colors py-2"
+                      className="block text-gray-700 hover:text-brand-red font-medium transition-colors py-2"
                       onClick={() => setIsMenuOpen(false)}
                     >
                       Plans
@@ -178,7 +178,7 @@ export const Header: React.FC = () => {
                   
                   <Link
                     to="/settings"
-                    className="block text-gray-700 hover:text-red-600 font-medium transition-colors py-2"
+                    className="block text-gray-700 hover:text-brand-red font-medium transition-colors py-2"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     Settings
@@ -202,7 +202,7 @@ export const Header: React.FC = () => {
                 <div className="space-y-4">
                   <Link
                     to="/signin"
-                    className="block text-gray-700 hover:text-red-600 font-medium transition-colors py-2"
+                    className="block text-gray-700 hover:text-brand-red font-medium transition-colors py-2"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     Sign In

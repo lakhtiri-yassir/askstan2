@@ -79,7 +79,7 @@ export const AdminLoginPage: React.FC = () => {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-yellow-50 flex items-center justify-center p-4">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-red-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Redirecting to admin dashboard...</p>
         </div>
       </div>
@@ -90,7 +90,7 @@ export const AdminLoginPage: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-yellow-50 flex items-center justify-center p-4">
       <Link
         to="/"
-        className="absolute top-6 left-6 flex items-center text-gray-600 hover:text-red-600 transition-colors"
+        className="absolute top-6 left-6 flex items-center text-gray-600 hover:text-brand-red transition-colors"
       >
         <ArrowLeft className="w-4 h-4 mr-2" />
         Back to Site
@@ -108,7 +108,7 @@ export const AdminLoginPage: React.FC = () => {
           transition={{ delay: 0.1 }}
           className="text-center mb-8"
         >
-          <div className="w-16 h-16 bg-gradient-to-r from-red-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+          <div className="w-16 h-16 bg-gradient-to-r from-brand-red to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
             <LogIn className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Admin Access</h1>
@@ -150,16 +150,16 @@ export const AdminLoginPage: React.FC = () => {
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="p-4 bg-red-50 border border-red-200 rounded-lg"
+              className="p-4 bg-red-50 border border-brand-red-200 rounded-lg"
             >
-              <p className="text-red-600 text-sm">{errors.submit}</p>
+              <p className="text-brand-red text-sm">{errors.submit}</p>
             </motion.div>
           )}
 
           <Button
             type="submit"
             loading={isLoading}
-            className="w-full bg-gradient-to-r from-red-600 to-purple-600 hover:from-red-700 hover:to-purple-700 text-white font-semibold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
+            className="w-full bg-gradient-to-r from-brand-red-600 to-purple-600 hover:from-brand-red-700 hover:to-purple-700 text-white font-semibold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
             disabled={isLoading}
           >
             {isLoading ? 'Signing In...' : 'Access Admin Dashboard'}

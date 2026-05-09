@@ -281,7 +281,7 @@ const SimpleVideoPlayer: React.FC<VideoPlayerProps> = ({ videoSrc, onClose }) =>
                     step="0.1"
                     value={isMuted ? 0 : volume}
                     onChange={(e) => changeVolume(parseFloat(e.target.value))}
-                    className="w-20 accent-red-500"
+                    className="w-20 accent-brand-red"
                   />
                 </div>
 
@@ -355,10 +355,10 @@ const LandingPage: React.FC = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.1 }}
-                className="inline-flex items-center space-x-2 bg-gradient-to-r from-red-500/10 to-yellow-500/10 backdrop-blur-lg border border-gray-200 rounded-full px-6 py-3"
+                className="inline-flex items-center space-x-2 bg-gradient-to-r from-brand-red/10 to-yellow-500/10 backdrop-blur-lg border border-gray-200 rounded-full px-6 py-3"
               >
-                <Sparkles className="w-5 h-5 text-red-600" />
-                <span className="text-red-700 font-semibold">AI-Powered Growth</span>
+                <Sparkles className="w-5 h-5 text-brand-red" />
+                <span className="text-brand-red-600 font-semibold">AI-Powered Growth</span>
               </motion.div>
 
               {/* Main Headline */}
@@ -368,15 +368,15 @@ const LandingPage: React.FC = () => {
                 transition={{ duration: 0.8, delay: 0.2 }}
                 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-tight"
               >
-                <span className="bg-gradient-to-r from-gray-900 via-red-700 to-gray-900 bg-clip-text text-transparent">
+                <span className="bg-gradient-to-r from-gray-900 via-brand-red-700 to-gray-900 bg-clip-text text-transparent">
                   Transform Your
                 </span>
                 <br />
-                <span className="bg-gradient-to-r from-red-600 via-purple-600 to-yellow-500 bg-clip-text text-transparent">
+                <span className="bg-gradient-to-r from-brand-red-600 via-purple-600 to-yellow-500 bg-clip-text text-transparent">
                   Social Media
                 </span>
                 <br />
-                <span className="bg-gradient-to-r from-gray-900 via-red-700 to-gray-900 bg-clip-text text-transparent">
+                <span className="bg-gradient-to-r from-gray-900 via-brand-red-700 to-gray-900 bg-clip-text text-transparent">
                   Growth
                 </span>
               </motion.h1>
@@ -401,7 +401,7 @@ const LandingPage: React.FC = () => {
                 <Link to="/signup">
                   <Button
                     size="lg"
-                    className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-red-500 to-yellow-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border-0"
+                    className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-brand-red to-yellow-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border-0"
                   >
                     Get Started
                     <ArrowRight className="w-5 h-5 ml-2" />
@@ -438,7 +438,7 @@ const LandingPage: React.FC = () => {
                 />
                 
                 {/* Subtle Decorative Elements */}
-                <div className="absolute -top-6 -right-6 w-24 h-24 bg-gradient-to-br from-red-500/10 to-transparent rounded-full blur-xl" />
+                <div className="absolute -top-6 -right-6 w-24 h-24 bg-gradient-to-br from-brand-red/10 to-transparent rounded-full blur-xl" />
                 <div className="absolute -bottom-6 -left-6 w-20 h-20 bg-gradient-to-br from-yellow-500/10 to-transparent rounded-full blur-xl" />
               </div>
             </motion.div>
@@ -462,7 +462,7 @@ const LandingPage: React.FC = () => {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <h2 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-gray-900 via-red-700 to-gray-900 bg-clip-text text-transparent mb-6">
+            <h2 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-gray-900 via-brand-red-700 to-gray-900 bg-clip-text text-transparent mb-6">
               Everything You Need to Succeed
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
@@ -479,7 +479,7 @@ const LandingPage: React.FC = () => {
               transition={{ duration: 0.6, delay: 0.1 }}
               className="bg-white border border-gray-200 rounded-2xl p-8 shadow-lg hover:shadow-xl transition-shadow duration-300"
             >
-              <div className="w-16 h-16 bg-gradient-to-br from-red-500 to-red-600 rounded-2xl flex items-center justify-center mb-6">
+              <div className="w-16 h-16 bg-gradient-to-br from-brand-red to-brand-red-600 rounded-2xl flex items-center justify-center mb-6">
                 <Zap className="w-8 h-8 text-white" />
               </div>
               <h3 className="text-2xl font-bold text-gray-900 mb-4">AI-Powered Coaching</h3>
@@ -536,7 +536,7 @@ const LandingPage: React.FC = () => {
             className="text-center mb-16"
           >
             <h2 className="text-4xl md:text-5xl font-bold mb-6">
-              <span className="bg-gradient-to-r from-red-600 via-purple-600 to-yellow-500 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-brand-red-600 via-purple-600 to-yellow-500 bg-clip-text text-transparent">
                 Simple Pricing
               </span>
               <br />
@@ -581,7 +581,7 @@ const LandingPage: React.FC = () => {
               </ul>
 
               <Link to="/signup" className="block">
-                <Button className="w-full bg-gradient-to-r from-red-500 to-purple-500 text-white font-semibold py-3 rounded-xl hover:shadow-lg transition-all duration-300">
+                <Button className="w-full bg-gradient-to-r from-brand-red to-purple-500 text-white font-semibold py-3 rounded-xl hover:shadow-lg transition-all duration-300">
                   Get Started - Monthly
                 </Button>
               </Link>
@@ -593,7 +593,7 @@ const LandingPage: React.FC = () => {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
               viewport={{ once: true }}
-              className="bg-gradient-to-br from-red-500 to-yellow-500 rounded-2xl p-8 shadow-xl hover:shadow-2xl transition-all duration-300 relative overflow-hidden"
+              className="bg-gradient-to-br from-brand-red to-yellow-500 rounded-2xl p-8 shadow-xl hover:shadow-2xl transition-all duration-300 relative overflow-hidden"
             >
               {/* Popular Badge */}
               <div className="absolute top-4 right-4 bg-white/20 backdrop-blur-md text-white text-sm font-bold px-3 py-1 rounded-full">
@@ -625,7 +625,7 @@ const LandingPage: React.FC = () => {
               </ul>
 
               <Link to="/signup" className="block">
-                <Button className="w-full bg-white text-red-600 font-semibold py-3 rounded-xl hover:bg-gray-50 transition-all duration-300">
+                <Button className="w-full bg-white text-brand-red font-semibold py-3 rounded-xl hover:bg-gray-50 transition-all duration-300">
                   Get Started - Yearly
                 </Button>
               </Link>
@@ -642,7 +642,7 @@ const LandingPage: React.FC = () => {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
-            className="bg-gradient-to-r from-red-500 to-yellow-500 rounded-3xl p-12 shadow-2xl"
+            className="bg-gradient-to-r from-brand-red to-yellow-500 rounded-3xl p-12 shadow-2xl"
           >
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
               Ready to Transform Your Social Media?
@@ -653,7 +653,7 @@ const LandingPage: React.FC = () => {
             <Link to="/signup">
               <Button
                 size="lg"
-                className="px-8 py-4 bg-white text-red-600 font-semibold rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
+                className="px-8 py-4 bg-white text-brand-red font-semibold rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
               >
                 Get Started Today
                 <ArrowRight className="w-5 h-5 ml-2" />

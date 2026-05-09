@@ -106,7 +106,7 @@ export const VideoThumbnail: React.FC<VideoThumbnailProps> = ({
         {/* Loading shimmer effect */}
         <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-16 h-16 border-4 border-red-500/30 border-t-red-500 rounded-full animate-spin"></div>
+          <div className="w-16 h-16 border-4 border-brand-red/30 border-t-brand-red rounded-full animate-spin"></div>
         </div>
       </div>
     );
@@ -180,7 +180,7 @@ export const VideoThumbnail: React.FC<VideoThumbnailProps> = ({
             aria-label="Play full video"
           >
             <Play 
-              className="w-8 h-8 text-red-600 ml-1 group-hover:text-red-700 transition-colors" 
+              className="w-8 h-8 text-brand-red ml-1 group-hover:text-brand-red-600 transition-colors" 
               fill="currentColor" 
             />
           </motion.button>
@@ -240,11 +240,11 @@ export const VideoThumbnail: React.FC<VideoThumbnailProps> = ({
         )}
 
         {/* Accessibility: Focus ring */}
-        <div className="absolute inset-0 rounded-2xl border-2 border-transparent group-focus-within:border-red-500 transition-colors duration-200 pointer-events-none" />
+        <div className="absolute inset-0 rounded-2xl border-2 border-transparent group-focus-within:border-brand-red transition-colors duration-200 pointer-events-none" />
       </motion.div>
 
       {/* Decorative glow effect */}
-      <div className="absolute -inset-1 bg-gradient-to-r from-red-500/20 via-purple-500/20 to-yellow-500/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 -z-10" />
+      <div className="absolute -inset-1 bg-gradient-to-r from-brand-red/20 via-purple-500/20 to-yellow-500/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 -z-10" />
     </div>
   );
 };

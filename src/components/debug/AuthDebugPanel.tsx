@@ -80,8 +80,8 @@ export const AuthDebugPanel: React.FC = () => {
     switch (level) {
       case 'success': return 'text-green-600';
       case 'warning': return 'text-yellow-600';
-      case 'error': return 'text-red-600';
-      default: return 'text-red-600';
+      case 'error': return 'text-brand-red';
+      default: return 'text-brand-red';
     }
   };
 
@@ -148,7 +148,7 @@ export const AuthDebugPanel: React.FC = () => {
                   <h4 className="font-medium text-gray-800 mb-3">Current Auth State</h4>
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div className="space-y-1">
-                      <div className={`flex items-center ${user ? 'text-green-600' : 'text-red-600'}`}>
+                      <div className={`flex items-center ${user ? 'text-green-600' : 'text-brand-red'}`}>
                         <span className="w-2 h-2 rounded-full bg-current mr-2"></span>
                         User: {user ? 'Signed In' : 'Not Signed In'}
                       </div>
@@ -162,11 +162,11 @@ export const AuthDebugPanel: React.FC = () => {
                       </div>
                     </div>
                     <div className="space-y-1">
-                      <div className={`flex items-center ${subscription ? 'text-green-600' : 'text-red-600'}`}>
+                      <div className={`flex items-center ${subscription ? 'text-green-600' : 'text-brand-red'}`}>
                         <span className="w-2 h-2 rounded-full bg-current mr-2"></span>
                         Subscription: {subscription ? 'Found' : 'None'}
                       </div>
-                      <div className={`flex items-center ${hasActiveSubscription ? 'text-green-600' : 'text-red-600'}`}>
+                      <div className={`flex items-center ${hasActiveSubscription ? 'text-green-600' : 'text-brand-red'}`}>
                         <span className="w-2 h-2 rounded-full bg-current mr-2"></span>
                         Active Sub: {hasActiveSubscription ? 'Yes' : 'No'}
                       </div>

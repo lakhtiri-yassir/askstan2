@@ -121,7 +121,7 @@ export const CheckoutSuccessPage: React.FC = () => {
         >
           <Button
             onClick={() => navigate('/dashboard')}
-            className="w-full bg-gradient-to-r from-red-500 to-yellow-500 hover:from-red-600 hover:to-yellow-600 text-white font-semibold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
+            className="w-full bg-gradient-to-r from-brand-red to-yellow-500 hover:from-brand-red-600 hover:to-yellow-600 text-white font-semibold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
           >
             Start Your Journey
             <ArrowRight className="w-5 h-5 ml-2" />
