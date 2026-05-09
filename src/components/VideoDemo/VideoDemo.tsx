@@ -1,4 +1,4 @@
-/**
+﻿/**
  * VIDEO DEMO COMPONENT - FIXED EXPORT ISSUE
  * Main container for video demo section on AskStan! landing page
  * Integrates seamlessly with existing design system and animations
@@ -56,12 +56,12 @@ export const VideoDemo: React.FC<VideoDemoProps> = ({
               viewport={{ once: true }}
               transition={{ duration: 0.6 }}
             >
-              <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-blue-500/10 to-yellow-500/10 backdrop-blur-lg border border-white/20 rounded-full px-6 py-3 mb-6">
-                <Sparkles className="w-5 h-5 text-blue-600" />
-                <span className="text-blue-700 font-semibold">Live Demo</span>
+              <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-red-500/10 to-yellow-500/10 backdrop-blur-lg border border-white/20 rounded-full px-6 py-3 mb-6">
+                <Sparkles className="w-5 h-5 text-red-600" />
+                <span className="text-red-700 font-semibold">Live Demo</span>
               </div>
               
-              <h2 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-gray-900 bg-clip-text text-transparent mb-6">
+              <h2 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-gray-900 via-red-700 to-gray-900 bg-clip-text text-transparent mb-6">
                 See AskStan! in Action
               </h2>
               
@@ -80,8 +80,8 @@ export const VideoDemo: React.FC<VideoDemoProps> = ({
             className="relative max-w-4xl mx-auto"
           >
             {/* Decorative Background */}
-            <div className="absolute -inset-4 bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-yellow-500/10 rounded-3xl blur-xl" />
-            <div className="absolute -top-8 -right-8 w-32 h-32 bg-gradient-to-br from-blue-400/20 to-transparent rounded-full blur-2xl" />
+            <div className="absolute -inset-4 bg-gradient-to-br from-red-500/10 via-purple-500/10 to-yellow-500/10 rounded-3xl blur-xl" />
+            <div className="absolute -top-8 -right-8 w-32 h-32 bg-gradient-to-br from-red-400/20 to-transparent rounded-full blur-2xl" />
             <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-gradient-to-br from-yellow-400/20 to-transparent rounded-full blur-2xl" />
 
             {/* Video Thumbnail */}
@@ -107,7 +107,7 @@ export const VideoDemo: React.FC<VideoDemoProps> = ({
             >
               {/* Feature 1 */}
               <div className="flex items-center space-x-3 bg-white/80 backdrop-blur-lg border border-white/20 rounded-xl p-6 shadow-lg">
-                <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
+                <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center">
                   <TrendingUp className="w-5 h-5 text-white" />
                 </div>
                 <div>

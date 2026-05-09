@@ -1,4 +1,4 @@
-// src/pages/dashboard/DashboardPage.tsx - FIXED: Larger chatbot container, always show banner
+﻿// src/pages/dashboard/DashboardPage.tsx - FIXED: Larger chatbot container, always show banner
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { MessageSquare, Sparkles, Settings, AlertCircle, CheckCircle } from 'lucide-react';
@@ -28,7 +28,7 @@ class DashboardErrorBoundary extends React.Component<
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center p-4">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-yellow-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
             <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-gray-900 mb-4">Dashboard Error</h2>
@@ -37,7 +37,7 @@ class DashboardErrorBoundary extends React.Component<
             </p>
             <button
               onClick={() => window.location.reload()}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+              className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
             >
               Refresh Page
             </button>
@@ -128,7 +128,7 @@ export const DashboardPage: React.FC = () => {
 
   return (
     <DashboardErrorBoundary>
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-yellow-50">
         {/* Welcome Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -144,7 +144,7 @@ export const DashboardPage: React.FC = () => {
               Your AI social media coach is ready to help you grow your presence
             </p>
             
-            <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-green-100 to-blue-100 rounded-full">
+            <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-green-100 to-red-50 rounded-full">
               <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
               <span className="text-sm font-medium text-green-800">
                 {subscription?.status === 'active' ? 'Premium Active' : 'Account Active'}
@@ -163,7 +163,7 @@ export const DashboardPage: React.FC = () => {
             className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl border border-gray-200 overflow-hidden mb-8"
           >
             {/* Header */}
-            <div className="bg-gradient-to-r from-blue-500 to-yellow-500 px-6 py-4">
+            <div className="bg-gradient-to-r from-red-500 to-yellow-500 px-6 py-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   <div className="w-3 h-3 bg-green-400 rounded-full mr-3 animate-pulse"></div>
@@ -208,7 +208,7 @@ export const DashboardPage: React.FC = () => {
                         <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
                         <span>AI Coach Online</span>
                       </div>
-                      <div className="flex items-center text-blue-600">
+                      <div className="flex items-center text-red-600">
                         <Sparkles className="w-4 h-4 mr-2" />
                         <span>LinkedIn Expert Ready</span>
                       </div>
@@ -240,9 +240,9 @@ export const DashboardPage: React.FC = () => {
 
               {/* Loading State */}
               {!chatbotLoaded && !chatbotError && (
-                <div className="absolute bottom-4 left-4 bg-blue-100 border border-blue-300 text-blue-700 px-4 py-2 rounded-lg text-sm">
+                <div className="absolute bottom-4 left-4 bg-red-50 border border-red-300 text-red-700 px-4 py-2 rounded-lg text-sm">
                   <div className="flex items-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600 mr-2"></div>
                     Loading AI Coach...
                   </div>
                 </div>
@@ -259,8 +259,8 @@ export const DashboardPage: React.FC = () => {
           >
             <div className="bg-white/80 backdrop-blur-lg rounded-xl p-6 shadow-lg border border-gray-200">
               <div className="flex items-center mb-4">
-                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
-                  <Sparkles className="w-6 h-6 text-blue-600" />
+                <div className="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center mr-3">
+                  <Sparkles className="w-6 h-6 text-red-600" />
                 </div>
                 <h3 className="font-semibold text-gray-900">Content Ideas</h3>
               </div>

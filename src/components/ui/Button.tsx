@@ -22,11 +22,11 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     const baseClasses = 'inline-flex items-center justify-center font-semibold rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
     
     const variants = {
-      primary: 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl focus:ring-blue-500',
+      primary: 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-lg hover:shadow-xl focus:ring-red-500',
       secondary: 'bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 text-gray-700 hover:text-gray-800 shadow-md hover:shadow-lg focus:ring-gray-500',
-      outline: 'border-2 border-blue-500 text-blue-600 hover:bg-blue-500 hover:text-white bg-transparent focus:ring-blue-500',
+      outline: 'border-2 border-red-500 text-red-600 hover:bg-red-500 hover:text-white bg-transparent focus:ring-red-500',
       ghost: 'text-gray-600 hover:text-gray-800 hover:bg-gray-100 focus:ring-gray-500',
-      white: 'bg-white text-blue-600 hover:bg-blue-50 hover:text-white hover:bg-blue-600 border-2 border-white hover:border-blue-600 transition-all duration-200 focus:ring-blue-500'
+      white: 'bg-white text-red-600 hover:bg-red-50 hover:text-white hover:bg-red-600 border-2 border-white hover:border-red-600 transition-all duration-200 focus:ring-red-500'
     };
     
     const sizes = {

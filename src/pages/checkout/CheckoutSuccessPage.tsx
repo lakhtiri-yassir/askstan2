@@ -1,4 +1,4 @@
-// src/pages/checkout/CheckoutSuccessPage.tsx - NO ERROR MESSAGES - JUST WORKS
+﻿// src/pages/checkout/CheckoutSuccessPage.tsx - NO ERROR MESSAGES - JUST WORKS
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -47,7 +47,7 @@ export const CheckoutSuccessPage: React.FC = () => {
 
   if (isProcessing) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-yellow-50 flex items-center justify-center p-4">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -64,7 +64,7 @@ export const CheckoutSuccessPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-yellow-50 flex items-center justify-center p-4">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -99,7 +99,7 @@ export const CheckoutSuccessPage: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="bg-gradient-to-r from-blue-50 to-yellow-50 rounded-lg p-4 mb-6"
+          className="bg-gradient-to-r from-gray-50 to-yellow-50 rounded-lg p-4 mb-6"
         >
           <h3 className="font-semibold text-gray-900 mb-3 flex items-center">
             <CreditCard className="w-5 h-5 mr-2" />
@@ -121,7 +121,7 @@ export const CheckoutSuccessPage: React.FC = () => {
         >
           <Button
             onClick={() => navigate('/dashboard')}
-            className="w-full bg-gradient-to-r from-blue-500 to-yellow-500 hover:from-blue-600 hover:to-yellow-600 text-white font-semibold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
+            className="w-full bg-gradient-to-r from-red-500 to-yellow-500 hover:from-red-600 hover:to-yellow-600 text-white font-semibold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
           >
             Start Your Journey
             <ArrowRight className="w-5 h-5 ml-2" />

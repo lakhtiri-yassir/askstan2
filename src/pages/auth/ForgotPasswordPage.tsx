@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, ArrowLeft, CheckCircle } from 'lucide-react';
@@ -42,7 +42,7 @@ export const ForgotPasswordPage: React.FC = () => {
 
   if (isSuccess) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-yellow-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -90,7 +90,7 @@ export const ForgotPasswordPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-yellow-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -103,7 +103,7 @@ export const ForgotPasswordPage: React.FC = () => {
               initial={{ scale: 0.8 }}
               animate={{ scale: 1 }}
               transition={{ duration: 0.5 }}
-              className="inline-flex items-center justify-center w-16 h-16 bg-royal-blue rounded-xl mb-4"
+              className="inline-flex items-center justify-center w-16 h-16 bg-brand-red rounded-xl mb-4"
             >
               <Mail className="w-8 h-8 text-white" />
             </motion.div>
@@ -140,7 +140,7 @@ export const ForgotPasswordPage: React.FC = () => {
           <div className="mt-6 text-center">
             <Link
               to="/signin"
-              className="inline-flex items-center text-sm font-semibold text-blue-600 hover:text-blue-500 transition-colors"
+              className="inline-flex items-center text-sm font-semibold text-red-600 hover:text-red-500 transition-colors"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Sign In

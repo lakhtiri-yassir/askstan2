@@ -1,4 +1,4 @@
-// src/components/debug/AuthDebugPanel.tsx - On-screen debugging panel
+﻿// src/components/debug/AuthDebugPanel.tsx - On-screen debugging panel
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bug, X, RefreshCw, Eye, EyeOff } from 'lucide-react';
@@ -81,7 +81,7 @@ export const AuthDebugPanel: React.FC = () => {
       case 'success': return 'text-green-600';
       case 'warning': return 'text-yellow-600';
       case 'error': return 'text-red-600';
-      default: return 'text-blue-600';
+      default: return 'text-red-600';
     }
   };
 
@@ -190,7 +190,7 @@ export const AuthDebugPanel: React.FC = () => {
                   <div className="flex space-x-2">
                     <button
                       onClick={handleDebugSubscription}
-                      className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded transition-colors"
+                      className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white text-sm rounded transition-colors"
                     >
                       Debug Subscription
                     </button>

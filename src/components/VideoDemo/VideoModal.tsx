@@ -1,4 +1,4 @@
-/**
+﻿/**
  * CLEAN VIDEO MODAL - Final Version
  * Fixed pause button and removed debug panel completely
  * Proper control auto-hide logic
@@ -310,7 +310,7 @@ export const VideoModal: React.FC<VideoModalProps> = ({
                         setIsLoading(true);
                         videoRef.current?.load();
                       }}
-                      className="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg mr-2"
+                      className="px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg mr-2"
                     >
                       Retry
                     </button>
@@ -367,7 +367,7 @@ export const VideoModal: React.FC<VideoModalProps> = ({
                         onClick={handleSeek}
                       >
                         <div 
-                          className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-150"
+                          className="h-full bg-gradient-to-r from-red-500 to-red-600 rounded-full transition-all duration-150"
                           style={{ width: `${(currentTime / duration) * 100 || 0}%` }}
                         />
                       </div>
@@ -428,7 +428,7 @@ export const VideoModal: React.FC<VideoModalProps> = ({
                             step="0.1"
                             value={isMuted ? 0 : volume}
                             onChange={(e) => changeVolume(parseFloat(e.target.value))}
-                            className="w-20 accent-blue-500"
+                            className="w-20 accent-red-500"
                           />
                         </div>
 

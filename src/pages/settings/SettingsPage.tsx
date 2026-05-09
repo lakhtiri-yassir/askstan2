@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { User, CreditCard, Bell, Shield, LogOut } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -81,7 +81,7 @@ export const SettingsPage: React.FC = () => {
     <div className="space-y-6">
       <h3 className="text-xl font-semibold text-gray-900">Billing & Subscription</h3>
       {subscription ? (
-        <div className="bg-gradient-to-r from-blue-50 to-yellow-50 p-6 rounded-xl border border-blue-200">
+        <div className="bg-gradient-to-r from-gray-50 to-yellow-50 p-6 rounded-xl border border-red-200">
           <div className="flex items-center justify-between">
             <div>
               <h4 className="font-semibold text-gray-900">
@@ -150,7 +150,7 @@ export const SettingsPage: React.FC = () => {
                   <input
                     type="checkbox"
                     defaultChecked={index < 2}
-                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                    className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 rounded focus:ring-red-500"
                   />
                 </div>
               ))}
@@ -193,7 +193,7 @@ export const SettingsPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-yellow-50 py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -223,7 +223,7 @@ export const SettingsPage: React.FC = () => {
                       onClick={() => setActiveTab(tab.id)}
                       className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-left transition-colors ${
                         activeTab === tab.id
-                          ? 'bg-royal-blue text-white'
+                          ? 'bg-brand-red text-white'
                           : 'text-gray-600 hover:bg-white'
                       }`}
                     >

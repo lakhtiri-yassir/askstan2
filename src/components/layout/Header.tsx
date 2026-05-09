@@ -6,7 +6,7 @@ import { Menu, X, LogOut } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../ui/Button';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
-import askstanLogo from '../../img/askstanlogo.png';
+import askstanLogo from '../../img/askstanlogo-horizontal.png';
 
 export const Header: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
@@ -76,14 +76,14 @@ export const Header: React.FC = () => {
                 ) : hasActiveSubscription ? (
                   <Link
                     to="/dashboard"
-                    className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
+                    className="text-gray-700 hover:text-red-600 font-medium transition-colors"
                   >
                     Dashboard
                   </Link>
                 ) : (
                   <Link
                     to="/plans"
-                    className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
+                    className="text-gray-700 hover:text-red-600 font-medium transition-colors"
                   >
                     Plans
                   </Link>
@@ -91,7 +91,7 @@ export const Header: React.FC = () => {
                 
                 <Link
                   to="/settings"
-                  className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
+                  className="text-gray-700 hover:text-red-600 font-medium transition-colors"
                 >
                   Settings
                 </Link>
@@ -111,7 +111,7 @@ export const Header: React.FC = () => {
               <>
                 <Link
                   to="/signin"
-                  className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
+                  className="text-gray-700 hover:text-red-600 font-medium transition-colors"
                 >
                   Sign In
                 </Link>
@@ -128,7 +128,7 @@ export const Header: React.FC = () => {
           <div className="md:hidden">
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="text-gray-700 hover:text-blue-600 transition-colors"
+              className="text-gray-700 hover:text-red-600 transition-colors"
             >
               {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
@@ -161,7 +161,7 @@ export const Header: React.FC = () => {
                   ) : hasActiveSubscription ? (
                     <Link
                       to="/dashboard"
-                      className="block text-gray-700 hover:text-blue-600 font-medium transition-colors py-2"
+                      className="block text-gray-700 hover:text-red-600 font-medium transition-colors py-2"
                       onClick={() => setIsMenuOpen(false)}
                     >
                       Dashboard
@@ -169,7 +169,7 @@ export const Header: React.FC = () => {
                   ) : (
                     <Link
                       to="/plans"
-                      className="block text-gray-700 hover:text-blue-600 font-medium transition-colors py-2"
+                      className="block text-gray-700 hover:text-red-600 font-medium transition-colors py-2"
                       onClick={() => setIsMenuOpen(false)}
                     >
                       Plans
@@ -178,7 +178,7 @@ export const Header: React.FC = () => {
                   
                   <Link
                     to="/settings"
-                    className="block text-gray-700 hover:text-blue-600 font-medium transition-colors py-2"
+                    className="block text-gray-700 hover:text-red-600 font-medium transition-colors py-2"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     Settings
@@ -202,7 +202,7 @@ export const Header: React.FC = () => {
                 <div className="space-y-4">
                   <Link
                     to="/signin"
-                    className="block text-gray-700 hover:text-blue-600 font-medium transition-colors py-2"
+                    className="block text-gray-700 hover:text-red-600 font-medium transition-colors py-2"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     Sign In

@@ -1,4 +1,4 @@
-// src/pages/admin/AdminLoginPage.tsx - PRODUCTION READY: Simple and reliable
+﻿// src/pages/admin/AdminLoginPage.tsx - PRODUCTION READY: Simple and reliable
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -77,9 +77,9 @@ export const AdminLoginPage: React.FC = () => {
 
   if (admin) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-yellow-50 flex items-center justify-center p-4">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Redirecting to admin dashboard...</p>
         </div>
       </div>
@@ -87,10 +87,10 @@ export const AdminLoginPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-yellow-50 flex items-center justify-center p-4">
       <Link
         to="/"
-        className="absolute top-6 left-6 flex items-center text-gray-600 hover:text-blue-600 transition-colors"
+        className="absolute top-6 left-6 flex items-center text-gray-600 hover:text-red-600 transition-colors"
       >
         <ArrowLeft className="w-4 h-4 mr-2" />
         Back to Site
@@ -108,7 +108,7 @@ export const AdminLoginPage: React.FC = () => {
           transition={{ delay: 0.1 }}
           className="text-center mb-8"
         >
-          <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+          <div className="w-16 h-16 bg-gradient-to-r from-red-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
             <LogIn className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Admin Access</h1>
@@ -159,7 +159,7 @@ export const AdminLoginPage: React.FC = () => {
           <Button
             type="submit"
             loading={isLoading}
-            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
+            className="w-full bg-gradient-to-r from-red-600 to-purple-600 hover:from-red-700 hover:to-purple-700 text-white font-semibold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
             disabled={isLoading}
           >
             {isLoading ? 'Signing In...' : 'Access Admin Dashboard'}

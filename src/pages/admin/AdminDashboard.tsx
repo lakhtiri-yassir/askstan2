@@ -1,4 +1,4 @@
-// src/pages/admin/AdminDashboard.tsx - CLEAN VERSION: Fixed export structure
+﻿// src/pages/admin/AdminDashboard.tsx - CLEAN VERSION: Fixed export structure
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
@@ -56,7 +56,7 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
       case 'active':
         return 'bg-green-100 text-green-800';
       case 'trialing':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-red-50 text-gray-800';
       case 'cancelled':
         return 'bg-red-100 text-red-800';
       case 'expired':
@@ -102,7 +102,7 @@ const UserRow: React.FC<{
       <td className="px-6 py-4 whitespace-nowrap">
         <div className="flex items-center">
           <div className="flex-shrink-0 h-10 w-10">
-            <div className="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center">
+            <div className="h-10 w-10 rounded-full bg-red-500 flex items-center justify-center">
               <span className="text-sm font-medium text-white">
                 {user.email.charAt(0).toUpperCase()}
               </span>
@@ -300,7 +300,7 @@ function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-yellow-50">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-yellow-50">
         <div className="text-center">
           <LoadingSpinner size="lg" className="mx-auto mb-4" />
           <p className="text-gray-600 font-medium">Loading admin dashboard...</p>
@@ -310,7 +310,7 @@ function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-yellow-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
@@ -336,8 +336,8 @@ function AdminDashboard() {
             className="bg-white rounded-xl shadow-lg p-6"
           >
             <div className="flex items-center">
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <Users className="w-6 h-6 text-blue-600" />
+              <div className="p-3 bg-red-50 rounded-lg">
+                <Users className="w-6 h-6 text-red-600" />
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Total Users</p>
@@ -370,8 +370,8 @@ function AdminDashboard() {
             className="bg-white rounded-xl shadow-lg p-6"
           >
             <div className="flex items-center">
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <Clock className="w-6 h-6 text-blue-600" />
+              <div className="p-3 bg-red-50 rounded-lg">
+                <Clock className="w-6 h-6 text-red-600" />
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Trial Users</p>
@@ -414,7 +414,7 @@ function AdminDashboard() {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
               >
                 <option value="all">All Users</option>
                 <option value="subscribed">Subscribed</option>

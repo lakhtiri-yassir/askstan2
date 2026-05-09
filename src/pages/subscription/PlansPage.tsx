@@ -1,4 +1,4 @@
-// src/pages/subscription/PlansPage.tsx - UPDATED PRICING
+﻿// src/pages/subscription/PlansPage.tsx - UPDATED PRICING
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { CheckCircle, ArrowRight, Sparkles } from 'lucide-react';
@@ -91,7 +91,7 @@ export const PlansPage: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 py-12 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-yellow-50 py-12 px-4">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <motion.div
@@ -120,14 +120,14 @@ export const PlansPage: React.FC = () => {
               transition={{ delay: index * 0.1 }}
               className={`relative bg-white rounded-2xl shadow-xl p-8 ${
                 plan.popular 
-                  ? 'ring-2 ring-blue-500 transform scale-105' 
+                  ? 'ring-2 ring-red-500 transform scale-105' 
                   : 'border border-gray-200'
               }`}
             >
               {/* Popular Badge */}
               {plan.popular && (
                 <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                  <div className="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-6 py-2 rounded-full text-sm font-bold flex items-center space-x-2">
+                  <div className="bg-gradient-to-r from-red-500 to-purple-500 text-white px-6 py-2 rounded-full text-sm font-bold flex items-center space-x-2">
                     <Sparkles className="w-4 h-4" />
                     <span>Most Popular</span>
                   </div>
@@ -165,7 +165,7 @@ export const PlansPage: React.FC = () => {
                 disabled={isLoading}
                 className={`w-full py-4 text-lg font-semibold rounded-xl transition-all duration-300 ${
                   plan.popular
-                    ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white hover:shadow-lg'
+                    ? 'bg-gradient-to-r from-red-500 to-purple-500 text-white hover:shadow-lg'
                     : 'bg-gray-900 text-white hover:bg-gray-800'
                 } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
               >

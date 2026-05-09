@@ -1,4 +1,4 @@
-// src/components/ChatbotEmbed.tsx - RESPONSIVE LOGO WITH WORKING CHATBOT INTEGRATION
+﻿// src/components/ChatbotEmbed.tsx - RESPONSIVE LOGO WITH WORKING CHATBOT INTEGRATION
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { chatbotConfig, setUserDataForChatbot } from "../config/chatbot";
@@ -271,7 +271,7 @@ export const ChatbotEmbed: React.FC<ChatbotEmbedProps> = ({
         <p className="text-sm text-gray-600 mb-4">{error}</p>
         <button
           onClick={handleRetry}
-          className="flex items-center space-x-2 px-3 py-2 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+          className="flex items-center space-x-2 px-3 py-2 sm:px-4 sm:py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
         >
           <RefreshCw className="w-4 h-4" />
           <span>Retry</span>
@@ -286,7 +286,7 @@ export const ChatbotEmbed: React.FC<ChatbotEmbedProps> = ({
         {/* Container Corner Status - Loading Spinner */}
         <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-10">
           <div className="relative w-5 h-5 sm:w-6 sm:h-6">
-            <div className="absolute inset-0 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+            <div className="absolute inset-0 border-2 border-red-200 border-t-red-600 rounded-full animate-spin"></div>
           </div>
         </div>
 
@@ -303,11 +303,11 @@ export const ChatbotEmbed: React.FC<ChatbotEmbedProps> = ({
             }}
           />
           <div
-            className="w-36 h-36 sm:w-40 sm:h-40 md:w-48 md:h-48 lg:w-56 lg:h-56 xl:w-60 xl:h-60 bg-blue-100 rounded-xl flex items-center justify-center animate-pulse mx-auto"
+            className="w-36 h-36 sm:w-40 sm:h-40 md:w-48 md:h-48 lg:w-56 lg:h-56 xl:w-60 xl:h-60 bg-red-50 rounded-xl flex items-center justify-center animate-pulse mx-auto"
             id="loading-logo-fallback"
             style={{ display: "none" }}
           >
-            <span className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold text-blue-600">AS</span>
+            <span className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold text-red-600">AS</span>
           </div>
         </div>
 

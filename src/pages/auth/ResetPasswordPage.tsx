@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Lock, CheckCircle, Eye, EyeOff } from 'lucide-react';
@@ -78,7 +78,7 @@ export const ResetPasswordPage: React.FC = () => {
 
   if (!token) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-yellow-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full bg-white/80 backdrop-blur-md rounded-2xl shadow-xl p-8 border border-white/20 text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Invalid Reset Link</h2>
           <p className="text-gray-600 mb-6">
@@ -94,7 +94,7 @@ export const ResetPasswordPage: React.FC = () => {
 
   if (isSuccess) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-yellow-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -131,7 +131,7 @@ export const ResetPasswordPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-yellow-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -144,7 +144,7 @@ export const ResetPasswordPage: React.FC = () => {
               initial={{ scale: 0.8 }}
               animate={{ scale: 1 }}
               transition={{ duration: 0.5 }}
-              className="inline-flex items-center justify-center w-16 h-16 bg-royal-blue rounded-xl mb-4"
+              className="inline-flex items-center justify-center w-16 h-16 bg-brand-red rounded-xl mb-4"
             >
               <Lock className="w-8 h-8 text-white" />
             </motion.div>
@@ -218,7 +218,7 @@ export const ResetPasswordPage: React.FC = () => {
           <div className="mt-6 text-center">
             <Link
               to="/signin"
-              className="text-sm font-semibold text-blue-600 hover:text-blue-500 transition-colors"
+              className="text-sm font-semibold text-red-600 hover:text-red-500 transition-colors"
             >
               Back to Sign In
             </Link>

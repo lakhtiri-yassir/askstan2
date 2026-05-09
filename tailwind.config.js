@@ -10,9 +10,16 @@ export default {
   theme: {
     extend: {
       colors: {
-        'navy-blue': '#1e3a8a',
-        'powder-blue': '#7dd3fc',
-        'royal-blue': '#2563eb',
+        'brand-red': '#FF0800',
+        'brand-black': '#000000',
+        'brand-gray': {
+          100: '#F1F1F2',
+          300: '#E6E5E6',
+          400: '#B5B6B9',
+          500: '#A2A3A6',
+          600: '#717175',
+          800: '#424243',
+        },
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],

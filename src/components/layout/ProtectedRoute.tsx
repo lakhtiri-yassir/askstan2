@@ -1,4 +1,4 @@
-// src/components/layout/ProtectedRoute.tsx - FIXED: Enhanced subscription handling
+﻿// src/components/layout/ProtectedRoute.tsx - FIXED: Enhanced subscription handling
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -37,7 +37,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   // Show loading spinner while auth is still loading or not initialized
   if (loading || !initialized) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-yellow-50">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-yellow-50">
         <div className="text-center">
           <LoadingSpinner size="lg" />
           <p className="mt-4 text-gray-600 font-medium">
@@ -64,7 +64,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     // If subscription is still loading, show loading state
     if (subscriptionLoading) {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-yellow-50">
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-yellow-50">
           <div className="text-center">
             <LoadingSpinner size="lg" />
             <p className="mt-4 text-gray-600 font-medium">

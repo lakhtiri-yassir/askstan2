@@ -1,4 +1,4 @@
-// src/pages/auth/SignInPage.tsx - FIXED: Centered layout, email memory, home button
+﻿// src/pages/auth/SignInPage.tsx - FIXED: Centered layout, email memory, home button
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -122,9 +122,9 @@ const SignInPage: React.FC = () => {
   // Show redirecting state if user is signed in and we're about to redirect
   if (user && initialized && !loading && (!subscriptionLoading || hasActiveSubscription !== undefined)) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-yellow-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto mb-4"></div>
           <p className="text-gray-600 font-medium">
             {subscriptionLoading ? 'Checking subscription...' : 'Redirecting...'}
           </p>
@@ -134,11 +134,11 @@ const SignInPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 relative">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-yellow-50 relative">
       {/* Go Back to Home Button */}
       <Link
         to="/"
-        className="absolute top-6 left-6 flex items-center text-gray-600 hover:text-blue-600 transition-colors group z-10"
+        className="absolute top-6 left-6 flex items-center text-gray-600 hover:text-red-600 transition-colors group z-10"
       >
         <Home className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" />
         <span className="font-medium">Back to Home</span>
@@ -224,7 +224,7 @@ const SignInPage: React.FC = () => {
           <div className="mt-6 text-center">
             <Link 
               to="/forgot-password" 
-              className="text-blue-600 hover:text-blue-700 text-sm transition-colors"
+              className="text-red-600 hover:text-red-700 text-sm transition-colors"
             >
               Forgot your password?
             </Link>
@@ -235,7 +235,7 @@ const SignInPage: React.FC = () => {
               Don't have an account?{' '}
               <Link 
                 to="/signup" 
-                className="text-blue-600 hover:text-blue-700 font-medium transition-colors"
+                className="text-red-600 hover:text-red-700 font-medium transition-colors"
               >
                 Sign up
               </Link>

@@ -1,4 +1,4 @@
-// src/pages/legal/TermsOfServicePage.tsx
+﻿// src/pages/legal/TermsOfServicePage.tsx
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft } from 'lucide-react';
@@ -7,7 +7,7 @@ import { Button } from '../../components/ui/Button';
 
 export const TermsOfServicePage: React.FC = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-yellow-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -16,7 +16,7 @@ export const TermsOfServicePage: React.FC = () => {
         >
           {/* Header */}
           <div className="mb-8">
-            <Link to="/" className="inline-flex items-center text-blue-600 hover:text-blue-700 mb-6">
+            <Link to="/" className="inline-flex items-center text-red-600 hover:text-red-700 mb-6">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Home
             </Link>
@@ -81,7 +81,7 @@ export const TermsOfServicePage: React.FC = () => {
               <p className="text-gray-700 leading-relaxed mb-6">
                 If you have any questions about these Terms, contact us at:
                 <br />
-                <strong>Email:</strong> <a href="mailto:reply@askstan.io" className="text-blue-600 hover:text-blue-700">reply@askstan.io</a>
+                <strong>Email:</strong> <a href="mailto:reply@askstan.io" className="text-red-600 hover:text-red-700">reply@askstan.io</a>
               </p>
             </div>
           </div>

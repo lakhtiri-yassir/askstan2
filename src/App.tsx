@@ -1,4 +1,4 @@
-// src/App.tsx - COMPLETE ROUTING FIX: All pages with proper protection
+﻿// src/App.tsx - COMPLETE ROUTING FIX: All pages with proper protection
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
@@ -31,11 +31,11 @@ const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
 
 // Simple placeholder for any missing pages
 const ComingSoonPage = () => (
-  <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center p-4">
+  <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-yellow-50 flex items-center justify-center p-4">
     <div className="text-center">
       <h1 className="text-3xl font-bold text-gray-900 mb-4">Coming Soon</h1>
       <p className="text-gray-600 mb-6">This page is under development.</p>
-      <a href="/" className="text-blue-600 hover:text-blue-700 font-medium">
+      <a href="/" className="text-red-600 hover:text-red-700 font-medium">
         ← Back to Home
       </a>
     </div>
@@ -44,7 +44,7 @@ const ComingSoonPage = () => (
 
 // Loading fallback component
 const PageLoader = () => (
-  <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-yellow-50">
+  <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-yellow-50">
     <div className="text-center">
       <LoadingSpinner size="lg" />
       <p className="mt-4 text-gray-600 font-medium">Loading...</p>
@@ -54,7 +54,7 @@ const PageLoader = () => (
 
 // FIXED: Separate admin routes to avoid admin checks on regular user auth
 const AdminRoutes = () => (
-  <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50">
+  <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-yellow-50">
     <Suspense fallback={<PageLoader />}>
       <Routes>
         <Route path="/login" element={<AdminLoginPage />} />
@@ -75,7 +75,7 @@ const AdminRoutes = () => (
 
 // Regular app routes without admin provider
 const AppRoutes = () => (
-  <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50">
+  <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-yellow-50">
     <Header />
     
     <Suspense fallback={<PageLoader />}>

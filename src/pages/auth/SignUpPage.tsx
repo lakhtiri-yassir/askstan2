@@ -1,4 +1,4 @@
-// src/pages/auth/SignUpPage.tsx - FIXED: Icons passed as JSX elements
+﻿// src/pages/auth/SignUpPage.tsx - FIXED: Icons passed as JSX elements
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -130,7 +130,7 @@ export const SignUpPage: React.FC = () => {
 
   // CRITICAL FIX: Always render the same component structure
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-yellow-50 flex items-center justify-center p-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -236,15 +236,15 @@ export const SignUpPage: React.FC = () => {
                   setErrors(prev => ({ ...prev, terms: undefined }));
                 }
               }}
-              className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              className="mt-1 w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
             />
             <label htmlFor="acceptTerms" className="text-sm text-gray-600">
               I agree to the{' '}
-              <a href="/terms" className="text-blue-600 hover:text-blue-800 underline">
+              <a href="/terms" className="text-red-600 hover:text-red-800 underline">
                 Terms of Service
               </a>{' '}
               and{' '}
-              <a href="/privacy" className="text-blue-600 hover:text-blue-800 underline">
+              <a href="/privacy" className="text-red-600 hover:text-red-800 underline">
                 Privacy Policy
               </a>
             </label>
@@ -301,7 +301,7 @@ export const SignUpPage: React.FC = () => {
             Already have an account?{' '}
             <Link
               to="/signin"
-              className="text-blue-600 hover:text-blue-800 font-semibold transition-colors"
+              className="text-red-600 hover:text-red-800 font-semibold transition-colors"
             >
               Sign in here
             </Link>
