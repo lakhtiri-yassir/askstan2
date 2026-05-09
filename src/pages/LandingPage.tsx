@@ -19,7 +19,7 @@ import {
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../contexts/AuthContext';
 import { VideoDemo } from '../components/VideoDemo';
-import askstanBanner from '../assets/images/hero-image.jpg';
+import askstanBanner from '../img/askstanlogo-stacked.png';
 
 interface VideoPlayerProps {
   videoSrc: string;

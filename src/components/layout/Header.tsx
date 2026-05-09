@@ -52,7 +52,7 @@ export const Header: React.FC = () => {
             <img 
               src={askstanLogo} 
               alt="AskStan! Logo" 
-              className="h-8 w-auto"
+              className="h-14 w-auto"
             />
           </Link>
 
