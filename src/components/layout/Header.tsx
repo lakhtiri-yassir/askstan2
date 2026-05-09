@@ -47,12 +47,12 @@ export const Header: React.FC = () => {
       className="bg-white/90 backdrop-blur-lg shadow-lg border-b border-gray-200 sticky top-0 z-50"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center py-2">
+        <div className="flex justify-between items-center py-3">
           <Link to="/" className="flex items-center">
             <img
               src={askstanLogo}
               alt="AskStan! Logo"
-              className="h-32 w-auto"
+              className="h-12 w-auto"
             />
           </Link>
 

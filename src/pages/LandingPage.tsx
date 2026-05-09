@@ -430,11 +430,11 @@ const LandingPage: React.FC = () => {
               className="relative flex items-center justify-center"
             >
               {/* Clean Single Background Container */}
-              <div className="relative bg-white rounded-3xl shadow-xl p-12 border border-gray-200">
+              <div className="relative bg-white rounded-3xl shadow-xl p-8 border border-gray-200">
                 <img
                   src={askstanBanner}
                   alt="AskStan! AI Social Media Growth Platform"
-                  className="w-full h-auto max-w-lg"
+                  className="w-full h-auto max-w-[280px] mx-auto"
                 />
                 
                 {/* Subtle Decorative Elements */}

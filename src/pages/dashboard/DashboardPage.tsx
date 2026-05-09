@@ -191,7 +191,7 @@ export const DashboardPage: React.FC = () => {
                   <img
                     src={askstanBanner}
                     alt="AskStan! AI Social Media Coach"
-                    className="w-56 h-auto md:w-64 lg:w-72 object-contain mb-6 mx-auto drop-shadow-lg"
+                    className="w-40 h-auto md:w-48 object-contain mb-6 mx-auto drop-shadow-lg"
                   />
                   
                   <div className="max-w-lg mx-auto">
